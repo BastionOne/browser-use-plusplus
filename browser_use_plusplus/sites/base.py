@@ -31,8 +31,6 @@ from browser_use_plusplus.common.constants import (
     BROWSER_PROFILES
 )
 
-from browser_use_plusplus.eval.client import PagedDiscoveryEvalClient
-
 from browser_use_plusplus.logger import get_or_init_log_factory
 
 PROFILE_DIR = Path(
@@ -342,7 +340,6 @@ async def start_discovery_agent(
     full_log: logging.Logger,
     agent_dir: Path,
     initial_plan: Optional[PlanItem] = None,
-    challenge_client: PagedDiscoveryEvalClient | None = None,
     auth_cookies: List[Dict[str, Any]] | None = None,
     max_steps: int = 10,
     max_pages: int = 1,
@@ -360,7 +357,6 @@ async def start_discovery_agent(
             max_steps=max_steps,
             max_pages=max_pages,
             initial_plan=initial_plan,
-            challenge_client=challenge_client,
             proxy_handler=proxy_handler,
             agent_log=agent_log,
             full_log=full_log,
@@ -403,7 +399,6 @@ async def start_discovery_agent_from_session(
     browser_data: BrowserData,
     snapshot_file: Path,
     snapshot_step: int | None = None,
-    challenge_client: PagedDiscoveryEvalClient | None = None,
     max_steps: int = 10,
     max_page_steps: int = 2,
     streaming: bool = False,
@@ -430,7 +425,6 @@ async def start_discovery_agent_from_session(
         browser_session=browser_session,
         max_steps=max_steps,
         max_page_steps=max_page_steps,
-        challenge_client=challenge_client,
         agent_log=agent_log,
         full_log=full_log,
         take_screenshots=screenshot,

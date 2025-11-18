@@ -7,7 +7,6 @@ from pydantic import BaseModel
 
 from browser_use_plusplus.common.httplib import HTTPMessage
 from browser_use_plusplus.logger import get_agent_loggers
-from browser_use_plusplus.eval.datasets.base import Challenge
 
 agent_log, _ = get_agent_loggers()
 

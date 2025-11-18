@@ -19,7 +19,7 @@ from browser_use_plusplus.src.prompts.planv4 import (
     TASK_PROMPT_WITH_PLAN_NO_THINKING as TASK_PROMPT_WITH_PLAN
 )
 from browser_use_plusplus.src.llm_models import LLMHub, ChatModelWithLogging
-from browser_use_plusplus.src.agent.utils import url_did_change
+from browser_use_plusplus.src.utils import url_did_change
 from browser_use_plusplus.src.pages import Page, PageObservations
 from browser_use_plusplus.src.proxy import MitmProxyHTTPHandler
 from browser_use_plusplus.src.state import (
@@ -48,10 +48,6 @@ from browser_use.tools.service import Tools
 from browser_use.utils import time_execution_async
 from browser_use.llm import ChatOpenAI
 from browser_use.agent.service import AgentHookFunc
-
-# clients
-from browser_use_plusplus.src.agent.agent_client import AgentClient
-from browser_use_plusplus.eval.client import PagedDiscoveryEvalClient
 
 from browser_use_plusplus.common.utils import (
     extract_json,
@@ -182,8 +178,8 @@ class DiscoveryAgent(BrowserUseAgent):
         max_steps: int = 50,
         max_pages: int = 1,
         save_snapshots: bool = True,
-        challenge_client: Optional[PagedDiscoveryEvalClient] = None,
-        server_client: Optional[AgentClient] = None,
+        challenge_client: Optional[Any] = None,
+        server_client: Optional[Any] = None,
         proxy_handler: Optional[MitmProxyHTTPHandler] = None,
         take_screenshots: bool = True,
         auth_cookies: Optional[List[Dict[str, Any]]] = None,

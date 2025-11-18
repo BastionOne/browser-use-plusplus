@@ -31,10 +31,6 @@ BROWSER_PROFILES = [
     r"C:\Users\jpeng\AppData\Local\Google\Chrome\User Data\Default"
 ]
 
-# cnc server url
-API_SERVER_HOST = "127.0.0.1"
-API_SERVER_PORT = int(os.environ["API_SERVER_PORT"])
-
 # detection prompt
 NUM_SCHEDULED_ACTIONS = 5
 

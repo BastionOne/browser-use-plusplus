@@ -1,0 +1,32 @@
+ [build-system]
+ requires = ["setuptools>=75.0", "wheel"]
+ build-backend = "setuptools.build_meta"
+ 
+ [project]
+ name = "browser-use-plusplus"
+ version = "0.1.0"
+ description = "Browser-use-plusplus core package"
+ readme = "README.md"
+ requires-python = ">=3.10"
+ dependencies = [
+     "fastapi>=0.103.1",
+     "uvicorn>=0.23.2",
+     "sqlmodel>=0.0.8",
+     "sqlalchemy>=2.0.20",
+     "pydantic>=2.3.0",
+     "httpx>=0.24.1",
+     "pytest>=7.4.0",
+     "pytest-asyncio>=0.21.1",
+     "instructor==1.7.3",
+     "mitmproxy==11.0.2",
+     "tiktoken",
+     "playwright",
+     "pytz",
+     "jsbeautifier",
+     "opik",
+     "langchain_core",
+     "langchain_openai"
+ ]
+
+[tool.setuptools]
+packages = ["browser_use_plusplus"]

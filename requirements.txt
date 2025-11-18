@@ -1,0 +1,5 @@
+# Dependencies are managed via `pyproject.toml`.
+# Install both local packages from the repo root:
+#   pip install -e ./browser-use -e .
+-e ./browser-use
+-e .

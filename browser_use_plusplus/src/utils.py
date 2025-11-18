@@ -3,10 +3,9 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, cast
 
 import asyncio
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
-from pydantic import BaseModel
 
 # browser-use imports
 from browser_use.browser import BrowserSession
@@ -177,3 +176,17 @@ class ScreenshotService:
             await f.write(screenshot_data)
 
         return str(screenshot_path)
+
+def url_did_change(old_url: str, new_url: str) -> bool:
+    """
+    Check if the URL has changed.
+    """
+    # return urlparse(old_url).fragment != urlparse(new_url).fragment
+
+    old_parsed = urlparse(old_url)
+    new_parsed = urlparse(new_url)
+    
+    old_netloc_path = old_parsed.netloc + old_parsed.path.rstrip('/')
+    new_netloc_path = new_parsed.netloc + new_parsed.path.rstrip('/')
+    
+    return old_netloc_path != new_netloc_path

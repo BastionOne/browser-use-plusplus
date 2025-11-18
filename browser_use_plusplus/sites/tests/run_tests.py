@@ -16,7 +16,7 @@ from browser_use_plusplus.sites.tests.single_component_tests.scenario_registry i
     Scenario,
     find_scenario,
 )
-from browser_use_plusplus.sites.single_component.test_registry import get_test_group
+from browser_use_plusplus.sites.tests.single_component_tests.test_registry import get_test_group
 
 
 LOGGER = logging.getLogger(__name__)
