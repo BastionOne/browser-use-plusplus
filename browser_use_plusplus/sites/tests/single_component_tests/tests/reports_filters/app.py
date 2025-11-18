@@ -1,12 +1,15 @@
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import List, Optional
-from fastapi import HTTPException, Query
-from browser_use_plusplus.sites.tests.single_component_tests.servers.base import create_app
 
-app = create_app(
-    html_filename="scenario06_reports_filters.html",
+from fastapi import HTTPException, Query
+
+from browser_use_plusplus.sites.tests.app_factory import AppCreatorSinglePage
+
+app = AppCreatorSinglePage(
+    html_filename=Path(__file__).resolve().parent / "scenario06_reports_filters.html",
     title="Scenario 6 – Reports Tabs with Filters",
-)
+).create_app()
 
 VALID_TYPES = {"daily", "weekly", "monthly"}
 

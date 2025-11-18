@@ -1,11 +1,14 @@
+from pathlib import Path
+
 from fastapi import HTTPException
 from pydantic import BaseModel
-from browser_use_plusplus.sites.tests.single_component_tests.servers.base import create_app
 
-app = create_app(
-    html_filename="scenario11_customer_drawer.html",
+from browser_use_plusplus.sites.tests.app_factory import AppCreatorSinglePage
+
+app = AppCreatorSinglePage(
+    html_filename=Path(__file__).resolve().parent / "scenario11_customer_drawer.html",
     title="Scenario 11 – Customer Drawer",
-)
+).create_app()
 
 CUSTOMERS = {
     "cust-1": {"name": "Northwind Outfitters", "plan": "Enterprise"},

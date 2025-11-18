@@ -1,11 +1,14 @@
+from pathlib import Path
+
 from fastapi import HTTPException
 from pydantic import BaseModel
-from browser_use_plusplus.sites.tests.single_component_tests.servers.base import create_app
 
-app = create_app(
-    html_filename="scenario08_context_menu.html",
+from browser_use_plusplus.sites.tests.app_factory import AppCreatorSinglePage
+
+app = AppCreatorSinglePage(
+    html_filename=Path(__file__).resolve().parent / "scenario08_context_menu.html",
     title="Scenario 8 – File Context Menu",
-)
+).create_app()
 
 FILES = {
     "file-1": {"id": "file-1", "name": "Q1 Results", "owner": "Maria"},

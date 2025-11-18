@@ -1,10 +1,13 @@
-from fastapi import HTTPException, Query
-from browser_use_plusplus.sites.tests.single_component_tests.servers.base import create_app
+from pathlib import Path
 
-app = create_app(
-    html_filename="scenario05_orders_table.html",
+from fastapi import HTTPException, Query
+
+from browser_use_plusplus.sites.tests.app_factory import AppCreatorSinglePage
+
+app = AppCreatorSinglePage(
+    html_filename=Path(__file__).resolve().parent / "scenario05_orders_table.html",
     title="Scenario 5 – Orders Table with Drawers",
-)
+).create_app()
 
 ORDERS = {
     "ORD-1001": {

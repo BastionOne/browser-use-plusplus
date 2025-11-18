@@ -1,10 +1,13 @@
-from fastapi import HTTPException
-from browser_use_plusplus.sites.tests.single_component_tests.servers.base import create_app
+from pathlib import Path
 
-app = create_app(
-    html_filename="scenario10_incidents_modal.html",
+from fastapi import HTTPException
+
+from browser_use_plusplus.sites.tests.app_factory import AppCreatorSinglePage
+
+app = AppCreatorSinglePage(
+    html_filename=Path(__file__).resolve().parent / "scenario10_incidents_modal.html",
     title="Scenario 10 – Incident Inspection Modal",
-)
+).create_app()
 
 INCIDENTS = {
     "INC-901": {

@@ -1,12 +1,14 @@
 from datetime import datetime
 from fastapi import Body
 from pydantic import BaseModel
-from browser_use_plusplus.sites.tests.single_component_tests.servers.base import create_app
+from pathlib import Path
 
-app = create_app(
-    html_filename="scenario03_account_security_modal.html",
+from browser_use_plusplus.sites.tests.app_factory import AppCreatorSinglePage
+
+app = AppCreatorSinglePage(
+    html_filename=Path(__file__).resolve().parent / "scenario03_account_security_modal.html",
     title="Scenario 3 – Account Security Modal",
-)
+).create_app()
 
 security_state = {"two_fa_enabled": False, "last_password_change": "2024-09-12T09:00:00Z"}
 

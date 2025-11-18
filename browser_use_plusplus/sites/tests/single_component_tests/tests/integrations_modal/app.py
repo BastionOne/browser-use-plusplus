@@ -1,10 +1,13 @@
-from fastapi import HTTPException
-from browser_use_plusplus.sites.tests.single_component_tests.servers.base import create_app
+from pathlib import Path
 
-app = create_app(
-    html_filename="scenario04_integrations_modal.html",
+from fastapi import HTTPException
+
+from browser_use_plusplus.sites.tests.app_factory import AppCreatorSinglePage
+
+app = AppCreatorSinglePage(
+    html_filename=Path(__file__).resolve().parent / "scenario04_integrations_modal.html",
     title="Scenario 4 – Manage Integrations",
-)
+).create_app()
 
 INTEGRATIONS = {
     "slack": {"name": "Slack", "connected": False},

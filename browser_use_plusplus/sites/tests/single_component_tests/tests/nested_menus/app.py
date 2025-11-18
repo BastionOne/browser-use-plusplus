@@ -1,9 +1,11 @@
-from browser_use_plusplus.sites.tests.single_component_tests.servers.base import create_app
+from pathlib import Path
 
-app = create_app(
-    html_filename="scenario07_nested_menus.html",
+from browser_use_plusplus.sites.tests.app_factory import AppCreatorSinglePage
+
+app = AppCreatorSinglePage(
+    html_filename=Path(__file__).resolve().parent / "scenario07_nested_menus.html",
     title="Scenario 7 – Nested Hover Menus",
-)
+).create_app()
 
 
 @app.get("/api/settings/menu")

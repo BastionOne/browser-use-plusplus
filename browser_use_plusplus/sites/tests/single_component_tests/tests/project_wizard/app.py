@@ -1,11 +1,14 @@
+from pathlib import Path
+
 from fastapi import HTTPException
 from pydantic import BaseModel
-from browser_use_plusplus.sites.tests.single_component_tests.servers.base import create_app
 
-app = create_app(
-    html_filename="scenario09_project_wizard.html",
+from browser_use_plusplus.sites.tests.app_factory import AppCreatorSinglePage
+
+app = AppCreatorSinglePage(
+    html_filename=Path(__file__).resolve().parent / "scenario09_project_wizard.html",
     title="Scenario 9 – Project Wizard",
-)
+).create_app()
 
 PROJECT_DRAFT: dict = {"name": None, "members": []}
 
