@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Scenario 8 – File Context Menu</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        min-height: 100vh;
+        padding: 40px;
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 16px;
+      }
+
+      .file {
+        background: #1f2a60;
+        padding: 20px;
+        border-radius: 16px;
+        text-align: center;
+        cursor: pointer;
+        border: 2px solid transparent;
+      }
+
+      .file:hover {
+        border-color: #38bdf8;
+      }
+
+      .context-menu,
+      .submenu {
+        position: absolute;
+        background: #020617;
+        color: #e2e8f0;
+        border-radius: 12px;
+        min-width: 200px;
+        display: none;
+        box-shadow: 0 20px 40px rgba(2, 6, 23, 0.5);
+        z-index: 10;
+      }
+
+      .context-menu button,
+      .submenu button {
+        background: transparent;
+        border: none;
+        color: inherit;
+        padding: 10px 14px;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .context-menu button:hover,
+      .submenu button:hover {
+        background: rgba(56, 189, 248, 0.2);
+      }
+
+      .log {
+        margin-top: 24px;
+        background: rgba(2, 6, 23, 0.8);
+        border-radius: 12px;
+        padding: 16px;
+        font-family: "Fira Code", Consolas, monospace;
+        max-height: 220px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Files</h1>
+    <p>Right-click a file to open the context menu and access nested actions.</p>
+    <div class="grid" id="fileGrid">
+      <div class="file" data-file-id="file-1">Q1 Results</div>
+      <div class="file" data-file-id="file-2">Launch Plan</div>
+      <div class="file" data-file-id="file-3">Roadmap</div>
+    </div>
+    <div class="context-menu" id="contextMenu">
+      <button data-action="open">Open</button>
+      <button data-action="rename">Rename</button>
+      <button data-action="share">Share</button>
+      <button data-action="more" id="moreButton">More ▸</button>
+    </div>
+    <div class="submenu" id="moreMenu">
+      <button data-action="download">Download as ZIP</button>
+      <button data-action="versions">View version history</button>
+    </div>
+    <div class="log" id="logPanel" aria-live="polite">Waiting for context menu…</div>
+    <script>
+      const grid = document.getElementById("fileGrid");
+      const contextMenu = document.getElementById("contextMenu");
+      const moreMenu = document.getElementById("moreMenu");
+      const logPanel = document.getElementById("logPanel");
+      let activeFileId = null;
+      let lastContextLookup = { fileId: null, timestamp: 0 };
+      const CONTEXT_DEBOUNCE_MS = 400;
+
+      function log(message) {
+        const entry = document.createElement("div");
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logPanel.prepend(entry);
+      }
+
+      function openMenu(menu, x, y) {
+        menu.style.display = "block";
+        menu.style.left = `${x}px`;
+        menu.style.top = `${y}px`;
+      }
+
+      function closeMenus() {
+        contextMenu.style.display = "none";
+        moreMenu.style.display = "none";
+      }
+
+      grid.addEventListener("contextmenu", async (event) => {
+        const file = event.target.closest(".file");
+        if (!file) return;
+        event.preventDefault();
+        activeFileId = file.dataset.fileId;
+        closeMenus();
+        openMenu(contextMenu, event.pageX, event.pageY);
+        const now = Date.now();
+        const recentlyRequested =
+          lastContextLookup.fileId === activeFileId && now - lastContextLookup.timestamp < CONTEXT_DEBOUNCE_MS;
+        if (recentlyRequested) {
+          return;
+        }
+        lastContextLookup = { fileId: activeFileId, timestamp: now };
+        log(`GET /api/files/${activeFileId}/context-actions`);
+        try {
+          const response = await fetch(`/api/files/${activeFileId}/context-actions`);
+          log(`Response: ${JSON.stringify(await response.json())}`);
+        } catch (error) {
+          log(`Error: ${error.message}`);
+        }
+      });
+
+      contextMenu.addEventListener("click", async (event) => {
+        const action = event.target.dataset.action;
+        if (!action || !activeFileId) return;
+        if (action === "more") {
+          const menuLeft = parseInt(contextMenu.style.left) || 0;
+          const menuTop = parseInt(contextMenu.style.top) || 0;
+          openMenu(moreMenu, menuLeft + contextMenu.offsetWidth, menuTop + 80);
+          return;
+        }
+        await performAction(action);
+        closeMenus();
+      });
+
+      moreMenu.addEventListener("click", async (event) => {
+        const action = event.target.dataset.action;
+        if (!action) return;
+        await performAction(action);
+        closeMenus();
+      });
+
+      async function performAction(action) {
+        if (!activeFileId) return;
+        try {
+          if (action === "open") {
+            log(`GET /api/files/${activeFileId}`);
+            const response = await fetch(`/api/files/${activeFileId}`);
+            log(`Response: ${JSON.stringify(await response.json())}`);
+          } else if (action === "share") {
+            log(`GET /api/files/${activeFileId}/share-settings`);
+            const response = await fetch(`/api/files/${activeFileId}/share-settings`);
+            log(`Response: ${JSON.stringify(await response.json())}`);
+          } else if (action === "rename") {
+            const newName = prompt("New file name", "Updated File");
+            if (!newName) return;
+            log(`POST /api/files/${activeFileId}/rename`);
+            const response = await fetch(`/api/files/${activeFileId}/rename`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: newName }),
+            });
+            log(`Response: ${JSON.stringify(await response.json())}`);
+          } else if (action === "download") {
+            log(`POST /api/files/${activeFileId}/archive`);
+            const response = await fetch(`/api/files/${activeFileId}/archive`, { method: "POST" });
+            log(`Response: ${JSON.stringify(await response.json())}`);
+          } else if (action === "versions") {
+            log(`GET /api/files/${activeFileId}/versions`);
+            const response = await fetch(`/api/files/${activeFileId}/versions`);
+            log(`Response: ${JSON.stringify(await response.json())}`);
+          }
+        } catch (error) {
+          log(`Error: ${error.message}`);
+        }
+      }
+
+      document.addEventListener("click", (event) => {
+        if (!contextMenu.contains(event.target) && !moreMenu.contains(event.target)) {
+          closeMenus();
+        }
+      });
+    </script>
+  </body>
+</html>

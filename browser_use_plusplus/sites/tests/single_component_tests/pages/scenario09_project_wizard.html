@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Scenario 9 – Project Wizard</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        background: linear-gradient(135deg, #312e81, #6d28d9);
+        color: #f8fafc;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .card {
+        background: rgba(15, 23, 42, 0.65);
+        padding: 40px;
+        border-radius: 18px;
+        text-align: center;
+        box-shadow: 0 20px 50px rgba(5, 10, 25, 0.5);
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 12px 26px;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+
+      .primary {
+        background: #fbbf24;
+        color: #0f172a;
+        font-weight: 600;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(5, 10, 25, 0.8);
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal {
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 16px;
+        padding: 32px;
+        width: min(720px, 95vw);
+      }
+
+      .steps {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+
+      .step {
+        flex: 1;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px dashed rgba(226, 232, 240, 0.3);
+        text-align: center;
+        opacity: 0.5;
+      }
+
+      .step.active {
+        border-style: solid;
+        opacity: 1;
+      }
+
+      .view {
+        display: none;
+      }
+
+      .view.active {
+        display: block;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 12px;
+        text-align: left;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        margin-top: 6px;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+
+      .log {
+        margin-top: 24px;
+        background: rgba(2, 6, 23, 0.7);
+        border-radius: 12px;
+        padding: 16px;
+        font-family: "Fira Code", Consolas, monospace;
+        max-height: 220px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Projects</h1>
+      <p>Launch the wizard to simulate multi-step creation with conditional steps.</p>
+      <button id="openWizard" class="primary">Create Project</button>
+      <div class="log" id="logPanel" aria-live="polite">Waiting for wizard…</div>
+    </div>
+    <div class="modal-backdrop" id="wizardBackdrop">
+      <div class="modal">
+        <div class="steps">
+          <div class="step active" data-step="1">1. Basic Info</div>
+          <div class="step" data-step="2">2. Members</div>
+          <div class="step" data-step="3">3. Advanced</div>
+        </div>
+        <div class="view active" data-view="1">
+          <label>
+            Project Name
+            <input type="text" id="projectName" value="New Initiative" />
+          </label>
+          <label>
+            <input type="checkbox" id="advancedToggle" /> Show advanced options
+          </label>
+          <button class="primary" id="basicNext">Save & Next</button>
+        </div>
+        <div class="view" data-view="2">
+          <label>
+            Members (comma separated)
+            <textarea id="membersInput">maria, devon</textarea>
+          </label>
+          <button class="primary" id="membersNext">Next</button>
+        </div>
+        <div class="view" data-view="3">
+          <p>Advanced settings</p>
+          <label>
+            <input type="checkbox" id="flagBeta" checked /> Enable beta features
+          </label>
+          <label>
+            <input type="checkbox" id="flagAudit" /> Require audit logs
+          </label>
+          <button class="primary" id="finishWizard">Finish</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      const openWizardButton = document.getElementById("openWizard");
+      const wizardBackdrop = document.getElementById("wizardBackdrop");
+      const logPanel = document.getElementById("logPanel");
+      const steps = document.querySelectorAll(".step");
+      const views = document.querySelectorAll(".view");
+      const advancedToggle = document.getElementById("advancedToggle");
+      const basicNext = document.getElementById("basicNext");
+      const membersNext = document.getElementById("membersNext");
+      const finishWizard = document.getElementById("finishWizard");
+      const projectName = document.getElementById("projectName");
+      const membersInput = document.getElementById("membersInput");
+      let advancedEnabled = false;
+      let advancedLoaded = false;
+
+      function log(message) {
+        const entry = document.createElement("div");
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logPanel.prepend(entry);
+      }
+
+      function setStep(stepNumber) {
+        steps.forEach((step) => {
+          step.classList.toggle("active", step.dataset.step === String(stepNumber));
+        });
+        views.forEach((view) => {
+          view.classList.toggle("active", view.dataset.view === String(stepNumber));
+        });
+      }
+
+      openWizardButton.addEventListener("click", async () => {
+        wizardBackdrop.style.display = "flex";
+        setStep(1);
+        log("GET /api/projects/new-schema");
+        const response = await fetch("/api/projects/new-schema");
+        log(`Response: ${JSON.stringify(await response.json())}`);
+      });
+
+      wizardBackdrop.addEventListener("click", (event) => {
+        if (event.target === wizardBackdrop) {
+          wizardBackdrop.style.display = "none";
+        }
+      });
+
+      basicNext.addEventListener("click", async () => {
+        advancedEnabled = advancedToggle.checked;
+        log("POST /api/projects/draft");
+        const response = await fetch("/api/projects/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: projectName.value }),
+        });
+        log(`Response: ${JSON.stringify(await response.json())}`);
+        setStep(2);
+      });
+
+      membersNext.addEventListener("click", async () => {
+        log("POST /api/projects/draft/members");
+        const response = await fetch("/api/projects/draft/members", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ members: membersInput.value.split(",").map((m) => m.trim()) }),
+        });
+        log(`Response: ${JSON.stringify(await response.json())}`);
+
+        if (advancedEnabled) {
+          setStep(3);
+          if (!advancedLoaded) {
+            advancedLoaded = true;
+            log("GET /api/projects/advanced-options");
+            const advancedResponse = await fetch("/api/projects/advanced-options");
+            log(`Response: ${JSON.stringify(await advancedResponse.json())}`);
+          }
+        } else {
+          await submitProject();
+        }
+      });
+
+      finishWizard.addEventListener("click", async () => {
+        await submitProject();
+      });
+
+      async function submitProject() {
+        log("POST /api/projects/submit");
+        const response = await fetch("/api/projects/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ advanced: advancedEnabled }),
+        });
+        log(`Response: ${JSON.stringify(await response.json())}`);
+        wizardBackdrop.style.display = "none";
+      }
+    </script>
+  </body>
+</html>

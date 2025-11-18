@@ -1,0 +1,36 @@
+{
+    "description": "HomePage",
+    "completed": false,
+    "children": [
+        {
+            "description": "Click the 'Actions' button to open the actions menu, which should reveal additional functional options without navigating away.",
+            "completed": false,
+            "children": []
+        },
+        {
+            "description": "Click the 'Add repo' button to invoke the repository creation process, testing state changes in repository management.",
+            "completed": false,
+            "children": []
+        },
+        {
+            "description": "Toggle the checkbox associated with the repository listing 'demo-app-1' to verify that selecting and deselecting a repository updates its state.",
+            "completed": false,
+            "children": []
+        },
+        {
+            "description": "Click the 'Settings' link (found within the settings section) to open the configuration options, ensuring that functional settings are loaded.",
+            "completed": false,
+            "children": []
+        },
+        {
+            "description": "Click the 'All Repositories' button to filter or update the list of repositories, reflecting changes in the displayed data.",
+            "completed": false,
+            "children": []
+        },
+        {
+            "description": "Click the 'Open Intercom Messenger' interactive element to activate the messenger UI, confirming the dynamic state transition for chat functionality.",
+            "completed": false,
+            "children": []
+        }
+    ]
+}

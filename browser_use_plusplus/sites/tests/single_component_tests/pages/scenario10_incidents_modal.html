@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Scenario 10 – Incident Inspection Modal</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        background: #f1f5f9;
+        color: #0f172a;
+        padding: 40px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      }
+
+      th,
+      td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+      }
+
+      button {
+        border: none;
+        border-radius: 6px;
+        padding: 8px 12px;
+        cursor: pointer;
+        background: #2563eb;
+        color: #fff;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.65);
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal {
+        background: #fff;
+        border-radius: 16px;
+        width: min(800px, 95vw);
+        padding: 32px;
+      }
+
+      .top-tabs,
+      .secondary-tabs {
+        display: flex;
+        gap: 12px;
+        border-bottom: 2px solid #e2e8f0;
+        margin-bottom: 20px;
+      }
+
+      .top-tabs button,
+      .secondary-tabs button {
+        background: transparent;
+        color: #475569;
+        border-bottom: 3px solid transparent;
+      }
+
+      .top-tabs button.active,
+      .secondary-tabs button.active {
+        color: #111827;
+        border-color: #2563eb;
+        font-weight: 600;
+      }
+
+      .log {
+        margin-top: 24px;
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+        font-family: "Fira Code", Consolas, monospace;
+        max-height: 220px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Incidents</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Severity</th>
+          <th>Owner</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="incidentBody">
+        <tr data-incident-id="INC-901">
+          <td>INC-901</td>
+          <td>High</td>
+          <td>Kai</td>
+          <td><button data-action="inspect">Inspect</button></td>
+        </tr>
+        <tr data-incident-id="INC-902">
+          <td>INC-902</td>
+          <td>Medium</td>
+          <td>Rya</td>
+          <td><button data-action="inspect">Inspect</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="log" id="logPanel" aria-live="polite">Open an incident to see requests.</div>
+    <div class="modal-backdrop" id="modalBackdrop">
+      <div class="modal">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center">
+          <h2 id="modalTitle">Incident</h2>
+          <button id="closeModal" style="background: #e2e8f0; color: #0f172a">Close</button>
+        </div>
+        <div class="top-tabs">
+          <button class="active" data-top-tab="summary">Summary</button>
+          <button data-top-tab="timeline">Timeline</button>
+          <button data-top-tab="artifacts">Artifacts</button>
+        </div>
+        <div id="tabContent">
+          <div data-view="summary">
+            <p>Choose a tab to load additional data.</p>
+            <div id="summaryContent"></div>
+          </div>
+          <div data-view="timeline" style="display: none">
+            <ul id="timelineList"></ul>
+          </div>
+          <div data-view="artifacts" style="display: none">
+            <div class="secondary-tabs" id="secondaryTabs">
+              <button class="active" data-artifact-tab="logs">Logs</button>
+              <button data-artifact-tab="screenshots">Screenshots</button>
+              <button data-artifact-tab="attachments">Attachments</button>
+            </div>
+            <div id="artifactContent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const incidentBody = document.getElementById("incidentBody");
+      const modalBackdrop = document.getElementById("modalBackdrop");
+      const closeModal = document.getElementById("closeModal");
+      const logPanel = document.getElementById("logPanel");
+      const modalTitle = document.getElementById("modalTitle");
+      const topTabs = document.querySelectorAll(".top-tabs button");
+      const tabViews = document.querySelectorAll("[data-view]");
+      const secondaryTabs = document.querySelectorAll("#secondaryTabs button");
+      const timelineList = document.getElementById("timelineList");
+      const artifactContent = document.getElementById("artifactContent");
+      const summaryContent = document.getElementById("summaryContent");
+      let activeIncident = null;
+
+      function log(message) {
+        const entry = document.createElement("div");
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logPanel.prepend(entry);
+      }
+
+      incidentBody.addEventListener("click", async (event) => {
+        if (!event.target.matches("button[data-action='inspect']")) return;
+        const row = event.target.closest("tr[data-incident-id]");
+        activeIncident = row.dataset.incidentId;
+        modalTitle.textContent = `Incident ${activeIncident}`;
+        modalBackdrop.style.display = "flex";
+        setTopTab("summary");
+        log(`GET /api/incidents/${activeIncident}`);
+        const response = await fetch(`/api/incidents/${activeIncident}`);
+        const data = await response.json();
+        log(`Response: ${JSON.stringify(data)}`);
+        summaryContent.textContent = data.summary;
+      });
+
+      closeModal.addEventListener("click", () => (modalBackdrop.style.display = "none"));
+      modalBackdrop.addEventListener("click", (event) => {
+        if (event.target === modalBackdrop) {
+          modalBackdrop.style.display = "none";
+        }
+      });
+
+      function setTopTab(tab) {
+        topTabs.forEach((button) => {
+          button.classList.toggle("active", button.dataset.topTab === tab);
+        });
+        tabViews.forEach((view) => {
+          view.style.display = view.dataset.view === tab ? "block" : "none";
+        });
+      }
+
+      topTabs.forEach((button) => {
+        button.addEventListener("click", async () => {
+          if (!activeIncident) return;
+          const tab = button.dataset.topTab;
+          setTopTab(tab);
+          if (tab === "timeline") {
+            log(`GET /api/incidents/${activeIncident}/timeline`);
+            const response = await fetch(`/api/incidents/${activeIncident}/timeline`);
+            const data = await response.json();
+            log(`Response: ${JSON.stringify(data)}`);
+            timelineList.innerHTML = data.events.map((event) => `<li>${event}</li>`).join("");
+          } else if (tab === "artifacts") {
+            log(`GET /api/incidents/${activeIncident}/artifacts`);
+            const response = await fetch(`/api/incidents/${activeIncident}/artifacts`);
+            const data = await response.json();
+            log(`Response: ${JSON.stringify(data)}`);
+            loadArtifactTab("logs");
+          }
+        });
+      });
+
+      secondaryTabs.forEach((button) => {
+        button.addEventListener("click", () => {
+          loadArtifactTab(button.dataset.artifactTab);
+        });
+      });
+
+      async function loadArtifactTab(tab) {
+        if (!activeIncident) return;
+        secondaryTabs.forEach((btn) => btn.classList.toggle("active", btn.dataset.artifactTab === tab));
+        log(`GET /api/incidents/${activeIncident}/${tab}`);
+        const response = await fetch(`/api/incidents/${activeIncident}/${tab}`);
+        const data = await response.json();
+        log(`Response: ${JSON.stringify(data)}`);
+        artifactContent.textContent = JSON.stringify(data.items || data.logs || data, null, 2);
+      }
+    </script>
+  </body>
+</html>

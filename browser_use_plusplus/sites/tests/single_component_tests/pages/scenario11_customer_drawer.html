@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Scenario 11 – Customer Drawer</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        background: #f0f9ff;
+        color: #082f49;
+        padding: 40px;
+        display: flex;
+        gap: 32px;
+      }
+
+      .customers {
+        width: 320px;
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 16px 40px rgba(8, 47, 73, 0.15);
+        padding: 24px;
+      }
+
+      .customer {
+        padding: 12px 0;
+        cursor: pointer;
+        border-bottom: 1px solid #e0f2fe;
+      }
+
+      .customer:last-child {
+        border-bottom: none;
+      }
+
+      .drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 380px;
+        height: 100vh;
+        background: #082f49;
+        color: #e0f2fe;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        padding: 32px;
+        box-shadow: -20px 0 35px rgba(8, 47, 73, 0.4);
+      }
+
+      .drawer.open {
+        transform: translateX(0%);
+      }
+
+      .drawer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .accordion {
+        margin-top: 24px;
+        background: rgba(14, 116, 144, 0.25);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .accordion-item + .accordion-item {
+        border-top: 1px solid rgba(224, 242, 254, 0.2);
+      }
+
+      .accordion-summary {
+        padding: 14px 16px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .accordion-detail {
+        display: none;
+        padding: 14px 16px;
+        background: rgba(12, 74, 110, 0.4);
+      }
+
+      .accordion-item.open .accordion-detail {
+        display: block;
+      }
+
+      button {
+        border: none;
+        border-radius: 6px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      .log {
+        flex: 1;
+        background: #082f49;
+        color: #e0f2fe;
+        border-radius: 14px;
+        padding: 16px;
+        font-family: "Fira Code", Consolas, monospace;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+
+      .payment-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(8, 47, 73, 0.8);
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .payment-modal .card {
+        background: #fff;
+        color: #082f49;
+        padding: 24px;
+        border-radius: 12px;
+        width: 320px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="customers">
+      <h2>Customers</h2>
+      <div class="customer" data-id="cust-1">Northwind Outfitters</div>
+      <div class="customer" data-id="cust-2">Aurora Health</div>
+      <div class="customer" data-id="cust-3">Summit Logistics</div>
+    </div>
+    <div class="log" id="logPanel" aria-live="polite">Select a customer to open the drawer.</div>
+    <aside class="drawer" id="customerDrawer">
+      <div class="drawer-header">
+        <h2 id="drawerTitle">Customer</h2>
+        <button id="closeDrawer">Close</button>
+      </div>
+      <button id="editButton" style="margin-top: 12px; background: #e0f2fe">Edit</button>
+      <div class="accordion" id="accordion">
+        <div class="accordion-item" data-section="profile">
+          <div class="accordion-summary">Profile <span>▾</span></div>
+          <div class="accordion-detail">
+            <div id="profileContent"></div>
+          </div>
+        </div>
+        <div class="accordion-item" data-section="billing">
+          <div class="accordion-summary">Billing <span>▾</span></div>
+          <div class="accordion-detail">
+            <div id="billingContent"></div>
+            <button id="addPayment">Add payment method</button>
+          </div>
+        </div>
+        <div class="accordion-item" data-section="usage">
+          <div class="accordion-summary">Usage <span>▾</span></div>
+          <div class="accordion-detail">
+            <div id="usageContent"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <div class="payment-modal" id="paymentModal">
+      <div class="card">
+        <h3>Add payment method</h3>
+        <label>
+          Cardholder
+          <input type="text" id="cardholder" value="Sample User" style="width: 100%; padding: 8px; margin: 8px 0" />
+        </label>
+        <button id="submitPayment" style="background: #0ea5e9; color: #fff">Submit</button>
+        <button id="closePayment" style="margin-left: 8px">Cancel</button>
+      </div>
+    </div>
+    <script>
+      const customers = document.querySelectorAll(".customer");
+      const drawer = document.getElementById("customerDrawer");
+      const drawerTitle = document.getElementById("drawerTitle");
+      const closeDrawer = document.getElementById("closeDrawer");
+      const logPanel = document.getElementById("logPanel");
+      const accordion = document.getElementById("accordion");
+      const paymentModal = document.getElementById("paymentModal");
+      const addPayment = document.getElementById("addPayment");
+      const submitPayment = document.getElementById("submitPayment");
+      const closePayment = document.getElementById("closePayment");
+      let activeCustomer = null;
+
+      function log(message) {
+        const entry = document.createElement("div");
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logPanel.prepend(entry);
+      }
+
+      customers.forEach((customer) => {
+        customer.addEventListener("click", async () => {
+          activeCustomer = customer.dataset.id;
+          drawerTitle.textContent = customer.textContent;
+          drawer.classList.add("open");
+          log(`GET /api/customers/${activeCustomer}`);
+          const response = await fetch(`/api/customers/${activeCustomer}`);
+          log(`Response: ${JSON.stringify(await response.json())}`);
+        });
+      });
+
+      closeDrawer.addEventListener("click", () => drawer.classList.remove("open"));
+
+      accordion.addEventListener("click", async (event) => {
+        const summary = event.target.closest(".accordion-summary");
+        if (!summary || !activeCustomer) return;
+        const item = summary.parentElement;
+        const section = item.dataset.section;
+        item.classList.toggle("open");
+        log(`GET /api/customers/${activeCustomer}/${section}`);
+        const response = await fetch(`/api/customers/${activeCustomer}/${section}`);
+        const data = await response.json();
+        log(`Response: ${JSON.stringify(data)}`);
+        const content = item.querySelector(".accordion-detail div");
+        if (content) {
+          content.textContent = JSON.stringify(data);
+        }
+      });
+
+      addPayment.addEventListener("click", () => {
+        if (!activeCustomer) return;
+        paymentModal.style.display = "flex";
+      });
+
+      closePayment.addEventListener("click", () => (paymentModal.style.display = "none"));
+
+      submitPayment.addEventListener("click", async () => {
+        if (!activeCustomer) return;
+        log(`POST /api/customers/${activeCustomer}/payment-methods`);
+        const response = await fetch(`/api/customers/${activeCustomer}/payment-methods`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cardholder: document.getElementById("cardholder").value }),
+        });
+        log(`Response: ${JSON.stringify(await response.json())}`);
+        paymentModal.style.display = "none";
+      });
+    </script>
+  </body>
+</html>

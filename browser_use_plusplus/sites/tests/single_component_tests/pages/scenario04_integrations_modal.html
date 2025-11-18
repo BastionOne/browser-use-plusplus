@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Scenario 4 – Manage Integrations</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        background: linear-gradient(135deg, #0f172a, #1e3a8a);
+        color: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .card {
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 16px;
+        padding: 40px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(2, 6, 23, 0.6);
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 12px 26px;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+
+      .primary {
+        background: #38bdf8;
+        color: #0f172a;
+        font-weight: 600;
+      }
+
+      .log {
+        margin-top: 24px;
+        text-align: left;
+        background: rgba(15, 23, 42, 0.75);
+        border-radius: 12px;
+        padding: 16px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-family: "Fira Code", Consolas, monospace;
+        font-size: 0.85rem;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.85);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .modal {
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 16px;
+        width: min(720px, 100%);
+        padding: 32px;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .accordion {
+        margin-top: 24px;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid rgba(226, 232, 240, 0.15);
+      }
+
+      .accordion-item + .accordion-item {
+        border-top: 1px solid rgba(226, 232, 240, 0.15);
+      }
+
+      .accordion-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 22px;
+        cursor: pointer;
+        background: rgba(15, 23, 42, 0.6);
+      }
+
+      .accordion-detail {
+        display: none;
+        padding: 18px 22px;
+        background: rgba(30, 41, 59, 0.65);
+      }
+
+      .accordion-item[data-open="true"] .accordion-detail {
+        display: block;
+      }
+
+      .pill {
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        border-radius: 999px;
+        padding: 4px 12px;
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Manage integrations</h1>
+      <p>Open the modal to explore the integration accordion items.</p>
+      <button class="primary" id="openModal">Manage Integrations</button>
+      <div class="log" id="logPanel" aria-live="polite">Waiting for actions…</div>
+    </div>
+    <div class="modal-backdrop" id="modalBackdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Integrations</h2>
+          <button id="closeModal">Close</button>
+        </div>
+        <div class="accordion" id="accordion">
+          <div class="accordion-item" data-integration="slack">
+            <div class="accordion-summary">
+              <span>Slack</span>
+              <span class="pill" data-status>Disconnected</span>
+            </div>
+            <div class="accordion-detail">
+              <p>Collaborate with teams right from Slack.</p>
+              <button data-action="connect" class="primary">Connect Slack</button>
+            </div>
+          </div>
+          <div class="accordion-item" data-integration="github">
+            <div class="accordion-summary">
+              <span>GitHub</span>
+              <span class="pill" data-status>Connected</span>
+            </div>
+            <div class="accordion-detail">
+              <p>View pull requests alongside incidents.</p>
+              <a href="#" data-action="settings">Open settings</a>
+            </div>
+          </div>
+          <div class="accordion-item" data-integration="jira">
+            <div class="accordion-summary">
+              <span>Jira</span>
+              <span class="pill" data-status>Connected</span>
+            </div>
+            <div class="accordion-detail">
+              <p>Sync tickets directly to Jira projects.</p>
+              <a href="#" data-action="settings">Open settings</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const openModal = document.getElementById("openModal");
+      const modalBackdrop = document.getElementById("modalBackdrop");
+      const closeModal = document.getElementById("closeModal");
+      const accordion = document.getElementById("accordion");
+      const logPanel = document.getElementById("logPanel");
+
+      function log(message) {
+        const entry = document.createElement("div");
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logPanel.prepend(entry);
+      }
+
+      openModal.addEventListener("click", async () => {
+        modalBackdrop.style.display = "flex";
+        log("GET /api/integrations");
+        try {
+          const response = await fetch("/api/integrations");
+          log(`Response: ${JSON.stringify(await response.json())}`);
+        } catch (error) {
+          log(`Error: ${error.message}`);
+        }
+      });
+
+      closeModal.addEventListener("click", () => (modalBackdrop.style.display = "none"));
+      modalBackdrop.addEventListener("click", (event) => {
+        if (event.target === modalBackdrop) {
+          modalBackdrop.style.display = "none";
+        }
+      });
+
+      accordion.addEventListener("click", async (event) => {
+        const summary = event.target.closest(".accordion-summary");
+        const actionButton = event.target.closest("[data-action]");
+        const item = event.target.closest(".accordion-item");
+        if (!item) {
+          return;
+        }
+
+        const integration = item.dataset.integration;
+        if (summary) {
+          const isOpen = item.dataset.open === "true";
+          item.dataset.open = String(!isOpen);
+          log(`GET /api/integrations/${integration}`);
+          try {
+            const response = await fetch(`/api/integrations/${integration}`);
+            log(`Response: ${JSON.stringify(await response.json())}`);
+          } catch (error) {
+            log(`Error: ${error.message}`);
+          }
+        } else if (actionButton && actionButton.dataset.action === "connect") {
+          log("POST /api/integrations/slack/connect");
+          try {
+            const response = await fetch("/api/integrations/slack/connect", { method: "POST" });
+            log(`Response: ${JSON.stringify(await response.json())}`);
+            item.querySelector("[data-status]").textContent = "Connected";
+            actionButton.replaceWith("Slack connected");
+          } catch (error) {
+            log(`Error: ${error.message}`);
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

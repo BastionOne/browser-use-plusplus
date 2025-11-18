@@ -1,0 +1,41 @@
+{
+    "description": "HomePage",
+    "completed": false,
+    "children": [
+        {
+            "description": "Click the 'Settings' link (visible in the Repositories section) to trigger the modal or panel for configuration changes.",
+            "completed": false,
+            "children": []
+        },
+        {
+            "description": "Click the 'Actions' button to open the menu that provides additional options affecting repository management.",
+            "completed": false,
+            "children": []
+        },
+        {
+            "description": "Click the 'Add repo' button to open the new repository form and change the application state by initiating repo creation.",
+            "completed": false,
+            "children": []
+        },
+        {
+            "description": "Toggle the representative repository checkbox next to 'demo-app-1' to simulate selection/deselection and test state updates.",
+            "completed": false,
+            "children": []
+        },
+        {
+            "description": "Click the 'All Repositories' button to activate the filter or view mode change for the repository list.",
+            "completed": false,
+            "children": []
+        },
+        {
+            "description": "Use the search input in the repositories header (placeholder 'Search') to type a query and trigger any filtering behavior of the repository list.",
+            "completed": false,
+            "children": []
+        },
+        {
+            "description": "Click the 'All Repositories' button in the repositories header to open or change repository filter or scope options.",
+            "completed": false,
+            "children": []
+        }
+    ]
+}

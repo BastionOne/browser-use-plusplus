@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Scenario 3 – Account Security Modal</title>
+  <style>
+    body {
+      margin: 0;
+      background: #eef2ff;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      color: #0f172a;
+    }
+
+    nav {
+      background: #312e81;
+      color: #fff;
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .account-dropdown {
+      position: relative;
+    }
+
+    button {
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    .account-trigger {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+
+    .dropdown {
+      position: absolute;
+      right: 0;
+      top: 42px;
+      background: #fff;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.25);
+      border-radius: 8px;
+      display: none;
+      min-width: 180px;
+    }
+
+    .dropdown button {
+      background: transparent;
+      color: #0f172a;
+      width: 100%;
+      padding: 10px 12px;
+      text-align: left;
+    }
+
+    .dropdown button:hover {
+      background: #f3f4f6;
+    }
+
+    main {
+      padding: 48px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 14px;
+      width: 640px;
+      max-width: calc(100vw - 32px);
+      padding: 32px;
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.35);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .tabstrip {
+      display: inline-flex;
+      gap: 8px;
+      border-bottom: 2px solid #e2e8f0;
+      margin-bottom: 24px;
+    }
+
+    .tabstrip button {
+      background: transparent;
+      padding: 10px 16px;
+      border-bottom: 3px solid transparent;
+      color: #64748b;
+    }
+
+    .tabstrip button.active {
+      border-color: #4338ca;
+      color: #111827;
+      font-weight: 600;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    input[type="password"] {
+      border-radius: 6px;
+      border: 1px solid #cbd5f5;
+      padding: 10px;
+      font-size: 1rem;
+    }
+
+    .primary {
+      background: #4338ca;
+      color: #fff;
+    }
+
+    .log {
+      margin-top: 28px;
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 10px;
+      padding: 16px;
+      min-height: 160px;
+      font-family: "Fira Code", Consolas, monospace;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <div>Navigator</div>
+    <div class="account-dropdown">
+      <button class="account-trigger" id="accountTrigger">Account ▾</button>
+      <div class="dropdown" id="accountDropdown">
+        <button type="button">Profile</button>
+        <button type="button" id="securityButton">Security Settings</button>
+      </div>
+    </div>
+  </nav>
+  <main>
+    <h1>Account overview</h1>
+    <p>Use the account menu to open the security modal and exercise the nested interactions.</p>
+    <div class="log" id="logPanel" aria-live="polite">Waiting for actions…</div>
+  </main>
+  <div class="modal-backdrop" id="securityModal">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2>Security Settings</h2>
+        <button id="closeModal">Close</button>
+      </div>
+      <div class="tabstrip" role="tablist">
+        <button class="active" role="tab" data-tab="password">Password</button>
+        <button role="tab" data-tab="2fa">2FA</button>
+      </div>
+      <div data-panel="password">
+        <form id="passwordForm">
+          <label>
+            New password
+            <input type="password" required />
+          </label>
+          <button type="submit" class="primary">Update password</button>
+        </form>
+      </div>
+      <div data-panel="2fa" class="hidden">
+        <p>Enable two-factor authentication to secure the account.</p>
+        <button id="toggle2fa" class="primary">Enable 2FA</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const accountTrigger = document.getElementById("accountTrigger");
+    const dropdown = document.getElementById("accountDropdown");
+    const securityButton = document.getElementById("securityButton");
+    const modalBackdrop = document.getElementById("securityModal");
+    const closeModal = document.getElementById("closeModal");
+    const tabs = document.querySelectorAll(".tabstrip button");
+    const panels = document.querySelectorAll("[data-panel]");
+    const passwordForm = document.getElementById("passwordForm");
+    const toggle2FA = document.getElementById("toggle2fa");
+    const logPanel = document.getElementById("logPanel");
+
+    function log(message) {
+      const entry = document.createElement("div");
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logPanel.prepend(entry);
+    }
+
+    accountTrigger.addEventListener("click", () => {
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!dropdown.contains(event.target) && event.target !== accountTrigger) {
+        dropdown.style.display = "none";
+      }
+    });
+
+    securityButton.addEventListener("click", async () => {
+      dropdown.style.display = "none";
+      modalBackdrop.style.display = "flex";
+      log("GET /api/account/security");
+      try {
+        const response = await fetch("/api/account/security");
+        const data = await response.json();
+        log(`Response: ${JSON.stringify(data)}`);
+      } catch (error) {
+        log(`Error: ${error.message}`);
+      }
+    });
+
+    closeModal.addEventListener("click", () => (modalBackdrop.style.display = "none"));
+    modalBackdrop.addEventListener("click", (event) => {
+      if (event.target === modalBackdrop) {
+        modalBackdrop.style.display = "none";
+      }
+    });
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+        const target = tab.dataset.tab;
+        panels.forEach((panel) => {
+          panel.classList.toggle("hidden", panel.dataset.panel !== target);
+        });
+      });
+    });
+
+    passwordForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const value = passwordForm.querySelector("input").value;
+      log("POST /api/account/change-password");
+      try {
+        const response = await fetch("/api/account/change-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: value }),
+        });
+        const data = await response.json();
+        log(`Response: ${JSON.stringify(data)}`);
+      } catch (error) {
+        log(`Error: ${error.message}`);
+      }
+    });
+
+    let twoFAEnabled = false;
+    toggle2FA.addEventListener("click", async () => {
+      twoFAEnabled = !twoFAEnabled;
+      toggle2FA.textContent = twoFAEnabled ? "Disable 2FA" : "Enable 2FA";
+      log("POST /api/account/2fa/enable");
+      try {
+        const response = await fetch("/api/account/2fa/enable", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: twoFAEnabled }),
+        });
+        const data = await response.json();
+        log(`Response: ${JSON.stringify(data)}`);
+      } catch (error) {
+        log(`Error: ${error.message}`);
+      }
+    });
+  </script>
+</body>
+
+</html>

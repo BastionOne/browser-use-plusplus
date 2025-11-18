@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Scenario 6 – Reports Tabs with Filters</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        background: #f8fafc;
+        color: #0f172a;
+        padding: 40px;
+      }
+
+      .tabs {
+        display: inline-flex;
+        gap: 12px;
+        border-bottom: 2px solid #e2e8f0;
+      }
+
+      .tabs button {
+        border: none;
+        padding: 10px 16px;
+        background: transparent;
+        cursor: pointer;
+        font-size: 1rem;
+        color: #475569;
+        border-bottom: 3px solid transparent;
+      }
+
+      .tabs button.active {
+        color: #111827;
+        border-color: #0ea5e9;
+        font-weight: 600;
+      }
+
+      .filters {
+        display: flex;
+        gap: 16px;
+        margin: 22px 0;
+      }
+
+      select {
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #cbd5f5;
+        font-size: 1rem;
+      }
+
+      .report-list {
+        height: 340px;
+        overflow-y: auto;
+        background: #fff;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .report-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .log {
+        margin-top: 24px;
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+        font-family: "Fira Code", Consolas, monospace;
+        max-height: 220px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Reports</h1>
+    <div class="tabs" role="tablist">
+      <button data-type="daily" class="active">Daily</button>
+      <button data-type="weekly">Weekly</button>
+      <button data-type="monthly">Monthly</button>
+    </div>
+    <div class="filters">
+      <label>
+        Region
+        <select id="regionFilter">
+          <option value="">All</option>
+          <option value="na">North America</option>
+          <option value="eu">Europe</option>
+          <option value="apac">APAC</option>
+        </select>
+      </label>
+      <label>
+        Status
+        <select id="statusFilter">
+          <option value="">All</option>
+          <option value="open">Open</option>
+          <option value="closed">Closed</option>
+        </select>
+      </label>
+    </div>
+    <div class="report-list" id="reportList"></div>
+    <div class="log" id="logPanel" aria-live="polite">Waiting for actions…</div>
+    <script>
+      const tabs = document.querySelectorAll(".tabs button");
+      const regionSelect = document.getElementById("regionFilter");
+      const statusSelect = document.getElementById("statusFilter");
+      const list = document.getElementById("reportList");
+      const logPanel = document.getElementById("logPanel");
+      let currentType = "daily";
+      let cursor = 0;
+      let isLoadingMore = false;
+
+      function log(message) {
+        const entry = document.createElement("div");
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logPanel.prepend(entry);
+      }
+
+      function buildQueryParams(extra = {}) {
+        const params = new URLSearchParams();
+        params.set("type", currentType);
+        if (regionSelect.value) {
+          params.set("region", regionSelect.value);
+        }
+        if (statusSelect.value) {
+          params.set("status", statusSelect.value);
+        }
+        Object.entries(extra).forEach(([key, value]) => params.set(key, value));
+        return params.toString();
+      }
+
+      async function fetchReports(reset = false) {
+        if (reset) {
+          list.innerHTML = "";
+          cursor = 0;
+        }
+        const query = buildQueryParams();
+        log(`GET /api/reports?${query}`);
+        const response = await fetch(`/api/reports?${query}`);
+        const data = await response.json();
+        log(`Response: ${JSON.stringify(data.meta)}`);
+        renderCards(data.reports, reset);
+      }
+
+      function renderCards(reports, reset) {
+        if (reset) {
+          list.innerHTML = "";
+        }
+        reports.forEach((report) => {
+          const card = document.createElement("div");
+          card.className = "report-card";
+          card.innerHTML = `<div>
+              <strong>${report.title}</strong>
+              <div>${report.summary}</div>
+            </div>
+            <span>${report.generated}</span>`;
+          list.appendChild(card);
+        });
+      }
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          tabs.forEach((t) => t.classList.remove("active"));
+          tab.classList.add("active");
+          currentType = tab.dataset.type;
+          fetchReports(true);
+        });
+      });
+
+      [regionSelect, statusSelect].forEach((control) => {
+        control.addEventListener("change", () => fetchReports(true));
+      });
+
+      list.addEventListener("scroll", async () => {
+        if (isLoadingMore) return;
+        const threshold = list.scrollHeight - list.clientHeight - 40;
+        if (list.scrollTop >= threshold) {
+          isLoadingMore = true;
+          cursor += 1;
+          const query = buildQueryParams({ cursor: cursor.toString() });
+          log(`GET /api/reports?${query}`);
+          const response = await fetch(`/api/reports?${query}`);
+          const data = await response.json();
+          log(`Response: ${JSON.stringify(data.meta)}`);
+          renderCards(data.reports, false);
+          isLoadingMore = false;
+        }
+      });
+
+      fetchReports(true);
+    </script>
+  </body>
+</html>

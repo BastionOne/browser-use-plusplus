@@ -1,0 +1,509 @@
+Here’s a ladder of UI patterns you can use as test fixtures for your crawler, from trivial → evil. All are common-ish web patterns and each has a clear nested “UI hierarchy” and implied backend calls.
+
+---
+
+### 1. Simple navbar dropdown
+
+**Structure**
+
+* Top navbar with a “Products” menu item.
+* Clicking “Products” opens a dropdown with 3 options:
+
+  * “All Products”
+  * “New Arrivals”
+  * “On Sale”
+
+**Interaction hierarchy**
+
+* `Navbar > Products (click) > Dropdown options (click)`
+
+**Backend behavior**
+
+* Opening the dropdown does nothing on the network.
+* Clicking each option triggers distinct calls:
+
+  * `GET /api/products?filter=all`
+  * `GET /api/products?filter=new`
+  * `GET /api/products?filter=sale`
+
+**What this tests**
+
+* Basic click → dropdown → click.
+* Agent must enumerate each option in a simple, flat menu.
+
+---
+
+### 2. Sidebar with collapsible section + nested items
+
+**Structure**
+
+* Left sidebar with headings:
+
+  * “Analytics”
+  * “Billing”
+* “Analytics” is collapsible; closed by default.
+* Expanding “Analytics” reveals:
+
+  * “Overview”
+  * “Funnels”
+  * “Cohorts”
+
+**Interaction hierarchy**
+
+* `Sidebar > Analytics (expand) > [Overview | Funnels | Cohorts] (click)`
+
+**Backend behavior**
+
+* Expanding “Analytics” triggers `GET /api/nav/analytics` (to fetch available reports).
+* Selecting each child triggers:
+
+  * `GET /api/analytics/overview`
+  * `GET /api/analytics/funnels`
+  * `GET /api/analytics/cohorts`
+
+**What this tests**
+
+* Discovery of children hidden under an initially collapsed parent.
+* Need to click “Analytics” before the child buttons exist.
+
+---
+
+### 3. Dropdown → option → modal
+
+**Structure**
+
+* Top navbar “Account” button.
+* Clicking “Account” opens a dropdown:
+
+  * “Profile”
+  * “Security Settings”
+* Clicking “Security Settings” opens a modal dialog.
+
+Modal contents:
+
+* Tabs: “Password”, “2FA”
+* Within “Password” tab: “Change password” form.
+* Within “2FA” tab: “Enable 2FA” toggle.
+
+**Interaction hierarchy**
+
+* `Navbar > Account (click) > Security Settings (click) > Modal`
+
+  * `Modal > Tabs [Password | 2FA]`
+
+    * `Password tab > Submit`
+    * `2FA tab > Toggle`
+
+**Backend behavior**
+
+* Opening modal: `GET /api/account/security`
+* Submitting password form: `POST /api/account/change-password`
+* Enabling 2FA: `POST /api/account/2fa/enable`
+
+**What this tests**
+
+* Multi-step nested UI: dropdown → menu option → modal → internal tabs.
+* Agent must interact with content inside an overlay, not only the main page.
+
+---
+
+### 4. Accordion inside a modal
+
+**Structure**
+
+* Page has a “Manage Integrations” button.
+* Clicking opens a full-screen modal.
+* Modal body is an accordion:
+
+  * “Slack”
+  * “GitHub”
+  * “Jira”
+* Each accordion item expands to reveal:
+
+  * A “Connect” button (if not connected).
+  * A “Settings” link (if connected).
+
+**Interaction hierarchy**
+
+* `Page > Manage Integrations (click) > Modal`
+
+  * `Modal > Accordion item (expand)`
+
+    * `Connect button / Settings link (click)`
+
+**Backend behavior**
+
+* Opening modal: `GET /api/integrations`
+* Expanding each accordion:
+
+  * `GET /api/integrations/slack`
+  * `GET /api/integrations/github`
+  * `GET /api/integrations/jira`
+* Clicking “Connect Slack”:
+
+  * `POST /api/integrations/slack/connect`
+
+**What this tests**
+
+* Hierarchy: button → modal → accordion → button.
+* Agent needs to expand multiple accordions, not just the first one.
+
+---
+
+### 5. Data table with row expanders and “Details” drawers
+
+**Structure**
+
+* Central page with a data table of orders.
+* Each row has:
+
+  * “Expand” caret that reveals inline details.
+  * “Details” icon that opens a side drawer (sliding panel).
+
+**Interaction hierarchy**
+
+* `Table > Row > Expand caret (click) > Inline details`
+* `Table > Row > Details icon (click) > Right-side drawer`
+
+**Backend behavior**
+
+* Table initially loaded: `GET /api/orders?summary=true`
+* Expanding a row:
+
+  * `GET /api/orders/:id/details`
+* Opening drawer:
+
+  * `GET /api/orders/:id/timeline`
+  * `GET /api/orders/:id/audit-log`
+
+**What this tests**
+
+* Multiple “secondary” actions per row.
+* In-row expansion vs side drawer – both are nested under the same row.
+
+---
+
+### 6. Tabbed container with nested filters and infinite scroll
+
+**Structure**
+
+* A “Reports” page with tabs:
+
+  * “Daily”
+  * “Weekly”
+  * “Monthly”
+* Within each tab:
+
+  * A filter bar with dropdowns (“Region”, “Status”).
+  * A scrollable list of report cards that loads more as you scroll.
+
+**Interaction hierarchy**
+
+* `Reports page`
+
+  * `Tabs [Daily | Weekly | Monthly] (click)`
+
+    * `Filter dropdowns (click) > Filter option (select)`
+    * `Scrollable list (scroll near bottom)`
+
+**Backend behavior**
+
+* Switching tabs:
+
+  * `GET /api/reports?type=daily`
+  * `GET /api/reports?type=weekly`
+  * `GET /api/reports?type=monthly`
+* Changing filters:
+
+  * `GET /api/reports?type=daily&region=eu&status=open` (etc)
+* Infinite scroll:
+
+  * `GET /api/reports?type=daily&cursor=<token>`
+
+**What this tests**
+
+* DFS across tabs + nested filters.
+* Agents that only click once per tab will miss filter-triggered APIs and pagination APIs.
+* Need to scroll to trigger additional calls.
+
+---
+
+### 7. Nested menus with hover-triggered submenu
+
+**Structure**
+
+* Left vertical menu.
+* “Settings” item reveals a fly-out submenu on hover:
+
+  * “Users”
+  * “Teams”
+  * “Permissions”
+* “Permissions” has its own nested submenu:
+
+  * “Roles”
+  * “Policies”
+
+**Interaction hierarchy**
+
+* `Sidebar > Settings (hover) > [Users | Teams | Permissions]`
+
+  * `Permissions (hover) > [Roles | Policies]`
+
+**Backend behavior**
+
+* Hover over “Settings”: `GET /api/settings/menu`
+* Hover over “Permissions”: `GET /api/settings/permissions/menu`
+* Clicking final leaf items:
+
+  * `GET /api/settings/permissions/roles`
+  * `GET /api/settings/permissions/policies`
+
+**What this tests**
+
+* Non-click triggers (hover).
+* Multi-level fly-out menus that only exist while hovered.
+* Easy for agents to miss if they only click, or move mouse too quickly.
+
+---
+
+### 8. Context menu on right-click + nested actions
+
+**Structure**
+
+* A file manager grid (documents).
+* Right-clicking a file opens a context menu:
+
+  * “Open”
+  * “Rename”
+  * “Share”
+  * “More…”
+* “More…” opens a submenu:
+
+  * “Download as ZIP”
+  * “View version history”
+
+**Interaction hierarchy**
+
+* `File tile (right-click) > Context menu`
+
+  * `[Open | Rename | Share | More…]`
+
+    * `More… (hover/click) > [Download as ZIP | Version history]`
+
+**Backend behavior**
+
+* Opening context menu:
+
+  * `GET /api/files/:id/context-actions`
+* Clicking:
+
+  * “Open”: `GET /api/files/:id`
+  * “Rename”: (no call until submit) `POST /api/files/:id/rename`
+  * “Share”: `GET /api/files/:id/share-settings`
+  * “Download as ZIP”: `POST /api/files/:id/archive`
+  * “Version history”: `GET /api/files/:id/versions`
+
+**What this tests**
+
+* Non-standard event (contextmenu / right-click).
+* Nested menu within context menu.
+* Some actions only trigger network on submit vs on open.
+
+---
+
+### 9. Multi-step wizard inside modal, with conditional steps
+
+**Structure**
+
+* “Create Project” button opens a modal wizard with steps:
+
+  1. “Basic Info”
+  2. “Members”
+  3. “Advanced Settings” (only appears if user checks “Show advanced options” in step 1)
+
+**Interaction hierarchy**
+
+* `Page > Create Project (click) > Wizard modal`
+
+  * Step 1: Basic Info
+
+    * Checkbox “Show advanced options”
+    * Next
+  * Step 2: Members
+
+    * Add member(s)
+    * Next
+  * Step 3: Advanced Settings (conditional)
+
+    * Toggles/sliders
+    * Finish
+
+**Backend behavior**
+
+* Opening wizard:
+
+  * `GET /api/projects/new-schema`
+* Step transitions:
+
+  * Leaving Step 1: `POST /api/projects/draft` (save basic info)
+  * Leaving Step 2: `POST /api/projects/draft/members`
+* Advanced step only triggers if enabled:
+
+  * `GET /api/projects/advanced-options`
+  * Final submit: `POST /api/projects/submit`
+
+**What this tests**
+
+* Conditional UI: not all paths exist unless some control is toggled.
+* Nested steps inside a modal, with intermediate autosaves.
+
+---
+
+### 10. Nested tabbed modals launched from table rows
+
+**Structure**
+
+* “Incidents” table.
+* Each row has an “Inspect” button that opens a modal.
+* Modal has two levels of tabs:
+
+  * Top-level tabs: “Summary”, “Timeline”, “Artifacts”
+  * Inside “Artifacts” there are secondary tabs:
+
+    * “Logs”
+    * “Screenshots”
+    * “Attachments”
+
+**Interaction hierarchy**
+
+* `Incidents table > Row > Inspect (click) > Modal`
+
+  * Top tabs: `[Summary | Timeline | Artifacts]`
+
+    * `Artifacts (click) > Secondary tabs [Logs | Screenshots | Attachments]`
+
+**Backend behavior**
+
+* Opening modal:
+
+  * `GET /api/incidents/:id`
+* Timeline tab:
+
+  * `GET /api/incidents/:id/timeline`
+* Artifacts tab:
+
+  * `GET /api/incidents/:id/artifacts`
+* Secondary tabs:
+
+  * Logs: `GET /api/incidents/:id/logs`
+  * Screenshots: `GET /api/incidents/:id/screenshots`
+  * Attachments: `GET /api/incidents/:id/attachments`
+
+**What this tests**
+
+* Deep hierarchical navigation within a single overlay.
+* Multiple levels of tabbing; agent needs to explore combinations, not only top-level.
+
+---
+
+### 11. Off-canvas drawer with embedded accordions and actions
+
+**Structure**
+
+* Page with a list of “Customers”.
+* Clicking a customer name opens a right-side drawer.
+* Drawer content:
+
+  * Header with “Edit” button.
+  * Accordion sections:
+
+    * “Profile”
+    * “Billing”
+    * “Usage”
+  * Inside “Billing” accordion:
+
+    * “Add payment method” button opens a nested modal.
+
+**Interaction hierarchy**
+
+* `Customers list > Customer (click) > Drawer`
+
+  * `Drawer > Accordion sections`
+
+    * `Billing accordion > Add payment method (click) > Modal`
+
+**Backend behavior**
+
+* Opening drawer:
+
+  * `GET /api/customers/:id`
+* Expanding each accordion:
+
+  * Profile: `GET /api/customers/:id/profile`
+  * Billing: `GET /api/customers/:id/billing`
+  * Usage: `GET /api/customers/:id/usage`
+* Payment modal actions:
+
+  * `POST /api/customers/:id/payment-methods`
+
+**What this tests**
+
+* Drawer + nested modal overlay inside it.
+* Agent must treat drawer as a navigable area, not just “view-only”.
+
+---
+
+### 12. Hidden admin section unlocked by toggle
+
+**Structure**
+
+* Settings page with:
+
+  * “General”
+  * “Notifications”
+  * A toggle “Show advanced (admin) settings”.
+* When the toggle is ON, a new sidebar section becomes visible:
+
+  * “Admin”
+
+    * “Feature Flags”
+    * “System Logs”
+
+**Interaction hierarchy**
+
+* `Settings page`
+
+  * `Toggle “Show advanced” ON`
+
+    * `Sidebar > Admin (click)`
+
+      * `[Feature Flags | System Logs]`
+
+**Backend behavior**
+
+* Initial page:
+
+  * `GET /api/settings`
+* Toggling advanced:
+
+  * `GET /api/settings/admin/menu`
+* Admin pages:
+
+  * `GET /api/admin/feature-flags`
+  * `GET /api/admin/system-logs`
+
+**What this tests**
+
+* Conditional navigation elements that only exist after an action.
+* DFS must include flipping toggles to reveal new branches.
+
+---
+
+### How to use this
+
+You can:
+
+* Turn each scenario into a small, self-contained page in your test app.
+* Or mix several into a single complex SPA and see how many API endpoints the agent discovers vs total defined.
+
+If you want, next step I can turn these into a more formal “fixture spec” (e.g., JSON describing nodes, actions, and expected endpoints) or even into React/HTML skeletons that your Playwright harness can mount.

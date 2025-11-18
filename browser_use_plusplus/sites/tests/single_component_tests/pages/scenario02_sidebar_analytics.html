@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Scenario 2 – Sidebar with Collapsible Analytics</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        background: #f8fafc;
+        color: #0f172a;
+        display: flex;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        width: 260px;
+        background: #1e293b;
+        color: #cbd5f5;
+        padding: 32px 20px;
+        box-shadow: 6px 0 24px rgba(15, 23, 42, 0.35);
+      }
+
+      .section-title {
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.05em;
+        margin: 0 0 12px;
+      }
+
+      .nav-item {
+        width: 100%;
+        border: none;
+        background: transparent;
+        color: inherit;
+        padding: 10px 12px;
+        text-align: left;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        cursor: pointer;
+      }
+
+      .nav-item:hover {
+        background: rgba(148, 163, 184, 0.25);
+      }
+
+      .caret::after {
+        content: attr(data-state);
+        float: right;
+      }
+
+      .analytics-children {
+        margin-left: 12px;
+        margin-top: 6px;
+        display: none;
+      }
+
+      main {
+        flex: 1;
+        padding: 48px;
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      .log {
+        margin-top: 24px;
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 10px;
+        padding: 16px;
+        min-height: 160px;
+        max-width: 520px;
+        overflow-y: auto;
+        font-family: "Fira Code", Consolas, monospace;
+      }
+
+      .log-entry + .log-entry {
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <p class="section-title">Navigation</p>
+      <button id="analyticsToggle" class="nav-item caret" data-state="▸">
+        Analytics
+      </button>
+      <div class="analytics-children" id="analyticsItems">
+        <button class="nav-item" data-analytics="overview">Overview</button>
+        <button class="nav-item" data-analytics="funnels">Funnels</button>
+        <button class="nav-item" data-analytics="cohorts">Cohorts</button>
+      </div>
+      <button class="nav-item">Billing</button>
+    </aside>
+    <main>
+      <h1>Analytics navigation</h1>
+      <p>
+        Expand the Analytics group to fetch the available reports and then click any report link to trigger its API
+        endpoint.
+      </p>
+      <div class="log" id="logPanel" aria-live="polite">Waiting for actions…</div>
+    </main>
+    <script>
+      const toggle = document.getElementById("analyticsToggle");
+      const childContainer = document.getElementById("analyticsItems");
+      const logPanel = document.getElementById("logPanel");
+      let analyticsLoaded = false;
+
+      function log(message) {
+        const entry = document.createElement("div");
+        entry.className = "log-entry";
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logPanel.prepend(entry);
+      }
+
+      toggle.addEventListener("click", async () => {
+        const isOpen = childContainer.style.display === "block";
+        childContainer.style.display = isOpen ? "none" : "block";
+        toggle.dataset.state = isOpen ? "▸" : "▾";
+        if (!isOpen && !analyticsLoaded) {
+            log("GET /api/nav/analytics");
+            try {
+              const response = await fetch("/api/nav/analytics");
+              const data = await response.json();
+              analyticsLoaded = true;
+              log(`Response: ${JSON.stringify(data)}`);
+            } catch (error) {
+              log(`Error: ${error.message}`);
+            }
+        }
+      });
+
+      childContainer.addEventListener("click", async (event) => {
+        if (!event.target.matches("[data-analytics]")) {
+          return;
+        }
+        const view = event.target.dataset.analytics;
+        log(`GET /api/analytics/${view}`);
+        try {
+          const response = await fetch(`/api/analytics/${view}`);
+          const data = await response.json();
+          log(`Response: ${JSON.stringify(data)}`);
+        } catch (error) {
+          log(`Error: ${error.message}`);
+        }
+      });
+    </script>
+  </body>
+</html>
