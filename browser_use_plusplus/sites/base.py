@@ -27,7 +27,6 @@ from browser_use_plusplus.common.constants import (
     BROWSER_PROXY_PORT
 )
 from browser_use_plusplus.common.browser_config_service import BrowserConfigService
-
 from browser_use_plusplus.logger import get_or_init_log_factory
 
 # TODO: take browser management out of these functions

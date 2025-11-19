@@ -16,7 +16,10 @@ BROWSER_CDP_HOST = "127.0.0.1"
 BROWSER_CDP_PORT = 9900
 
 # detection prompt
-NUM_SCHEDULED_ACTIONS = 5 
+NUM_SCHEDULED_ACTIONS = 5
+
+SNAPSHOTS_FOLDER = Path(".snapshots") / "snapshots"
+PLANS_FOLDER = Path(".snapshots") / "plans"
 
 # llm configurations
 SERVER_MODEL_CONFIG = {

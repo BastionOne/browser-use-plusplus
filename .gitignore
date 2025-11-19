@@ -175,6 +175,7 @@ $RECYCLE.BIN/
 # Linux
 *~
 
+
 # Temporary files
 *.tmp
 *.temp
@@ -206,3 +207,4 @@ videos/
 traces/
 
 .min_agent
+.browser_profiles

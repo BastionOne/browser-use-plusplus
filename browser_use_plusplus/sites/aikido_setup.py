@@ -1,5 +1,6 @@
 import asyncio
-from pathlib import Path
+
+from browser_use_plusplus.common.constants import SNAPSHOTS_FOLDER
 
 from browser_use_plusplus.sites.base import (
     BrowserContextManager,
@@ -8,10 +9,9 @@ from browser_use_plusplus.sites.base import (
 from browser_use_plusplus.common.constants import DISCOVERY_MODEL_CONFIG
 
 AGENT_MODEL_CONFIG = DISCOVERY_MODEL_CONFIG["model_config"].copy()
-SNAPSHOT_DIR = Path(r"C:\Users\jpeng\Documents\projects\code\web-ui3\src\agent\discovery\sites\aikido\snapshots")
 SNAPSHOT_PATH = (
-    SNAPSHOT_DIR / "open_repo_settings.json",
-    2
+    SNAPSHOTS_FOLDER / "aikido_settings_button.json",
+    3
 )
 
 async def main():
@@ -29,7 +29,6 @@ async def main():
                 snapshot_step=SNAPSHOT_PATH[1],
                 max_steps=AGENT_STEPS,
                 max_page_steps=AGENT_STEPS,
-                challenge_client=None,
                 save_snapshots=True,
                 screenshot=True,
             )

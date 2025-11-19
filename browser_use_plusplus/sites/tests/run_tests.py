@@ -8,7 +8,6 @@ from typing import List
 import uvicorn
 
 from browser_use_plusplus.logger import get_or_init_log_factory
-
 from browser_use_plusplus.sites.base import (
     BrowserContextManager,
     start_discovery_agent,
@@ -18,8 +17,9 @@ from browser_use_plusplus.sites.tests.registry import TEST_REGISTRY
 
 
 LOGGER = logging.getLogger(__name__)
-MAX_STEPS = 10
-
+MAX_STEPS = 3
+NUM_BROWSERS = 1
+MAX_PAGES = 1
 
 def _available_groups() -> str:
     return ", ".join(sorted(TEST_REGISTRY.keys()))
@@ -147,7 +147,7 @@ async def _execute_agent(
         scopes=[start_url],
         headless=headless,
         use_proxy=False,
-        n=1,
+        n=NUM_BROWSERS,
     ) as browser_data_list:
         browser_data = browser_data_list[0]
         LOGGER.info("Running discovery agent on %s", scenario.slug)
@@ -158,7 +158,7 @@ async def _execute_agent(
             full_log=full_log,
             agent_dir=log_dir,
             max_steps=MAX_STEPS,
-            max_pages=1,
+            max_pages=MAX_PAGES,
         )
 
 async def run_group(

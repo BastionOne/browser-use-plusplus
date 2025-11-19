@@ -1072,7 +1072,7 @@
                                 "children": [
                                     {
                                         "description": "Toggle the 'Automatically activate new repos' switch in the 'Repository configuration settings' modal to verify enabling/disabling automatic activation functionality.",
-                                        "completed": false,
+                                        "completed": true,
                                         "children": []
                                     },
                                     {

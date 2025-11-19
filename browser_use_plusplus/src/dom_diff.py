@@ -150,8 +150,8 @@ def _diff_dom(dom1: str, dom2: str, context_lines: int = 3) -> List[str]:
     
     return hunks
 
-def get_dom_diff_str(curr_dom: str, prev_dom: str) -> str:
-    diff = _diff_dom(curr_dom, prev_dom)
+def get_dom_diff_str(prev_dom: str, curr_dom: str, context_lines: int = 3) -> str:
+    diff = _diff_dom(prev_dom, curr_dom, context_lines=context_lines)
     return "------------ [HUNK] ------------\n".join(diff)
 
 if __name__ == "__main__":

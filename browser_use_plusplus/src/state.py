@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -159,6 +160,7 @@ class AgentSnapshot(BaseModel):
     take_screenshot: bool = False
     auth_cookies: Optional[List[Dict[str, Any]]] = None
     llm_config: Dict[str, Any] = {}
+    snapshot_dir: Optional[Path] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -181,12 +183,16 @@ class AgentSnapshot(BaseModel):
             "auth_cookies": self.auth_cookies,
             "bu_agent_state": self.bu_agent_state.model_dump(),
             "completed_plans": [plan.to_json() for plan in self.completed_plans],
+            "snapshot_dir": str(self.snapshot_dir) if self.snapshot_dir else None,
         }
 
     @classmethod
     def from_json(cls, data: Dict) -> "AgentSnapshot":
         # Reconstruct plan if present
         plan = PlanItem.model_validate(data["plan"])
+
+        snapshot_dir_raw = data.get("snapshot_dir")
+        snapshot_dir = Path(snapshot_dir_raw) if snapshot_dir_raw else None
 
         return cls(
             llm_config=data["llm_config"],
@@ -206,6 +212,7 @@ class AgentSnapshot(BaseModel):
             auth_cookies=data["auth_cookies"],
             bu_agent_state=BrowserUseAgentState.from_json(data["bu_agent_state"]),
             completed_plans=[PlanItem.model_validate(plan) for plan in data["completed_plans"]],
+            snapshot_dir=snapshot_dir,
         )
 
 class AgentSnapshotList(BaseModel):

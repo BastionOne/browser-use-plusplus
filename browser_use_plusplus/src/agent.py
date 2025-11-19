@@ -787,6 +787,7 @@ class DiscoveryAgent(BrowserUseAgent):
             completed_plans=[
                 plan.model_copy(deep=True) for plan in self.completed_plans
             ],
+            snapshot_dir=self.agent_dir,
         )
 
     @classmethod
@@ -797,8 +798,6 @@ class DiscoveryAgent(BrowserUseAgent):
         browser_session: "Browser",
         max_steps: Optional[int] = None,
         max_page_steps: Optional[int] = None,
-        challenge_client: Optional["PagedDiscoveryEvalClient"] = None,
-        server_client: Optional["AgentClient"] = None,
         proxy_handler: Optional["MitmProxyHTTPHandler"] = None,
         agent_log: Optional["logging.Logger"] = None,
         full_log: Optional["logging.Logger"] = None,
@@ -806,7 +805,8 @@ class DiscoveryAgent(BrowserUseAgent):
         take_screenshots: bool = False,
         agent_dir: Optional[Path] = None,
     ) -> "DiscoveryAgent":
-        if agent_dir is None:
+        resolved_agent_dir = agent_dir or state.snapshot_dir
+        if resolved_agent_dir is None:
             raise ValueError("agent_dir is required when restoring from state")
         agent = cls(
             llm_config=state.llm_config,
@@ -819,12 +819,10 @@ class DiscoveryAgent(BrowserUseAgent):
             max_steps=max_steps or state.max_steps,
             auth_cookies=state.auth_cookies,
             max_pages=state.max_pages,
-            challenge_client=challenge_client,
-            server_client=server_client,
             proxy_handler=proxy_handler,
             take_screenshots=take_screenshots,
             save_snapshots=save_snapshots,
-            agent_dir=agent_dir,
+            agent_dir=resolved_agent_dir,
         )
         # need to set this to skip initital page transition
         agent.is_transition_step = False
