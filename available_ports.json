@@ -1,0 +1,30 @@
+{
+    "used_browser_ports": [
+        8081,
+        8082,
+        8083,
+        8084,
+        8085,
+        8086,
+        8087,
+        8088,
+        8089,
+        8090
+    ],
+    "used_cdp_ports": [
+        9900,
+        9901,
+        9902,
+        9903,
+        9904,
+        9905,
+        9906,
+        9907,
+        9908,
+        9909
+    ],
+    "browser_profiles": [
+        "C:\\Users\\jpeng\\AppData\\Local\\Google\\Chrome\\User Data\\Profile 2"
+    ],
+    "locked": false
+}

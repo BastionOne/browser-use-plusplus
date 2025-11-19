@@ -1,18 +1,8 @@
-from dataclasses import dataclass
-from typing import Dict, List
-
-
-@dataclass(frozen=True)
-class Scenario:
-    number: int
-    slug: str
-    title: str
-    module: str
-    description: str
+from browser_use_plusplus.sites.tests.scenario import Scenario, ScenarioRegistry
 
 SINGLE_COMPONENTS_MODULE = "browser_use_plusplus.sites.tests.single_component_tests"
 
-SCENARIOS: List[Scenario] = [
+SINGLE_COMPONENT_SCENARIOS = [
     Scenario(
         number=3,
         slug="multi_tab_modal_single_action",
@@ -70,20 +60,7 @@ SCENARIOS: List[Scenario] = [
         title="Customer Drawer",
         module=f"{SINGLE_COMPONENTS_MODULE}.tests.customer_drawer.app",
         description="Off-canvas drawer with accordion details and nested modal action.",
-    )
+    ),
 ]
 
-SCENARIO_BY_SLUG: Dict[str, Scenario] = {scenario.slug: scenario for scenario in SCENARIOS}
-SCENARIO_BY_NUMBER: Dict[str, Scenario] = {str(scenario.number): scenario for scenario in SCENARIOS}
-
-
-def find_scenario(key: str) -> Scenario:
-    """
-    Lookup helper that accepts a scenario slug or number.
-    """
-    normalized = key.strip().lower()
-    if normalized in SCENARIO_BY_SLUG:
-        return SCENARIO_BY_SLUG[normalized]
-    if normalized in SCENARIO_BY_NUMBER:
-        return SCENARIO_BY_NUMBER[normalized]
-    raise KeyError(f"Unknown scenario '{key}'. Try one of: {', '.join(s.slug for s in SCENARIOS)}")
+SINGLE_COMPONENT_REGISTRY = ScenarioRegistry(SINGLE_COMPONENT_SCENARIOS)

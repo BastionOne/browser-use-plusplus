@@ -1,12 +1,9 @@
 from pathlib import Path
 from typing import List, Dict, Optional, Any, Tuple, Callable, Coroutine
 import json
-import time
 import logging
-from pydantic import BaseModel
 
 from playwright.async_api import async_playwright, BrowserContext, ProxySettings
-from browser_use.browser import BrowserSession, BrowserProfile
 
 from browser_use_plusplus.src.agent import DiscoveryAgent
 
@@ -14,62 +11,28 @@ from browser_use_plusplus.src.prompts.sys_prompt import CUSTOM_SYSTEM_PROMPT
 from browser_use_plusplus.src.proxy import MitmProxyHTTPHandler
 from browser_use_plusplus.src.state import AgentSnapshotList
 from browser_use_plusplus.src.prompts.planv4 import PlanItem
-from browser_use.agent.service import Agent as BrowserUseAgent
 from browser_use_plusplus.common.constants import BROWSER_USE_MODEL
 
+from browser_use.agent.service import Agent as BrowserUseAgent
+from browser_use.browser import BrowserSession, BrowserProfile
 from browser_use import Browser as BrowserSession
 from browser_use.llm import ChatOpenAI
 
 from browser_use_plusplus.common.http_handler import HTTPHandler
 from browser_use_plusplus.common.constants import (
     DISCOVERY_MODEL_CONFIG,
-    DEFAULT_USER_BROWSER,
     BROWSER_CDP_HOST,
     BROWSER_CDP_PORT,
     BROWSER_PROXY_HOST,
-    BROWSER_PROXY_PORT,
-    BROWSER_PROFILES
+    BROWSER_PROXY_PORT
 )
+from browser_use_plusplus.common.browser_config_service import BrowserConfigService
 
 from browser_use_plusplus.logger import get_or_init_log_factory
-
-PROFILE_DIR = Path(
-    r"C:\Users\jpeng\AppData\Local\Google\Chrome\User Data\Profile 2"
-)
-PORT = 9898
-PROXY_HOST = "127.0.0.1"
-PROXY_PORT = 8083
-
-import socket
-
-def next_available_port(port: int) -> int:
-    """Find the next available port starting from the given port number.
-    
-    Args:
-        port: Starting port number to check
-        
-    Returns:
-        The next available port number
-    """
-    while True:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            try:
-                sock.bind(('127.0.0.1', port))
-                return port
-            except OSError:
-                port += 1
-                if port > 65535:
-                    raise RuntimeError("No available ports found")
 
 # TODO: take browser management out of these functions
 BrowserData = Tuple[BrowserSession, Optional[MitmProxyHTTPHandler], BrowserContext]
 BrowserSetupFunc = Callable[[BrowserData], Coroutine[Any, Any, None]]
-
-class BrowserInfraConfig(BaseModel):
-    used_browser_ports: List[int] = []
-    used_cdp_ports: List[int] = []
-    browser_profiles: List[str] = []
-    locked: bool = False
 
 class BrowserContextManager:
     """Context manager for browser, browser_session, and proxy_handler resources."""
@@ -80,6 +43,7 @@ class BrowserContextManager:
         headless: bool = False,
         use_proxy: bool = True,
         n: int = 1,
+        config_service: BrowserConfigService | None = None,
     ):
         self.scopes = scopes
         self.headless = headless
@@ -92,147 +56,18 @@ class BrowserContextManager:
         self.browser_profiles: List[str] = []
         self.browser_ports: List[int] = []
         self.cdp_ports: List[int] = []
+        self.config_service = config_service or BrowserConfigService()
 
-    def _read_available_config(self) -> BrowserInfraConfig:
-        """Read the browser infrastructure configuration from file."""
-        try:
-            with open("output/available_ports.json", "r") as f:
-                data = json.load(f)
-                return BrowserInfraConfig.model_validate(data)
-        except (FileNotFoundError, json.JSONDecodeError, KeyError):
-            return BrowserInfraConfig(
-                used_browser_ports=[],
-                used_cdp_ports=[],
-                browser_profiles=[],
-                locked=False
-            )
-
-    def _write_available_config(self, config: BrowserInfraConfig) -> None:
-        """Write the browser infrastructure configuration to file."""
-        with open("output/available_ports.json", "w") as f:
-            json.dump(config.model_dump(), f)
-
-    def _get_available_browser_infra(
-        self, 
-        default_browser_port: int = BROWSER_PROXY_PORT, 
-        default_cdp_port: int = BROWSER_CDP_PORT
-    ) -> List[Tuple[int, int, str]]:
-        """Get available browser infrastructure for n instances."""
-        # Wait for lock to be released
-        print("Waiting for lock to be released ...")
-        while True:
-            config = self._read_available_config()
-            if not config.locked:
-                break
-            time.sleep(0.1)  # Wait briefly before checking again
-        
-        print("Lock released, reading config ...")
-        # Set lock
-        config.locked = True
-        self._write_available_config(config)
-        
-        results = []
-        used_profiles = config.browser_profiles.copy()
-        used_browser_ports = getattr(config, 'used_browser_ports', [])
-        used_cdp_ports = getattr(config, 'used_cdp_ports', [])
-        
-        for i in range(self.n):
-            # Find next available browser port
-            browser_port = default_browser_port
-            while browser_port in used_browser_ports:
-                browser_port += 1
-                if browser_port > 65535:
-                    raise RuntimeError("No available browser ports found")
-            used_browser_ports.append(browser_port)
-            
-            # Find next available CDP port
-            cdp_port = default_cdp_port
-            while cdp_port in used_cdp_ports:
-                cdp_port += 1
-                if cdp_port > 65535:
-                    raise RuntimeError("No available CDP ports found")
-            used_cdp_ports.append(cdp_port)
-            
-            # Find an available browser profile by checking against whats available
-            available_profile = None
-            for profile in BROWSER_PROFILES:
-                if profile not in used_profiles:
-                    available_profile = profile
-                    used_profiles.append(profile)
-                    break
-            
-            if available_profile is None:
-                # If no profiles available, use the first one (fallback)
-                available_profile = BROWSER_PROFILES[0] if BROWSER_PROFILES else str(DEFAULT_USER_BROWSER)
-                if available_profile not in used_profiles:
-                    used_profiles.append(available_profile)
-            
-            results.append((browser_port, cdp_port, available_profile))
-        
-        return results
-
-    def _set_browser_available_ports(
-        self, 
-        browser_infra_list: List[Tuple[int, int, str]]
-    ):
-        """Update the configuration with the allocated browser infrastructure."""
-        config = self._read_available_config()
-        
-        # Add all ports and profiles to the in-use lists
-        if browser_infra_list:
-            for browser_port, cdp_port, profile in browser_infra_list:
-                if browser_port not in config.used_browser_ports:
-                    config.used_browser_ports.append(browser_port)
-                if cdp_port not in config.used_cdp_ports:
-                    config.used_cdp_ports.append(cdp_port)
-                if profile not in config.browser_profiles:
-                    config.browser_profiles.append(profile)
-        
-        # Release lock
-        config.locked = False
-        self._write_available_config(config)
-
-    def _release_browser_profiles(self, browser_profiles: List[str]) -> None:
-        """Release the browser profiles from the in-use list."""
-        config = self._read_available_config()
-        
-        for profile in browser_profiles:
-            if profile in config.browser_profiles:
-                config.browser_profiles.remove(profile)
-        
-        self._write_available_config(config)
-
-    def _release_browser_ports(self, browser_ports: List[int], cdp_ports: List[int]) -> None:
-        """Release the browser and CDP ports from the in-use lists."""
-        config = self._read_available_config()
-        
-        # Remove browser ports from used list
-        for port in browser_ports:
-            if port in config.used_browser_ports:
-                config.used_browser_ports.remove(port)
-    
-        # Remove CDP ports from used list
-        for port in cdp_ports:
-            if port in config.used_cdp_ports:
-                config.used_cdp_ports.remove(port)
-        
-        self._write_available_config(config)
-
-    def _release_lock(self) -> None:
-        """Release the configuration lock in case of exceptions."""
-        try:
-            config = self._read_available_config()
-            config.locked = False
-            self._write_available_config(config)
-        except Exception:
-            # If we can't release the lock, at least try to continue
-            pass
 
     async def __aenter__(self):
         """Initialize and start all browser resources."""
-        browser_infra_list = []
+        browser_infra_list: List[Tuple[int, int, str]] = []
         try:
-            browser_infra_list = self._get_available_browser_infra()
+            browser_infra_list = self.config_service.get_available_browser_infra(
+                n=self.n,
+                default_browser_port=BROWSER_PROXY_PORT,
+                default_cdp_port=BROWSER_CDP_PORT,
+            )
             
             self.pw = await async_playwright().start()
             
@@ -284,14 +119,14 @@ class BrowserContextManager:
                 
                 browser_data_list.append((browser_session, proxy_handler, browser))
 
-            self._set_browser_available_ports(browser_infra_list)
+            self.config_service.register_infra_usage(browser_infra_list)
             return browser_data_list
             
         except Exception as e:
             # Clean up any partially initialized resources
             await self._cleanup_resources()
             # Release the lock if we acquired it
-            self._release_lock()
+            self.config_service.release_lock()
             raise e
         
     async def _cleanup_resources(self):
@@ -319,10 +154,12 @@ class BrowserContextManager:
         
         # Release browser profiles
         if self.browser_profiles:
-            self._release_browser_profiles(self.browser_profiles)
-            self.browser_profiles = []
-            self.browser_ports = []
-            self.cdp_ports = []
+            self.config_service.release_profiles(self.browser_profiles)
+        if self.browser_ports or self.cdp_ports:
+            self.config_service.release_ports(self.browser_ports, self.cdp_ports)
+        self.browser_profiles = []
+        self.browser_ports = []
+        self.cdp_ports = []
         
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Clean up all browser resources."""
@@ -331,7 +168,7 @@ class BrowserContextManager:
         await self._cleanup_resources()
         
         # Always try to release the lock, even if cleanup failed
-        self._release_lock()
+        self.config_service.release_lock()
 
 async def start_discovery_agent(
     browser_data: BrowserData,

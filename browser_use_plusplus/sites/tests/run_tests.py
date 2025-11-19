@@ -3,6 +3,7 @@ import asyncio
 import logging
 import sys
 from importlib import import_module
+from typing import List
 
 import uvicorn
 
@@ -12,15 +13,46 @@ from browser_use_plusplus.sites.base import (
     BrowserContextManager,
     start_discovery_agent,
 )
-from browser_use_plusplus.sites.tests.single_component_tests.scenario_registry import (
-    Scenario,
-    find_scenario,
-)
-from browser_use_plusplus.sites.tests.single_component_tests.test_registry import get_test_group
+from browser_use_plusplus.sites.tests.scenario import Scenario, ScenarioRegistry
+from browser_use_plusplus.sites.tests.registry import TEST_REGISTRY
 
 
 LOGGER = logging.getLogger(__name__)
-MAX_STEPS = 6
+MAX_STEPS = 10
+
+
+def _available_groups() -> str:
+    return ", ".join(sorted(TEST_REGISTRY.keys()))
+
+
+def _get_registry(test_group: str) -> ScenarioRegistry:
+    try:
+        return TEST_REGISTRY[test_group]
+    except KeyError as exc:  # pragma: no cover - defensive user input guard
+        raise SystemExit(
+            f"Unknown test group '{test_group}'. Available groups: {_available_groups()}"
+        ) from exc
+
+
+def _resolve_scenarios(
+    test_group: str, scenario_numbers: List[int]
+) -> tuple[ScenarioRegistry, List[Scenario]]:
+    registry = _get_registry(test_group)
+    if not scenario_numbers:
+        return registry, registry.scenarios
+    missing = [number for number in scenario_numbers if number not in registry.scenario_by_number]
+    if missing:
+        raise SystemExit(
+            f"Unknown scenario numbers for group '{test_group}': {', '.join(map(str, missing))}"
+        )
+    seen: set[int] = set()
+    ordered: List[Scenario] = []
+    for number in scenario_numbers:
+        if number in seen:
+            continue
+        seen.add(number)
+        ordered.append(registry.scenario_by_number[number])
+    return registry, ordered
 
 
 class FixtureServer:
@@ -129,21 +161,37 @@ async def _execute_agent(
             max_pages=1,
         )
 
-
 async def run_group(
-    group_name: str,
+    test_group: str,
+    scenario_numbers: List[int],
     host: str,
     port: int,
     headless: bool,
 ) -> None:
-    scenarios = get_test_group(group_name)
-    for scenario in scenarios[1:]:
+    _, scenarios = _resolve_scenarios(test_group, scenario_numbers)
+    for scenario in scenarios:
         LOGGER.info("Executing scenario %s (%s)", scenario.number, scenario.slug)
         await run_scenario(scenario, host, port, headless)
 
 
-async def serve_fixture(scenario_key: str, host: str, port: int) -> None:
-    scenario = find_scenario(scenario_key)
+async def serve_fixture(
+    test_group: str,
+    scenario_numbers: List[int],
+    host: str,
+    port: int,
+) -> None:
+    _, scenarios = _resolve_scenarios(test_group, scenario_numbers)
+    if not scenarios:
+        raise SystemExit(f"No scenarios available for group '{test_group}'.")
+    if scenario_numbers and len(scenarios) > 1:
+        raise SystemExit("Serve command accepts exactly one scenario number.")
+    scenario = scenarios[0]
+    if not scenario_numbers:
+        LOGGER.info(
+            "No scenario number provided; defaulting to %s (%s)",
+            scenario.number,
+            scenario.slug,
+        )
     server = FixtureServer(scenario, host, port)
     await server.start()
     LOGGER.info(
@@ -158,9 +206,21 @@ async def serve_fixture(scenario_key: str, host: str, port: int) -> None:
         await server.stop()
 
 
+def list_scenarios(test_group: str, scenario_numbers: List[int]) -> None:
+    _, scenarios = _resolve_scenarios(test_group, scenario_numbers)
+    if not scenarios:
+        print(f"No scenarios registered for group '{test_group}'.")
+        return
+    for idx, scenario in enumerate(scenarios):
+        print(f"[{scenario.number}] {scenario.title} ({scenario.slug})")
+        print(f"    {scenario.description}")
+        if idx != len(scenarios) - 1:
+            print()
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     argv = list(sys.argv[1:] if argv is None else argv)
-    command_names = {"run", "serve"}
+    command_names = {"run", "serve", "list"}
     if not argv:
         argv = ["run"]
     elif argv[0] not in command_names:
@@ -180,9 +240,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             help="Fixture server port",
         )
 
-    run_parser = subparsers.add_parser("run", help="Execute a test group")
+    def add_group_arguments(subparser: argparse.ArgumentParser) -> None:
+        subparser.add_argument(
+            "test_group",
+            choices=sorted(TEST_REGISTRY.keys()),
+            help=f"Test group to target ({_available_groups()})",
+        )
+        subparser.add_argument(
+            "tests",
+            nargs="*",
+            type=int,
+            metavar="TEST",
+            help="Scenario numbers to operate on. Omit to include every scenario.",
+        )
+
+    run_parser = subparsers.add_parser("run", help="Execute discovery runs")
     add_server_options(run_parser)
-    run_parser.add_argument("group", help="Name of the test group from test_registry")
+    add_group_arguments(run_parser)
     run_parser.add_argument(
         "--headless",
         action="store_true",
@@ -190,12 +264,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     serve_parser = subparsers.add_parser(
-        "serve", help="Start a fixture server for a single scenario"
+        "serve", help="Start a fixture server for a scenario"
     )
     add_server_options(serve_parser)
-    serve_parser.add_argument(
-        "scenario", help="Scenario slug or number to load in the fixture server"
+    add_group_arguments(serve_parser)
+
+    list_parser = subparsers.add_parser(
+        "list", help=f"Display scenario descriptions for a group. Available groups: {', '.join(sorted(TEST_REGISTRY.keys()))}"
     )
+    add_group_arguments(list_parser)
 
     return parser.parse_args(argv)
 
@@ -205,9 +282,13 @@ def main() -> None:
     args = parse_args()
     try:
         if args.command == "serve":
-            asyncio.run(serve_fixture(args.scenario, args.host, args.port))
+            asyncio.run(serve_fixture(args.test_group, args.tests, args.host, args.port))
+        elif args.command == "list":
+            list_scenarios(args.test_group, args.tests)
         else:
-            asyncio.run(run_group(args.group, args.host, args.port, args.headless))
+            asyncio.run(
+                run_group(args.test_group, args.tests, args.host, args.port, args.headless)
+            )
     except KeyboardInterrupt:
         LOGGER.info("Received shutdown signal, exiting.")
     except Exception:

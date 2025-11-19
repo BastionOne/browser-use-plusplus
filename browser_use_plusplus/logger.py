@@ -185,7 +185,6 @@ class AgentFileHandler(logging.FileHandler):
 # --------------------------------------------------------------------------- #
 #  updated helpers
 # --------------------------------------------------------------------------- #
-# TODO: swap the order of eval_name and subfolder
 def _setup_agent_logger(
     log_dir: str,
     *,

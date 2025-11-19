@@ -4,10 +4,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# temp holding place for application constants, which may or may not be configurable
-# exploit agent
-MAX_EXPLOIT_AGENT_STEPS = 6
-
 # discovery agent 
 MAX_DISCOVERY_AGENT_STEPS = 6
 MAX_DISCOVERY_PAGE_STEPS = 15
@@ -15,24 +11,12 @@ SCREENSHOTS = False
 
 # server workers
 BROWSER_PROXY_HOST = "127.0.0.1"
-# BROWSER_PROXY_PORT = 8080
 BROWSER_PROXY_PORT = 8081
 BROWSER_CDP_HOST = "127.0.0.1"
-# BROWSER_CDP_PORT = 9899
 BROWSER_CDP_PORT = 9900
-BROWSER_PROFILE_DIR = Path(
-    r"C:\Users\jpeng\AppData\Local\Google\Chrome\User Data\Profile 2"
-)
-DEFAULT_USER_BROWSER = Path(
-    r"C:\Users\jpeng\AppData\Local\Google\Chrome\User Data\Default"
-)
-BROWSER_PROFILES = [
-    r"C:\Users\jpeng\AppData\Local\Google\Chrome\User Data\Profile 2",
-    r"C:\Users\jpeng\AppData\Local\Google\Chrome\User Data\Default"
-]
 
 # detection prompt
-NUM_SCHEDULED_ACTIONS = 5
+NUM_SCHEDULED_ACTIONS = 5 
 
 # llm configurations
 SERVER_MODEL_CONFIG = {
