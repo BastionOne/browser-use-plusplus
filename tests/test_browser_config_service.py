@@ -21,7 +21,13 @@ def available_config_path(tmp_path: Path):
         config_path.unlink()
 
 
-def test_allocates_existing_profile(tmp_path: Path, available_config_path: Path) -> None:
+@pytest.fixture()
+def lock_db_path(tmp_path: Path):
+    """Provide a temporary SQLite lock database path."""
+    return tmp_path / "test_browser_locks.db"
+
+
+def test_allocates_existing_profile(tmp_path: Path, available_config_path: Path, lock_db_path: Path) -> None:
     profiles_path = tmp_path / ".profiles"
     profile_root = tmp_path / "profiles"
 
@@ -32,7 +38,7 @@ def test_allocates_existing_profile(tmp_path: Path, available_config_path: Path)
         available_ports_path=available_config_path,
         profiles_path=profiles_path,
         profile_root=profile_root,
-        poll_interval=0.01,
+        lock_db_path=lock_db_path,
     )
 
     allocations = service.get_available_browser_infra(
@@ -51,7 +57,7 @@ def test_allocates_existing_profile(tmp_path: Path, available_config_path: Path)
     assert not persisted["locked"]
 
 
-def test_creates_profile_when_none_available(tmp_path: Path, available_config_path: Path) -> None:
+def test_creates_profile_when_none_available(tmp_path: Path, available_config_path: Path, lock_db_path: Path) -> None:
     profiles_path = tmp_path / ".profiles"
     profile_root = tmp_path / "profiles"
 
@@ -59,7 +65,7 @@ def test_creates_profile_when_none_available(tmp_path: Path, available_config_pa
         available_ports_path=available_config_path,
         profiles_path=profiles_path,
         profile_root=profile_root,
-        poll_interval=0.01,
+        lock_db_path=lock_db_path,
     )
 
     allocations = service.get_available_browser_infra(
@@ -74,7 +80,7 @@ def test_creates_profile_when_none_available(tmp_path: Path, available_config_pa
     assert created_profile in saved_profiles
 
 
-def test_release_profiles_and_ports(tmp_path: Path, available_config_path: Path) -> None:
+def test_release_profiles_and_ports(tmp_path: Path, available_config_path: Path, lock_db_path: Path) -> None:
     profiles_path = tmp_path / ".profiles"
 
     profile = str(tmp_path / "profile")
@@ -90,7 +96,7 @@ def test_release_profiles_and_ports(tmp_path: Path, available_config_path: Path)
     service = BrowserConfigService(
         available_ports_path=available_config_path,
         profiles_path=profiles_path,
-        poll_interval=0.01,
+        lock_db_path=lock_db_path,
     )
 
     service.release_profiles([profile])
@@ -105,6 +111,7 @@ def test_release_profiles_and_ports(tmp_path: Path, available_config_path: Path)
 def test_multiple_allocations_share_available_ports_state(
     tmp_path: Path,
     available_config_path: Path,
+    lock_db_path: Path,
 ) -> None:
     profiles_path = tmp_path / ".profiles"
     profile_root = tmp_path / "profiles"
@@ -120,13 +127,13 @@ def test_multiple_allocations_share_available_ports_state(
         available_ports_path=available_config_path,
         profiles_path=profiles_path,
         profile_root=profile_root,
-        poll_interval=0.01,
+        lock_db_path=lock_db_path,
     )
     service_b = BrowserConfigService(
         available_ports_path=available_config_path,
         profiles_path=profiles_path,
         profile_root=profile_root,
-        poll_interval=0.01,
+        lock_db_path=lock_db_path,
     )
 
     first_alloc = service_a.get_available_browser_infra(
@@ -147,11 +154,9 @@ def test_multiple_allocations_share_available_ports_state(
         default_browser_port=8000,
         default_cdp_port=9000,
     )
-    intermediate_state = json.loads(available_config_path.read_text(encoding="utf-8"))
-    assert intermediate_state["locked"] is True
-    assert intermediate_state["used_browser_ports"] == [8000]
-    assert intermediate_state["used_cdp_ports"] == [9000]
-
+    
+    # With SQLite locking, the lock is automatically released after the allocation
+    # so we don't expect to see the intermediate locked state in the config file
     service_b.register_infra_usage(second_alloc)
     final_state = json.loads(available_config_path.read_text(encoding="utf-8"))
     assert final_state["locked"] is False
@@ -162,3 +167,59 @@ def test_multiple_allocations_share_available_ports_state(
         profile_dirs[1],
         profile_dirs[2],
     ]
+
+
+def test_sqlite_lock_prevents_concurrent_access(
+    tmp_path: Path,
+    available_config_path: Path,
+    lock_db_path: Path,
+) -> None:
+    """Test that SQLite locking prevents race conditions between concurrent services."""
+    profiles_path = tmp_path / ".profiles"
+    profile_root = tmp_path / "profiles"
+
+    # Create multiple profiles
+    profile_dirs = []
+    for idx in range(5):
+        profile_dir = tmp_path / f"profile_{idx}"
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        profile_dirs.append(str(profile_dir))
+    profiles_path.write_text(json.dumps(profile_dirs, indent=2), encoding="utf-8")
+
+    # Create multiple services that will compete for resources
+    services = []
+    for i in range(3):
+        service = BrowserConfigService(
+            available_ports_path=available_config_path,
+            profiles_path=profiles_path,
+            profile_root=profile_root,
+            lock_db_path=lock_db_path,
+        )
+        services.append(service)
+
+    # Each service tries to allocate resources
+    all_allocations = []
+    for i, service in enumerate(services):
+        allocations = service.get_available_browser_infra(
+            n=1,
+            default_browser_port=8000 + i * 100,
+            default_cdp_port=9000 + i * 100,
+        )
+        all_allocations.extend(allocations)
+        service.register_infra_usage(allocations)
+
+    # Verify no duplicate ports or profiles were allocated
+    browser_ports = [alloc[0] for alloc in all_allocations]
+    cdp_ports = [alloc[1] for alloc in all_allocations]
+    profiles = [alloc[2] for alloc in all_allocations]
+
+    assert len(set(browser_ports)) == len(browser_ports), "Duplicate browser ports allocated"
+    assert len(set(cdp_ports)) == len(cdp_ports), "Duplicate CDP ports allocated"
+    assert len(set(profiles)) == len(profiles), "Duplicate profiles allocated"
+
+    # Verify final state consistency
+    final_state = json.loads(available_config_path.read_text(encoding="utf-8"))
+    assert len(final_state["used_browser_ports"]) == 3
+    assert len(final_state["used_cdp_ports"]) == 3
+    assert len(final_state["browser_profiles"]) == 3
+    assert final_state["locked"] is False

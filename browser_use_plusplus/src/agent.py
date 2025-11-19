@@ -124,6 +124,9 @@ async def pre_execution(agent: "DiscoveryAgent"):
     else:
         agent._log(f"[NORMAL_STEP] No page transition")
 
+PAGE_TRANSITION_NEXT_GOAL = "The agent just transitioned to a new page, waiting for create_plan() to come up with a new plan"
+PAGE_TRANSITION_EVALUATION = "The agent just transitioned to a new page, so no prev actions to evaluate"
+
 async def post_execution(agent: "DiscoveryAgent"):
     model_output = agent.state.last_model_output
     if not model_output:
@@ -137,22 +140,23 @@ async def post_execution(agent: "DiscoveryAgent"):
         include_recent_events=False,
     )
     new_page = await agent._curr_page_check(new_browser_state)
-    if new_page:
-        agent._log(f"[ACCIDENTAL_TRANSITION] Rewinding page transition and exiting step()")
-        # TODO: !!!!! important !!!!
-        # need to reset this state before transitioning to diff pages
-        # agent.agent_context.update_agent_brain(
-        #     next_goal=AUTO_NEXT_ACTION,
-        #     evaluation_previous_goal=AUTO_PASS_EVALUATION
-        # )
-        agent._check_single_plan_complete(model_output.next_goal)
-        agent.agent_log.info(f"[plan]{agent.plan}")
 
-    agent._log(f"[UPDATE_STATE_AND_PLAN ] Updating agent state and checking plan completeness")
     await agent._check_plan_complete(
         model_output.current_state.next_goal,
         new_browser_state,
     )
+    if new_page:
+        agent._log(f"[ACCIDENTAL_TRANSITION] Rewinding page transition and exiting step()")
+        # clear last_model_output to smooth transition to next page
+        agent.state.last_model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
+        agent.state.last_model_output.evaluation_prev_goal = PAGE_TRANSITION_EVALUATION
+        # do this for record keeping reasons
+        agent.history.history[-1].model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
+        agent.history.history[-1].model_output.evaluation_prev_goal = PAGE_TRANSITION_EVALUATION
+
+        agent.agent_log.info(f"[plan]{agent.plan}")
+
+    agent._log(f"[UPDATE_STATE_AND_PLAN ] Updating agent state and checking plan completeness")
     await agent._update_plan(new_browser_state)
 
     new_dom_str = await agent._get_llm_representation(new_browser_state)
@@ -423,30 +427,6 @@ class DiscoveryAgent(BrowserUseAgent):
         new_plan = res.apply(self.plan)
         self._update_plan_and_task(new_plan)
         # discovery_utils.find_links_on_page(self.curr_dom_tree, self.curr_url, self.url_queue, self.agent_log)
-
-    def _check_single_plan_complete(self, curr_goal: str | None):
-        """Check off a single plan item"""
-        if not self.plan:
-            raise ValueError("Plan is not initialized")
-        if not curr_goal:
-            raise ValueError("Current goal is not initialized")
-
-        completed = CheckSinglePlanComplete().invoke(
-            model=self.llm_hub.get("check_single_plan_complete"),
-            prompt_args={
-                "plan": self.plan,
-                "curr_goal": curr_goal,
-            },
-        )
-        for compl in completed.plan_indices:
-            node = self.plan.get(compl)
-            if node is not None:
-                node.completed = True
-                self.agent_log.info(f"[COMPLETE_PLAN_ITEM]: {node.description}")
-            else:
-                self.agent_log.info(f"PLAN_ITEM_NOT_COMPLETED")
-
-        self._update_plan_and_task(self.plan)
 
     def _update_plan_and_task(self, plan: PlanItem):
         self.plan = plan
@@ -801,8 +781,8 @@ class DiscoveryAgent(BrowserUseAgent):
         proxy_handler: Optional["MitmProxyHTTPHandler"] = None,
         agent_log: Optional["logging.Logger"] = None,
         full_log: Optional["logging.Logger"] = None,
-        save_snapshots: bool = False,
-        take_screenshots: bool = False,
+        save_snapshots: bool = True,
+        take_screenshots: bool = True,
         agent_dir: Optional[Path] = None,
     ) -> "DiscoveryAgent":
         resolved_agent_dir = agent_dir or state.snapshot_dir

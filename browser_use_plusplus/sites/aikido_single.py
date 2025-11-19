@@ -12,11 +12,12 @@ async def main():
     NUM_AGENTS = 1
     START_URLS = [
         "https://app.aikido.dev/settings/integrations/repositories",
+        "https://app.aikido.dev/clouds/16056"
     ]
     SCOPES = [
         "https://app.aikido.dev",
     ]
-    AGENT_STEPS = 4
+    AGENT_STEPS = 6
     
     async with BrowserContextManager(
         scopes=SCOPES,
@@ -45,12 +46,9 @@ async def main():
                     full_log=full_log,
                     agent_dir=log_dir,
                     initial_plan=plan,
-                    challenge_client=None,
                     # auth_cookies=AUTH_COOKIES,
                     max_steps=AGENT_STEPS,
-                    max_pages=1,
-                    screenshot=True,
-                    save_snapshots=True,
+                    max_pages=len(START_URLS),
                 )
             )
             tasks.append(task)

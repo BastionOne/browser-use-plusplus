@@ -238,8 +238,6 @@ async def start_discovery_agent_from_session(
     max_steps: int = 10,
     max_page_steps: int = 2,
     streaming: bool = False,
-    screenshot: bool = False,
-    save_snapshots: bool = False,
 ):
     """Initialize SimpleAgent using the new BrowserSession-based API."""
     server_log_factory = get_or_init_log_factory(
@@ -263,8 +261,6 @@ async def start_discovery_agent_from_session(
         max_page_steps=max_page_steps,
         agent_log=agent_log,
         full_log=full_log,
-        take_screenshots=screenshot,
         agent_dir=log_dir,
-        save_snapshots=save_snapshots,
     )
     await agent.run_agent()

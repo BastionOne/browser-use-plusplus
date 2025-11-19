@@ -29,8 +29,6 @@ async def main():
                 snapshot_step=SNAPSHOT_PATH[1],
                 max_steps=AGENT_STEPS,
                 max_page_steps=AGENT_STEPS,
-                save_snapshots=True,
-                screenshot=True,
             )
 
 if __name__ == "__main__":

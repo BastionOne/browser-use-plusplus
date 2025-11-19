@@ -1,12 +1,6 @@
 {
-  "used_browser_ports": [
-    8081
-  ],
-  "used_cdp_ports": [
-    9900
-  ],
-  "browser_profiles": [
-    "C:\\Users\\jpeng\\Documents\\projects\\code\\browser-use-plusplus\\.browser_profiles\\profile_7dc8d54e19944360828a6557ff171ba8"
-  ],
+  "used_browser_ports": [],
+  "used_cdp_ports": [],
+  "browser_profiles": [],
   "locked": false
 }
