@@ -17,7 +17,7 @@ async def main():
     SCOPES = [
         "https://app.aikido.dev",
     ]
-    AGENT_STEPS = 6
+    AGENT_STEPS = 4
     
     async with BrowserContextManager(
         scopes=SCOPES,
@@ -48,7 +48,7 @@ async def main():
                     initial_plan=plan,
                     # auth_cookies=AUTH_COOKIES,
                     max_steps=AGENT_STEPS,
-                    max_pages=len(START_URLS),
+                    max_pages=1,
                 )
             )
             tasks.append(task)

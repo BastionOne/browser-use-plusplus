@@ -1,42 +1,20 @@
-import json
+import logging
 from pathlib import Path
 
 import pytest
 
-from browser_use_plusplus.common.browser_config_service import (
-    BrowserConfigService,
-    BrowserInfraConfig,
-)
-
-def _write_config(path: Path, config: BrowserInfraConfig) -> None:
-    path.write_text(json.dumps(config.model_dump(), indent=2), encoding="utf-8")
+from browser_use_plusplus.common.browser_config_service import BrowserConfigService
 
 
 @pytest.fixture()
-def available_config_path(tmp_path: Path):
-    config_path = tmp_path / "available_ports.json"
-    _write_config(config_path, BrowserInfraConfig())
-    yield config_path
-    if config_path.exists():
-        config_path.unlink()
-
-
-@pytest.fixture()
-def lock_db_path(tmp_path: Path):
+def lock_db_path(tmp_path: Path) -> Path:
     """Provide a temporary SQLite lock database path."""
     return tmp_path / "test_browser_locks.db"
 
 
-def test_allocates_existing_profile(tmp_path: Path, available_config_path: Path, lock_db_path: Path) -> None:
-    profiles_path = tmp_path / ".profiles"
+def test_returns_single_allocation_and_creates_profile(tmp_path: Path, lock_db_path: Path) -> None:
     profile_root = tmp_path / "profiles"
-
-    profiles = [str(tmp_path / "profile_a"), str(tmp_path / "profile_b")]
-    profiles_path.write_text(json.dumps(profiles, indent=2), encoding="utf-8")
-
     service = BrowserConfigService(
-        available_ports_path=available_config_path,
-        profiles_path=profiles_path,
         profile_root=profile_root,
         lock_db_path=lock_db_path,
     )
@@ -47,179 +25,48 @@ def test_allocates_existing_profile(tmp_path: Path, available_config_path: Path,
         default_cdp_port=9000,
     )
 
-    assert allocations == [(8000, 9000, profiles[0])]
-
-    service.register_infra_usage(allocations)
-    persisted = json.loads(available_config_path.read_text(encoding="utf-8"))
-    assert persisted["used_browser_ports"] == [8000]
-    assert persisted["used_cdp_ports"] == [9000]
-    assert persisted["browser_profiles"] == [profiles[0]]
-    assert not persisted["locked"]
+    expected_profile = str(profile_root / "profile_0")
+    assert allocations == [(8000, 9000, expected_profile)]
+    assert (profile_root / "profile_0").exists()
 
 
-def test_creates_profile_when_none_available(tmp_path: Path, available_config_path: Path, lock_db_path: Path) -> None:
-    profiles_path = tmp_path / ".profiles"
+def test_warns_when_requesting_multiple_allocations(tmp_path: Path, lock_db_path: Path, caplog: pytest.LogCaptureFixture) -> None:
     profile_root = tmp_path / "profiles"
-
     service = BrowserConfigService(
-        available_ports_path=available_config_path,
-        profiles_path=profiles_path,
         profile_root=profile_root,
         lock_db_path=lock_db_path,
     )
 
-    allocations = service.get_available_browser_infra(
-        n=1,
-        default_browser_port=7000,
-        default_cdp_port=7100,
-    )
-    created_profile = allocations[0][2]
-
-    assert Path(created_profile).exists()
-    saved_profiles = json.loads(profiles_path.read_text(encoding="utf-8"))
-    assert created_profile in saved_profiles
-
-
-def test_release_profiles_and_ports(tmp_path: Path, available_config_path: Path, lock_db_path: Path) -> None:
-    profiles_path = tmp_path / ".profiles"
-
-    profile = str(tmp_path / "profile")
-    config = BrowserInfraConfig(
-        used_browser_ports=[8001],
-        used_cdp_ports=[9001],
-        browser_profiles=[profile],
-        locked=False,
-    )
-    _write_config(available_config_path, config)
-    profiles_path.write_text(json.dumps([profile], indent=2), encoding="utf-8")
-
-    service = BrowserConfigService(
-        available_ports_path=available_config_path,
-        profiles_path=profiles_path,
-        lock_db_path=lock_db_path,
-    )
-
-    service.release_profiles([profile])
-    service.release_ports([8001], [9001])
-
-    persisted = json.loads(available_config_path.read_text(encoding="utf-8"))
-    assert persisted["browser_profiles"] == []
-    assert persisted["used_browser_ports"] == []
-    assert persisted["used_cdp_ports"] == []
-
-
-def test_multiple_allocations_share_available_ports_state(
-    tmp_path: Path,
-    available_config_path: Path,
-    lock_db_path: Path,
-) -> None:
-    profiles_path = tmp_path / ".profiles"
-    profile_root = tmp_path / "profiles"
-
-    profile_dirs = []
-    for idx in range(3):
-        profile_dir = tmp_path / f"profile_{idx}"
-        profile_dir.mkdir(parents=True, exist_ok=True)
-        profile_dirs.append(str(profile_dir))
-    profiles_path.write_text(json.dumps(profile_dirs, indent=2), encoding="utf-8")
-
-    service_a = BrowserConfigService(
-        available_ports_path=available_config_path,
-        profiles_path=profiles_path,
-        profile_root=profile_root,
-        lock_db_path=lock_db_path,
-    )
-    service_b = BrowserConfigService(
-        available_ports_path=available_config_path,
-        profiles_path=profiles_path,
-        profile_root=profile_root,
-        lock_db_path=lock_db_path,
-    )
-
-    first_alloc = service_a.get_available_browser_infra(
-        n=1,
-        default_browser_port=8000,
-        default_cdp_port=9000,
-    )
-    service_a.register_infra_usage(first_alloc)
-
-    state_after_first = json.loads(available_config_path.read_text(encoding="utf-8"))
-    assert state_after_first["used_browser_ports"] == [8000]
-    assert state_after_first["used_cdp_ports"] == [9000]
-    assert state_after_first["browser_profiles"] == [profile_dirs[0]]
-    assert state_after_first["locked"] is False
-
-    second_alloc = service_b.get_available_browser_infra(
-        n=2,
-        default_browser_port=8000,
-        default_cdp_port=9000,
-    )
-    
-    # With SQLite locking, the lock is automatically released after the allocation
-    # so we don't expect to see the intermediate locked state in the config file
-    service_b.register_infra_usage(second_alloc)
-    final_state = json.loads(available_config_path.read_text(encoding="utf-8"))
-    assert final_state["locked"] is False
-    assert final_state["used_browser_ports"] == [8000, 8001, 8002]
-    assert final_state["used_cdp_ports"] == [9000, 9001, 9002]
-    assert final_state["browser_profiles"] == [
-        profile_dirs[0],
-        profile_dirs[1],
-        profile_dirs[2],
-    ]
-
-
-def test_sqlite_lock_prevents_concurrent_access(
-    tmp_path: Path,
-    available_config_path: Path,
-    lock_db_path: Path,
-) -> None:
-    """Test that SQLite locking prevents race conditions between concurrent services."""
-    profiles_path = tmp_path / ".profiles"
-    profile_root = tmp_path / "profiles"
-
-    # Create multiple profiles
-    profile_dirs = []
-    for idx in range(5):
-        profile_dir = tmp_path / f"profile_{idx}"
-        profile_dir.mkdir(parents=True, exist_ok=True)
-        profile_dirs.append(str(profile_dir))
-    profiles_path.write_text(json.dumps(profile_dirs, indent=2), encoding="utf-8")
-
-    # Create multiple services that will compete for resources
-    services = []
-    for i in range(3):
-        service = BrowserConfigService(
-            available_ports_path=available_config_path,
-            profiles_path=profiles_path,
-            profile_root=profile_root,
-            lock_db_path=lock_db_path,
-        )
-        services.append(service)
-
-    # Each service tries to allocate resources
-    all_allocations = []
-    for i, service in enumerate(services):
+    with caplog.at_level(logging.WARNING):
         allocations = service.get_available_browser_infra(
-            n=1,
-            default_browser_port=8000 + i * 100,
-            default_cdp_port=9000 + i * 100,
+            n=3,
+            default_browser_port=8100,
+            default_cdp_port=9100,
         )
-        all_allocations.extend(allocations)
-        service.register_infra_usage(allocations)
 
-    # Verify no duplicate ports or profiles were allocated
-    browser_ports = [alloc[0] for alloc in all_allocations]
-    cdp_ports = [alloc[1] for alloc in all_allocations]
-    profiles = [alloc[2] for alloc in all_allocations]
+    assert len(allocations) == 1
+    assert "only a single configuration is supported" in caplog.text.lower()
 
-    assert len(set(browser_ports)) == len(browser_ports), "Duplicate browser ports allocated"
-    assert len(set(cdp_ports)) == len(cdp_ports), "Duplicate CDP ports allocated"
-    assert len(set(profiles)) == len(profiles), "Duplicate profiles allocated"
 
-    # Verify final state consistency
-    final_state = json.loads(available_config_path.read_text(encoding="utf-8"))
-    assert len(final_state["used_browser_ports"]) == 3
-    assert len(final_state["used_cdp_ports"]) == 3
-    assert len(final_state["browser_profiles"]) == 3
-    assert final_state["locked"] is False
+def test_release_methods_are_no_ops(tmp_path: Path, lock_db_path: Path) -> None:
+    profile_root = tmp_path / "profiles"
+    service = BrowserConfigService(
+        profile_root=profile_root,
+        lock_db_path=lock_db_path,
+    )
+
+    service.release_profiles(["dummy"])
+    service.release_ports([8000], [9000])
+    service.release_lock()
+
+
+def test_query_lock_status_returns_expected_structure(tmp_path: Path, lock_db_path: Path) -> None:
+    profile_root = tmp_path / "profiles"
+    service = BrowserConfigService(
+        profile_root=profile_root,
+        lock_db_path=lock_db_path,
+    )
+
+    status = service.query_lock_status()
+    assert status["lock_name"] == "browser_infra"
+    assert "is_locked" in status

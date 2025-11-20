@@ -189,7 +189,7 @@ async def start_discovery_agent(
             browser=browser_session,
             start_urls=start_urls,
             llm_config=DISCOVERY_MODEL_CONFIG["model_config"],
-            agent_sys_prompt=CUSTOM_SYSTEM_PROMPT,
+            # agent_sys_prompt=CUSTOM_SYSTEM_PROMPT,
             max_steps=max_steps,
             max_pages=max_pages,
             initial_plan=initial_plan,

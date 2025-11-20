@@ -8,7 +8,6 @@ import time
 from browser_use_plusplus.common.constants import BROWSER_USE_MODEL
 
 from browser_use_plusplus.src.dom import DOMState
-from browser_use_plusplus.src.dom_serializer import DOMTreeSerializer
 from browser_use_plusplus.src.prompts.planv4 import (
     PlanItem,
     CreatePlanNested,
@@ -29,10 +28,10 @@ from browser_use_plusplus.src.state import (
 )
 from browser_use_plusplus.src.dom_diff import get_dom_diff_str
 from browser_use_plusplus.src import utils as discovery_utils
-from browser_use.agent.service import Agent as BrowserUseAgent
+from browser_use_plusplus.src.tools import ToolsWithHistory
 
+from browser_use.agent.service import Agent as BrowserUseAgent
 from browser_use import Browser
-from browser_use.dom.views import DEFAULT_INCLUDE_ATTRIBUTES
 from browser_use.agent.views import AgentState
 from browser_use.browser.views import BrowserStateSummary, BrowserStateHistory
 from browser_use.agent.views import (
@@ -46,7 +45,6 @@ from browser_use.dom.views import EnhancedDOMTreeNode
 from browser_use.tools.registry.views import ActionModel
 from browser_use.tools.service import Tools
 from browser_use.utils import time_execution_async
-from browser_use.llm import ChatOpenAI
 from browser_use.agent.service import AgentHookFunc
 
 from browser_use_plusplus.common.utils import (
@@ -141,21 +139,17 @@ async def post_execution(agent: "DiscoveryAgent"):
     )
     new_page = await agent._curr_page_check(new_browser_state)
 
+    if new_page:
+        agent._log(f"[ACCIDENTAL_TRANSITION] Rewinding page transition and exiting step()")
+        agent._check_single_plan_complete(model_output.next_goal)
+        
+        # agent.agent_log.info(f"[plan]{agent.plan}")
+        return
+        
     await agent._check_plan_complete(
         model_output.current_state.next_goal,
         new_browser_state,
     )
-    if new_page:
-        agent._log(f"[ACCIDENTAL_TRANSITION] Rewinding page transition and exiting step()")
-        # clear last_model_output to smooth transition to next page
-        agent.state.last_model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
-        agent.state.last_model_output.evaluation_prev_goal = PAGE_TRANSITION_EVALUATION
-        # do this for record keeping reasons
-        agent.history.history[-1].model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
-        agent.history.history[-1].model_output.evaluation_prev_goal = PAGE_TRANSITION_EVALUATION
-
-        agent.agent_log.info(f"[plan]{agent.plan}")
-
     agent._log(f"[UPDATE_STATE_AND_PLAN ] Updating agent state and checking plan completeness")
     await agent._update_plan(new_browser_state)
 
@@ -188,6 +182,7 @@ class DiscoveryAgent(BrowserUseAgent):
         take_screenshots: bool = True,
         auth_cookies: Optional[List[Dict[str, Any]]] = None,
     ):
+        tools = ToolsWithHistory(agent=self)
         # Call parent Agent constructor
         super().__init__(
             browser=browser,
@@ -195,6 +190,7 @@ class DiscoveryAgent(BrowserUseAgent):
             llm=ChatModelWithLogging(
                 model=BROWSER_USE_MODEL, chat_logdir=agent_dir / "llm" / "browser_use"
             ),
+            controller=tools,
             use_vision=False,
             save_conversation_path=None,
             max_failures=3,
@@ -215,9 +211,7 @@ class DiscoveryAgent(BrowserUseAgent):
             self.llm_hub = LLMHub(llm_config, chat_logdir=llm_logdir)
         else:
             self.llm_hub = LLMHub(llm_config)
-
-        # annotation 
-        self.tools: Tools = self.tools
+ 
         self.take_screenshot = take_screenshots
         self.llm_config = llm_config
         self.agent_dir = agent_dir
@@ -380,6 +374,30 @@ class DiscoveryAgent(BrowserUseAgent):
                 self.agent_log.info(f"[COMPLETE_PLAN_ITEM]: {node.description}")
 
                 self.completed_plans.append(node)
+            else:
+                self.agent_log.info(f"PLAN_ITEM_NOT_COMPLETED")
+
+        self._update_plan_and_task(self.plan)
+    
+    def _check_single_plan_complete(self, curr_goal: str | None):
+        """Check off a single plan item"""
+        if not self.plan:
+            raise ValueError("Plan is not initialized")
+        if not curr_goal:
+            raise ValueError("Current goal is not initialized")
+
+        completed = CheckSinglePlanComplete().invoke(
+            model=self.llm_hub.get("check_single_plan_complete"),
+            prompt_args={
+                "plan": self.plan,
+                "curr_goal": curr_goal,
+            },
+        )
+        for compl in completed.plan_indices:
+            node = self.plan.get(compl)
+            if node is not None:
+                node.completed = True
+                self.agent_log.info(f"[COMPLETE_PLAN_ITEM]: {node.description}")
             else:
                 self.agent_log.info(f"PLAN_ITEM_NOT_COMPLETED")
 
@@ -659,6 +677,13 @@ class DiscoveryAgent(BrowserUseAgent):
                         break
                     self.page_step = 1  
                     self.is_transition_step = True
+
+                    # clear last_model_output to smooth transition to next page
+                    # agent.state.last_model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
+                    # agent.state.last_model_output.evaluation_prev_goal = PAGE_TRANSITION_EVALUATION
+                    # # do this for record keeping reasons
+                    # agent.history.history[-1].model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
+                    # agent.history.history[-1].model_output.evaluation_prev_goal = PAGE_TRANSITION_EVALUATION
 
                 self._log(f"Completing: [page_step: {self.page_step}, agent_step: {self.curr_step}]")
 
