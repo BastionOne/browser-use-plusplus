@@ -3,7 +3,7 @@ import contextlib
 import logging
 import threading
 from typing import Optional, Dict, Any
-from browser_use_plusplus.common.constants import BROWSER_PROXY_HOST, BROWSER_PROXY_PORT
+from common.constants import BROWSER_PROXY_HOST, BROWSER_PROXY_PORT
 
 try:
     from mitmproxy.options import Options
@@ -15,8 +15,8 @@ except ImportError as e:
         "mitmproxy is required. Install with: pip install mitmproxy"
     ) from e
 
-from browser_use_plusplus.common.http_handler import HTTPHandler
-from browser_use_plusplus.common.httplib import (
+from common.http_handler import HTTPHandler
+from common.httplib import (
     HTTPRequest,
     HTTPResponse,
     HTTPRequestData,

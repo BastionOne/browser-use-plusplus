@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict, Tuple, Set, Union, Any
-from browser_use_plusplus.common.httplib import HTTPMessage
+from common.httplib import HTTPMessage
 import inspect
 
 # TODO: this should be moved into HTTPMessage so we can use later down the line

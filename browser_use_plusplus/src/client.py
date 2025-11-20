@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from urllib.parse import urlparse
 from pydantic import BaseModel
 
-from browser_use_plusplus.common.httplib import HTTPMessage
+from common.httplib import HTTPMessage
 from browser_use_plusplus.logger import get_agent_loggers
 
 agent_log, _ = get_agent_loggers()

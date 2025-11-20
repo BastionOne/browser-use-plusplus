@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from browser_use_plusplus.common.browser_config_service import BrowserConfigService
+from common.browser_config_service import BrowserConfigService
 
 
 @pytest.fixture()

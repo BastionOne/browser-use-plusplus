@@ -11,22 +11,22 @@ from browser_use_plusplus.src.prompts.sys_prompt import CUSTOM_SYSTEM_PROMPT
 from browser_use_plusplus.src.proxy import MitmProxyHTTPHandler
 from browser_use_plusplus.src.state import AgentSnapshotList
 from browser_use_plusplus.src.prompts.planv4 import PlanItem
-from browser_use_plusplus.common.constants import BROWSER_USE_MODEL
+from common.constants import BROWSER_USE_MODEL
 
 from browser_use.agent.service import Agent as BrowserUseAgent
 from browser_use.browser import BrowserSession, BrowserProfile
 from browser_use import Browser as BrowserSession
 from browser_use.llm import ChatOpenAI
 
-from browser_use_plusplus.common.http_handler import HTTPHandler
-from browser_use_plusplus.common.constants import (
+from common.http_handler import HTTPHandler
+from common.constants import (
     DISCOVERY_MODEL_CONFIG,
     BROWSER_CDP_HOST,
     BROWSER_CDP_PORT,
     BROWSER_PROXY_HOST,
     BROWSER_PROXY_PORT
 )
-from browser_use_plusplus.common.browser_config_service import BrowserConfigService
+from common.browser_config_service import BrowserConfigService
 from browser_use_plusplus.logger import get_or_init_log_factory
 
 # TODO: take browser management out of these functions

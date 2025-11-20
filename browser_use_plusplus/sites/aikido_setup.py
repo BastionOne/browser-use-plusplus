@@ -1,12 +1,11 @@
 import asyncio
 
-from browser_use_plusplus.common.constants import SNAPSHOTS_FOLDER
+from common.constants import SNAPSHOTS_FOLDER, DISCOVERY_MODEL_CONFIG
 
 from browser_use_plusplus.sites.base import (
     BrowserContextManager,
     start_discovery_agent_from_session,
 )
-from browser_use_plusplus.common.constants import DISCOVERY_MODEL_CONFIG
 
 AGENT_MODEL_CONFIG = DISCOVERY_MODEL_CONFIG["model_config"].copy()
 SNAPSHOT_PATH = (
@@ -15,7 +14,7 @@ SNAPSHOT_PATH = (
 )
 
 async def main():
-    AGENT_STEPS = 6
+    AGENT_STEPS = 12
 
     async with BrowserContextManager(
         headless=False, 

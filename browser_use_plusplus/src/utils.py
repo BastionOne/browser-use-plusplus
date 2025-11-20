@@ -21,7 +21,7 @@ import anyio
 from pathlib import Path
 
 # project imports
-from browser_use_plusplus.common.utils import get_base_url
+from common.utils import get_base_url
 from browser_use_plusplus.src.links import parse_links_from_str
 
 class NavigateActionModel(ActionModel):

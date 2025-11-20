@@ -5,7 +5,7 @@ import asyncio
 from pathlib import Path
 import time
  
-from browser_use_plusplus.common.constants import BROWSER_USE_MODEL
+from common.constants import BROWSER_USE_MODEL
 
 from browser_use_plusplus.src.dom import DOMState
 from browser_use_plusplus.src.prompts.planv4 import (
@@ -30,6 +30,8 @@ from browser_use_plusplus.src.dom_diff import get_dom_diff_str
 from browser_use_plusplus.src import utils as discovery_utils
 from browser_use_plusplus.src.tools import ToolsWithHistory
 
+from browser_use.llm.messages import SystemMessage
+from browser_use.agent.prompts import TEMPLATE_FILE
 from browser_use.agent.service import Agent as BrowserUseAgent
 from browser_use import Browser
 from browser_use.agent.views import AgentState
@@ -47,7 +49,7 @@ from browser_use.tools.service import Tools
 from browser_use.utils import time_execution_async
 from browser_use.agent.service import AgentHookFunc
 
-from browser_use_plusplus.common.utils import (
+from common.utils import (
     extract_json,
     OrderedSet,
     num_tokens_from_string,
@@ -165,7 +167,6 @@ class DiscoveryAgent(BrowserUseAgent):
         self,
         browser: Browser,
         llm_config: Dict[str, Any],
-        agent_sys_prompt: str,
         start_urls: List[str],
         agent_log: logging.Logger,
         full_log: logging.Logger,
@@ -183,9 +184,13 @@ class DiscoveryAgent(BrowserUseAgent):
         auth_cookies: Optional[List[Dict[str, Any]]] = None,
     ):
         tools = ToolsWithHistory(agent=self)
+        with open("browser-use/browser_use/agent/system_prompt.md", "r") as f:
+            override_system_message = f.read()
+
         # Call parent Agent constructor
         super().__init__(
             browser=browser,
+            system_prompt=override_system_message,
             task=init_task or PLACEHOLDER_TASK,
             llm=ChatModelWithLogging(
                 model=BROWSER_USE_MODEL, chat_logdir=agent_dir / "llm" / "browser_use"
@@ -224,7 +229,7 @@ class DiscoveryAgent(BrowserUseAgent):
 
         self.save_snapshots = save_snapshots
         # System prompt and schema for actions
-        self.sys_prompt = agent_sys_prompt
+        self.sys_prompt = ""
         self.url_queue = OrderedSet(start_urls)
 
         # Agent steps
@@ -815,7 +820,6 @@ class DiscoveryAgent(BrowserUseAgent):
             raise ValueError("agent_dir is required when restoring from state")
         agent = cls(
             llm_config=state.llm_config,
-            agent_sys_prompt=state.sys_prompt,
             browser=browser_session,
             start_urls=state.url_queue,
             injected_agent_state=state.bu_agent_state.state,
@@ -829,6 +833,10 @@ class DiscoveryAgent(BrowserUseAgent):
             save_snapshots=save_snapshots,
             agent_dir=resolved_agent_dir,
         )
+        # need to do this to ensure that we always have updated system prompt
+        sys_prompt = open(TEMPLATE_FILE, "r").read()
+        agent._message_manager.state.history.system_message = SystemMessage(content=sys_prompt)
+
         # need to set this to skip initital page transition
         agent.is_transition_step = False
 
@@ -859,5 +867,4 @@ class DiscoveryAgent(BrowserUseAgent):
         print("navigated to: ", target_url)
 
         await agent.rerun_history(state.bu_agent_state.history)
-
         return agent
