@@ -1,6 +1,6 @@
 import json
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 import asyncio
 from pathlib import Path
 import time
@@ -182,7 +182,7 @@ class DiscoveryAgent(BrowserUseAgent):
         proxy_handler: Optional[MitmProxyHTTPHandler] = None,
         take_screenshots: bool = True,
         auth_cookies: Optional[List[Dict[str, Any]]] = None,
-    ):
+     ):
         tools = ToolsWithHistory(agent=self)
         with open("browser-use/browser_use/agent/system_prompt.md", "r") as f:
             override_system_message = f.read()
@@ -274,10 +274,10 @@ class DiscoveryAgent(BrowserUseAgent):
         # set execution mode based on init task
         self._set_execution_mode(init_task)
 
-        self.agent_log.info(f"Starting discovery agent in {self.execution_mode}:")
-        self.agent_log.info(f"Max steps: {self.max_steps}")
-        self.agent_log.info(f"Max page steps: {self.max_page_steps}")
-        self.agent_log.info(f"Start urls: {self.url_queue}")
+        self.logger.info(f"Starting discovery agent in {self.execution_mode}:")
+        self.logger.info(f"Max steps: {self.max_steps}")
+        self.logger.info(f"Max page steps: {self.max_page_steps}")
+        self.logger.info(f"Start urls: {self.url_queue}")
 
     # State update and logging 
     def _log(self, msg: str):
@@ -299,6 +299,77 @@ class DiscoveryAgent(BrowserUseAgent):
         # elif self.execution_mode == "discovery_mode":
         #     self.tools = Tools(exclude_actions=["done"])
 
+    async def pre_run(self):
+        pass
+
+    async def pre_execution(self, *useless_args):
+        if self.is_transition_step:
+            self.curr_url = self.url_queue.pop()
+            self._log(f"[PAGE_TRANSITION_STEP]: Transitioning to new URL -> {self.curr_url}")
+
+            await self.tools.navigate(
+                url=self.curr_url,
+                new_tab=False,
+                browser_session=self.browser_session,
+            )
+            await asyncio.sleep(5)
+            
+            self.pages.add_page(Page(url=self.curr_url))
+            browser_state = await self.browser_session.get_browser_state_summary(
+                include_screenshot=False,
+                include_recent_events=False,
+            )
+            self.curr_dom_str = await self._get_llm_representation(browser_state)
+            self.curr_dom_tree = browser_state.dom_tree
+
+            self.full_log.info(f"[PRE_EXECUTION_DOM]: {self.curr_dom_str}")
+
+            if not self.initial_plan:
+                self._create_new_plan()
+            else:
+                self.plan = self.initial_plan
+                self._update_plan_and_task(self.initial_plan)
+                self.initial_plan = None
+                # skip plan creation step
+                self.is_transition_step = False
+
+            self._log(f"[INITIAL_PLAN]:\n{str(self.plan)}")
+        else:
+            self._log(f"[NORMAL_STEP] No page transition")
+
+    async def post_execution(self, *useless_args):
+        model_output = self.state.last_model_output
+        if not model_output:
+            raise ValueError("Model output is not initialized")
+
+        # NOTE: need to wait here purely for UI actions to settle
+        # Ongoing HTTP requests timeouts are handled by get_browser_state_summary 
+        await asyncio.sleep(1.5)
+        new_browser_state = await self.browser_session.get_browser_state_summary(
+            include_screenshot=True,
+            include_recent_events=False,
+        )
+        new_page = await self._curr_page_check(new_browser_state)
+
+        if new_page:
+            self._log(f"[ACCIDENTAL_TRANSITION] Rewinding page transition and exiting step()")
+            self._check_single_plan_complete(model_output.next_goal)
+            
+            # self.logger.info(f"[plan]{self.plan}")
+            return
+            
+        await self._check_plan_complete(
+            model_output.current_state.next_goal,
+            new_browser_state,
+        )
+        self._log(f"[UPDATE_STATE_AND_PLAN ] Updating agent state and checking plan completeness")
+        await self._update_plan(new_browser_state)
+
+        new_dom_str = await self._get_llm_representation(new_browser_state)
+        self.curr_dom_str = new_dom_str
+        if self.screen_shot_service and new_browser_state.screenshot:
+            await self.screen_shot_service.store_screenshot(new_browser_state.screenshot, self.curr_step)
+
     @property  # type: ignore
     def logger(self) -> logging.Logger:
         if not hasattr(self, "agent_log"):
@@ -310,7 +381,7 @@ class DiscoveryAgent(BrowserUseAgent):
         # TODO_IMPORTANT: need to change this back to support regular URL checking after juice_shop 
         # > removing check page updates for now 
         did_change = url_did_change(self.curr_url, browser_state.url)
-        self.agent_log.info(f"Did page change: {did_change} from {self.curr_url} to {browser_state.url}")
+        self.logger.info(f"Did page change: {did_change} from {self.curr_url} to {browser_state.url}")
         
         if did_change:
             self._log(f"Page changed from {self.curr_url} to {browser_state.url}, going back")
@@ -318,7 +389,7 @@ class DiscoveryAgent(BrowserUseAgent):
             await asyncio.sleep(self.browser_session.browser_profile.wait_between_actions)
             res = await self.tools.go_back(browser_session=self.browser_session)
 
-            self.agent_log.info(f"[Result]: {res}")
+            self.logger.info(f"[Result]: {res}")
 
             # self.agent_context.update_agent_brain(
             #     next_goal=f"Go back to {self.curr_url}",
@@ -376,11 +447,11 @@ class DiscoveryAgent(BrowserUseAgent):
             node = self.plan.get(compl)
             if node is not None:                
                 node.completed = True
-                self.agent_log.info(f"[COMPLETE_PLAN_ITEM]: {node.description}")
+                self.logger.info(f"[COMPLETE_PLAN_ITEM]: {node.description}")
 
                 self.completed_plans.append(node)
             else:
-                self.agent_log.info(f"PLAN_ITEM_NOT_COMPLETED")
+                self.logger.info(f"PLAN_ITEM_NOT_COMPLETED")
 
         self._update_plan_and_task(self.plan)
     
@@ -402,9 +473,9 @@ class DiscoveryAgent(BrowserUseAgent):
             node = self.plan.get(compl)
             if node is not None:
                 node.completed = True
-                self.agent_log.info(f"[COMPLETE_PLAN_ITEM]: {node.description}")
+                self.logger.info(f"[COMPLETE_PLAN_ITEM]: {node.description}")
             else:
-                self.agent_log.info(f"PLAN_ITEM_NOT_COMPLETED")
+                self.logger.info(f"PLAN_ITEM_NOT_COMPLETED")
 
         self._update_plan_and_task(self.plan)
 
@@ -438,7 +509,7 @@ class DiscoveryAgent(BrowserUseAgent):
             },
             # log_this_prompt=self.full_log,
         )
-        self.agent_log.info(f"[UPDATEPLAN] RAW: {res}")
+        self.logger.info(f"[UPDATEPLAN] RAW: {res}")
         # very stoopid
         if len(res.plan_items) > 0:
             for item in res.plan_items:
@@ -483,7 +554,7 @@ class DiscoveryAgent(BrowserUseAgent):
                     return dom_str
             else:
                 if attempt > 1:
-                    self.agent_log.info(f"Successfully got DOM representation on attempt {attempt}")
+                    self.logger.info(f"Successfully got DOM representation on attempt {attempt}")
                 return dom_str
         
         return dom_str
@@ -511,7 +582,7 @@ class DiscoveryAgent(BrowserUseAgent):
                         self.page_step,
                     )
                 if self.server_client:
-                    self.agent_log.info(f"Uploading page data")
+                    self.logger.info(f"Uploading page data")
                     page_skip = await self.server_client.update_page_data(
                         self.curr_step,
                         self.max_steps,
@@ -589,6 +660,11 @@ class DiscoveryAgent(BrowserUseAgent):
             except Exception as e:
                 raise e
 
+            self.logger.info("Starting agent prerun ...")
+            skip_rest = await self.pre_run()
+            if skip_rest:
+                return
+
             self.logger.debug(f'🔄 Starting main execution loop with max {self.max_steps} steps...')
             while self.curr_step <= self.max_steps:
                 self._log(f"==================== Starting step {self.curr_step} ====================")
@@ -615,9 +691,6 @@ class DiscoveryAgent(BrowserUseAgent):
 
                 # needed because browser-use start from 0-based indexing
                 step_info = AgentStepInfo(step_number=self.curr_step - 1, max_steps=self.max_steps)
-                on_step_start = cast(AgentHookFunc, pre_execution) if self.execution_mode == "discovery_mode" else None
-                on_step_end = cast(AgentHookFunc, post_execution) if self.execution_mode == "discovery_mode" else None
-
                 # TODO: integrate click elements
                 # await self.tools.navigate(
                 #     url=self.url_queue.pop(),
@@ -649,8 +722,8 @@ class DiscoveryAgent(BrowserUseAgent):
                     self.curr_step - 1, 
                     self.max_steps, 
                     step_info, 
-                    on_step_start=on_step_start, 
-                    on_step_end=on_step_end
+                    on_step_start=self.pre_execution, 
+                    on_step_end=self.post_execution
                 )
                 if self.save_snapshots:
                     self.logger.info(f"Saving snapshot for step {self.curr_step}")
@@ -676,19 +749,18 @@ class DiscoveryAgent(BrowserUseAgent):
                 ):
                     # TODO: somewhat special case here because BU agent will exit at step - 1, so if we dont set break
                     # here, we will execute another step after a page transition
-                    self.agent_log.info(f"[TRANSITION_STEP] Transitioning to new page cuz page_step > max_page_steps: {self.page_step} > {self.max_page_steps}")
-                    self.agent_log.info(f"[TRANSITION_STEP] Transitioning to new page cuz is_done: {is_done}")
+                    self.logger.info(f"[TRANSITION_STEP] Transitioning to new page cuz page_step > max_page_steps: {self.page_step} > {self.max_page_steps}")
+                    self.logger.info(f"[TRANSITION_STEP] Transitioning to new page cuz is_done: {is_done}")
                     if self.max_pages == 1:
                         break
                     self.page_step = 1  
                     self.is_transition_step = True
 
                     # clear last_model_output to smooth transition to next page
-                    # agent.state.last_model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
-                    # agent.state.last_model_output.evaluation_prev_goal = PAGE_TRANSITION_EVALUATION
-                    # # do this for record keeping reasons
-                    # agent.history.history[-1].model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
-                    # agent.history.history[-1].model_output.evaluation_prev_goal = PAGE_TRANSITION_EVALUATION
+                    self.state.last_model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
+                    self.state.last_model_output.evaluation_prev_goal = PAGE_TRANSITION_EVALUATION
+                    self.history.history[-1].model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
+                    self.history.history[-1].model_output.evaluation_prev_goal = PAGE_TRANSITION_EVALUATION
 
                 self._log(f"Completing: [page_step: {self.page_step}, agent_step: {self.curr_step}]")
 

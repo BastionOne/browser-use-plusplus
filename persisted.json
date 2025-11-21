@@ -1,0 +1,537 @@
+[
+  {
+    "name": "Main Navigation Bar",
+    "parent_node": {
+      "node_id": 765,
+      "backend_node_id": 1526,
+      "frame_id": null,
+      "node_type": 1,
+      "node_value": "",
+      "node_name": "DIV",
+      "attributes": {
+        "class": "dropdown w-full"
+      },
+      "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[2]/div/div",
+      "element_hash": 44473096339474806,
+      "bounds": {
+        "x": 16.0,
+        "y": 82.796875,
+        "width": 232.0,
+        "height": 38.0
+      },
+      "children_text": "Demo VgOcgPgdpi"
+    },
+    "child_nodes": [
+      {
+        "node_id": 779,
+        "backend_node_id": 1548,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/queue",
+          "class": "w-full flex align-center nav-hover mt-8px"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[1]/section[1]/div/a",
+        "element_hash": 800606623762260798,
+        "bounds": {
+          "x": 16.0,
+          "y": 136.796875,
+          "width": 232.0,
+          "height": 31.1875
+        },
+        "children_text": "Feed"
+      },
+      {
+        "node_id": 785,
+        "backend_node_id": 1558,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/issues/snoozed",
+          "class": "nav-item nav-item--normal nav-hover leading-16px flex align-center justify-between w-full"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[1]/section[2]/div/a[1]",
+        "element_hash": 2190885289087954487,
+        "bounds": {
+          "x": 16.0,
+          "y": 171.984375,
+          "width": 232.0,
+          "height": 28.0
+        },
+        "children_text": "Snoozed"
+      },
+      {
+        "node_id": 789,
+        "backend_node_id": 1562,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/issues/ignored",
+          "class": "nav-item nav-item--normal nav-hover leading-16px flex align-center justify-between w-full"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[1]/section[2]/div/a[2]",
+        "element_hash": 61311295471990936,
+        "bounds": {
+          "x": 16.0,
+          "y": 199.984375,
+          "width": 232.0,
+          "height": 28.0
+        },
+        "children_text": "Ignored"
+      },
+      {
+        "node_id": 793,
+        "backend_node_id": 1566,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/issues/closed",
+          "class": "nav-item nav-item--normal nav-hover leading-16px flex align-center justify-between w-full"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[1]/section[2]/div/a[3]",
+        "element_hash": 1028363726064705927,
+        "bounds": {
+          "x": 16.0,
+          "y": 227.984375,
+          "width": 232.0,
+          "height": 28.0
+        },
+        "children_text": "Solved"
+      },
+      {
+        "node_id": 800,
+        "backend_node_id": 1574,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/issues/fix/sast",
+          "class": "w-full flex align-center nav-hover"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[2]/section/div/a",
+        "element_hash": 5688124528376031268,
+        "bounds": {
+          "x": 16.0,
+          "y": 271.984375,
+          "width": 232.0,
+          "height": 31.1875
+        },
+        "children_text": "AutoFix"
+      },
+      {
+        "node_id": 809,
+        "backend_node_id": 16,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/repositories",
+          "class": "nav-hover w-full flex align-center"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[3]/div[1]/div/a",
+        "element_hash": 2076216616408472722,
+        "bounds": {
+          "x": 16.0,
+          "y": 336.171875,
+          "width": 232.0,
+          "height": 30.0
+        },
+        "children_text": "Repositories\n1"
+      },
+      {
+        "node_id": 819,
+        "backend_node_id": 1596,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/containers",
+          "class": "nav-hover w-full flex align-center"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[3]/div[2]/a",
+        "element_hash": 451941117226687722,
+        "bounds": {
+          "x": 16.0,
+          "y": 370.171875,
+          "width": 232.0,
+          "height": 30.0
+        },
+        "children_text": "Containers\n1"
+      },
+      {
+        "node_id": 828,
+        "backend_node_id": 1608,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/clouds",
+          "class": "nav-hover w-full flex align-center"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[3]/div[3]/a",
+        "element_hash": 88683324213534878,
+        "bounds": {
+          "x": 16.0,
+          "y": 404.171875,
+          "width": 232.0,
+          "height": 30.0
+        },
+        "children_text": "Clouds\n1"
+      },
+      {
+        "node_id": 838,
+        "backend_node_id": 1621,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/virtual-machines",
+          "class": "nav-hover w-full flex align-center"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[3]/div[4]/a",
+        "element_hash": 2235115186611712109,
+        "bounds": {
+          "x": 16.0,
+          "y": 438.171875,
+          "width": 232.0,
+          "height": 30.0
+        },
+        "children_text": "Virtual Machines\n1"
+      },
+      {
+        "node_id": 847,
+        "backend_node_id": 1632,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/domains",
+          "class": "nav-hover w-full flex align-center"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[3]/div[5]/a",
+        "element_hash": 417863398323899004,
+        "bounds": {
+          "x": 16.0,
+          "y": 472.171875,
+          "width": 232.0,
+          "height": 30.0
+        },
+        "children_text": "Domains & APIs\n1"
+      },
+      {
+        "node_id": 856,
+        "backend_node_id": 1643,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/runtime/services",
+          "class": "nav-hover w-full flex align-center"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[3]/div[6]/a",
+        "element_hash": 546849093744357353,
+        "bounds": {
+          "x": 16.0,
+          "y": 506.171875,
+          "width": 232.0,
+          "height": 30.0
+        },
+        "children_text": "Zen Firewall\n1"
+      },
+      {
+        "node_id": 867,
+        "backend_node_id": 1656,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/ai-pentests/projects",
+          "class": "nav-hover w-full flex align-center"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[3]/div[7]/a",
+        "element_hash": 1675709118603679282,
+        "bounds": {
+          "x": 16.0,
+          "y": 577.171875,
+          "width": 232.0,
+          "height": 30.0
+        },
+        "children_text": "Pentests"
+      },
+      {
+        "node_id": 872,
+        "backend_node_id": 1663,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/settings/integrations",
+          "class": "nav-hover w-full flex align-center"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[3]/div[8]/a",
+        "element_hash": 514588092007070031,
+        "bounds": {
+          "x": 16.0,
+          "y": 611.171875,
+          "width": 232.0,
+          "height": 30.0
+        },
+        "children_text": "Integrations"
+      },
+      {
+        "node_id": 877,
+        "backend_node_id": 1670,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/reports",
+          "class": "nav-hover w-full flex align-center"
+        },
+        "x_path": "html/body/div[1]/div/div/div[1]/div[1]/div[3]/div[3]/div[9]/a",
+        "element_hash": 8311643532431640362,
+        "bounds": {
+          "x": 16.0,
+          "y": 645.171875,
+          "width": 232.0,
+          "height": 30.0
+        },
+        "children_text": "Reports"
+      }
+    ]
+  },
+  {
+    "name": "Settings Side Menu",
+    "parent_node": {
+      "node_id": 972,
+      "backend_node_id": 1791,
+      "frame_id": null,
+      "node_type": 1,
+      "node_value": "",
+      "node_name": "A",
+      "attributes": {
+        "href": "/settings/account",
+        "class": "tab text-14px--important"
+      },
+      "x_path": "html/body/div[1]/div/div/div[3]/div[1]/div[2]/div[1]/a[1]",
+      "element_hash": 360377200976171699,
+      "bounds": {
+        "x": 304.0,
+        "y": 172.0,
+        "width": 76.0625,
+        "height": 56.0
+      },
+      "children_text": "General"
+    },
+    "child_nodes": [
+      {
+        "node_id": 972,
+        "backend_node_id": 1791,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/settings/account",
+          "class": "tab text-14px--important"
+        },
+        "x_path": "html/body/div[1]/div/div/div[3]/div[1]/div[2]/div[1]/a[1]",
+        "element_hash": 360377200976171699,
+        "bounds": {
+          "x": 304.0,
+          "y": 172.0,
+          "width": 76.0625,
+          "height": 56.0
+        },
+        "children_text": "General"
+      },
+      {
+        "node_id": 974,
+        "backend_node_id": 1793,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/settings/users",
+          "class": "tab text-14px--important"
+        },
+        "x_path": "html/body/div[1]/div/div/div[3]/div[1]/div[2]/div[1]/a[2]",
+        "element_hash": 6175767826427500508,
+        "bounds": {
+          "x": 404.0625,
+          "y": 172.0,
+          "width": 62.9375,
+          "height": 56.0
+        },
+        "children_text": "Users"
+      },
+      {
+        "node_id": 976,
+        "backend_node_id": 1795,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/settings/teams",
+          "class": "tab text-14px--important"
+        },
+        "x_path": "html/body/div[1]/div/div/div[3]/div[1]/div[2]/div[1]/a[3]",
+        "element_hash": 286241379679206042,
+        "bounds": {
+          "x": 491.0,
+          "y": 172.0,
+          "width": 68.078125,
+          "height": 56.0
+        },
+        "children_text": "Teams"
+      },
+      {
+        "node_id": 978,
+        "backend_node_id": 1797,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "aria-current": "page",
+          "href": "/settings/integrations/repositories",
+          "class": "router-link-active router-link-exact-active tab active text-14px--important"
+        },
+        "x_path": "html/body/div[1]/div/div/div[3]/div[1]/div[2]/div[1]/a[4]",
+        "element_hash": 5850108579168719941,
+        "bounds": {
+          "x": 583.078125,
+          "y": 172.0,
+          "width": 107.375,
+          "height": 56.0
+        },
+        "children_text": "Repositories"
+      },
+      {
+        "node_id": 980,
+        "backend_node_id": 1799,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/settings/integrations/clouds",
+          "class": "tab text-14px--important"
+        },
+        "x_path": "html/body/div[1]/div/div/div[3]/div[1]/div[2]/div[1]/a[5]",
+        "element_hash": 43189454555188430,
+        "bounds": {
+          "x": 714.453125,
+          "y": 172.0,
+          "width": 70.8125,
+          "height": 56.0
+        },
+        "children_text": "Clouds"
+      },
+      {
+        "node_id": 982,
+        "backend_node_id": 1801,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/settings/container-image-registry",
+          "class": "tab text-14px--important"
+        },
+        "x_path": "html/body/div[1]/div/div/div[3]/div[1]/div[2]/div[1]/a[6]",
+        "element_hash": 8808255643756169616,
+        "bounds": {
+          "x": 809.265625,
+          "y": 172.0,
+          "width": 97.21875,
+          "height": 56.0
+        },
+        "children_text": "Containers"
+      },
+      {
+        "node_id": 984,
+        "backend_node_id": 1803,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/settings/domains",
+          "class": "tab text-14px--important"
+        },
+        "x_path": "html/body/div[1]/div/div/div[3]/div[1]/div[2]/div[1]/a[7]",
+        "element_hash": 1625431332357238705,
+        "bounds": {
+          "x": 930.484375,
+          "y": 172.0,
+          "width": 128.78125,
+          "height": 56.0
+        },
+        "children_text": "Domains & APIs"
+      },
+      {
+        "node_id": 986,
+        "backend_node_id": 1805,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/settings/integrations",
+          "class": "tab text-14px--important"
+        },
+        "x_path": "html/body/div[1]/div/div/div[3]/div[1]/div[2]/div[1]/a[8]",
+        "element_hash": 9059466068557047483,
+        "bounds": {
+          "x": 1083.265625,
+          "y": 172.0,
+          "width": 104.390625,
+          "height": 56.0
+        },
+        "children_text": "Integrations"
+      },
+      {
+        "node_id": 988,
+        "backend_node_id": 1807,
+        "frame_id": null,
+        "node_type": 1,
+        "node_value": "",
+        "node_name": "A",
+        "attributes": {
+          "href": "/settings/sla",
+          "class": "tab text-14px--important"
+        },
+        "x_path": "html/body/div[1]/div/div/div[3]/div[1]/div[2]/div[1]/a[9]",
+        "element_hash": 649368821856918648,
+        "bounds": {
+          "x": 1211.65625,
+          "y": 172.0,
+          "width": 51.21875,
+          "height": 56.0
+        },
+        "children_text": "SLA"
+      }
+    ]
+  }
+]
