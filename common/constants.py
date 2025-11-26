@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+TEMPLATE_FILE = Path("browser-use/browser_use/agent/system_prompt.md")
+
 # discovery agent 
 MAX_DISCOVERY_AGENT_STEPS = 6
 MAX_DISCOVERY_PAGE_STEPS = 15

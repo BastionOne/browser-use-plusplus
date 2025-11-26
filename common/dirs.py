@@ -4,4 +4,4 @@ from pathlib import Path
 
 EXPERIMENT_ROOT = Path(".experiments")
 WORKTREE_ROOT = EXPERIMENT_ROOT / "worktrees"
-GIT_ROOT = Path("browser_use_plusplus")
+GIT_ROOT = Path("bupp")

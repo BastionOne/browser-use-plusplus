@@ -9,7 +9,6 @@
  readme = "README.md"
  requires-python = ">=3.10"
  dependencies = [
-     "git",
      "fastapi>=0.103.1",
      "uvicorn>=0.23.2",
      "sqlmodel>=0.0.8",
@@ -18,7 +17,7 @@
      "httpx>=0.24.1",
      "pytest>=7.4.0",
      "pytest-asyncio>=0.21.1",
-     "instructor==1.7.3",
+     "instructor",
      "mitmproxy==11.0.2",
      "tiktoken",
      "playwright",
@@ -30,4 +29,4 @@
  ]
 
 [tool.setuptools]
-packages = ["browser_use_plusplus"]
+packages = ["bupp"]

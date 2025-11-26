@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSRF Lab - Stock Check Shop</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .lab-description {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+        }
+
+        .lab-description h3 {
+            color: #856404;
+            margin-bottom: 8px;
+        }
+
+        .lab-description p {
+            color: #856404;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .products {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .product-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .price {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+            width: 100%;
+        }
+
+        .button:hover {
+            background: #5568d3;
+        }
+
+        .stock-info {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .stock-info.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .stock-info.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .hint {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+        }
+
+        .hint h4 {
+            color: #0c5460;
+            margin-bottom: 8px;
+        }
+
+        .hint ol {
+            color: #0c5460;
+            padding-left: 20px;
+            line-height: 1.8;
+        }
+
+        .hint code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛍️ SSRF Vulnerability Lab</h1>
+            <p style="color: #666; margin-top: 10px;">Practice SSRF exploitation with anti-SSRF defense bypass</p>
+
+            <div class="lab-description">
+                <h3>🎯 Lab Objective</h3>
+                <p>This lab has a stock check feature which fetches data from an internal system. To solve the lab,
+                    change the stock check URL to access the admin interface at <strong>http://localhost/admin</strong>
+                    and delete the user <strong>carlos</strong>.</p>
+                <p>The developer has deployed two weak anti-SSRF defenses that you will need to bypass.</p>
+            </div>
+
+            <div class="hint">
+                <h4>💡 Hints for Solving</h4>
+                <ol>
+                    <li>Visit a product and click "Check Stock", then intercept the request with Burp Suite or browser
+                        DevTools</li>
+                    <li>Try changing the <code>stockApi</code> parameter to <code>http://127.0.0.1/</code> and observe
+                        that it's blocked</li>
+                    <li>Bypass the first defense by using the short-form IP: <code>http://127.1/</code></li>
+                    <li>Try accessing <code>http://127.1/admin</code> - observe it's blocked again</li>
+                    <li>Bypass the second defense by double-URL encoding the "a" in "admin": change it to
+                        <code>http://127.1/%2561dmin</code>
+                    </li>
+                    <li>Once you can access the admin panel, find the delete link for carlos and trigger it via SSRF
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="products" id="products-container">
+            <!-- Products will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        // Load products on page load
+        async function loadProducts() {
+            try {
+                const response = await fetch('/products');
+                const data = await response.json();
+                const container = document.getElementById('products-container');
+
+                Object.entries(data.products).forEach(([id, product]) => {
+                    const card = document.createElement('div');
+                    card.className = 'product-card';
+                    card.innerHTML = `
+                        <h3>${product.name}</h3>
+                        <div class="price">$${product.price}</div>
+                        <button class="button" onclick="checkStock(${id}, '${product.stock_url}')">
+                            Check Stock
+                        </button>
+                        <div id="stock-${id}" class="stock-info" style="display: none;"></div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Failed to load products:', error);
+            }
+        }
+
+        // Check stock function - vulnerable to SSRF
+        async function checkStock(productId, stockUrl) {
+            const stockDiv = document.getElementById(`stock-${productId}`);
+            stockDiv.style.display = 'block';
+            stockDiv.className = 'stock-info';
+            stockDiv.innerHTML = 'Checking stock...';
+
+            try {
+                const response = await fetch('/check-stock', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        stockApi: stockUrl
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    stockDiv.className = 'stock-info success';
+                    stockDiv.innerHTML = `<strong>Stock Info:</strong><br><pre>${JSON.stringify(JSON.parse(data.stock_info), null, 2)}</pre>`;
+                } else {
+                    stockDiv.className = 'stock-info error';
+                    stockDiv.innerHTML = `<strong>Error:</strong> ${data.detail}`;
+                }
+            } catch (error) {
+                stockDiv.className = 'stock-info error';
+                stockDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+            }
+        }
+
+        // Load products when page loads
+        loadProducts();
+    </script>
+</body>
+
+</html>

@@ -6,8 +6,8 @@ from typing import List, Optional, Dict, Any, Union
 from pydantic import BaseModel, Field, model_validator
 from playwright.sync_api import Request, Response
 
-from browser_use_plusplus.src.llm import RequestPart
-from browser_use_plusplus.logger import PROXY_LOGGER_NAME
+from bupp.src.llm import RequestPart
+from bupp.logger import PROXY_LOGGER_NAME
 from logging import getLogger
 
 proxy_log = getLogger(PROXY_LOGGER_NAME)

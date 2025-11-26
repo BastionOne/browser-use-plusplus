@@ -1,5 +1,5 @@
 from nt import get_inheritable
-from browser_use_plusplus.logger import get_or_init_log_factory
+from bupp.logger import get_or_init_log_factory
 
 
 if __name__ == "__main__":

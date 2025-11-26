@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  # Main web application - exposed to external network and connected to internal network
+  web-app:
+    build: ./web-app
+    container_name: ssrf-vulnerable-app
+    ports:
+      - "8000:8000"
+    networks:
+      - external-net
+      - internal-net
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  # Internal stock service - only accessible from internal network
+  stock-service:
+    build: ./stock-service
+    container_name: stock-service
+    networks:
+      - internal-net
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    # Not exposed to host; only reachable from web-app via SSRF
+
+networks:
+  # External network - accessible from host
+  external-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
+  # Internal network - isolated, no external access
+  internal-net:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 192.168.100.0/24

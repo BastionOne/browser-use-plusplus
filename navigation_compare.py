@@ -13,14 +13,14 @@ from common.constants import DISCOVERY_MODEL_CONFIG
 
 from browser_use.dom.views import DOMSelectorMap, DOMInteractedElement
 from browser_use.llm.base import BaseChatModel
-from browser_use_plusplus.logger import get_or_init_log_factory
-from browser_use_plusplus.src.links import parse_links_from_str
-from browser_use_plusplus.sites.base import BrowserContextManager
-from browser_use_plusplus.src.llm_provider import LMP
+from bupp.logger import get_or_init_log_factory
+from bupp.src.links import parse_links_from_str
+from bupp.sites.base import BrowserContextManager
+from bupp.src.llm_provider import LMP
 
 from navigation import PersistedNavElement
 
-from browser_use_plusplus.src.llm_models import LLMHub
+from bupp.src.llm_models import LLMHub
 
 logger = logging.getLogger(__name__)
 

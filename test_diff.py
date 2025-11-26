@@ -1,8 +1,8 @@
 from typing import Tuple
 import json
 
-from browser_use_plusplus.src.state import AgentSnapshot, AgentSnapshotList
-from browser_use_plusplus.src.dom_diff import get_dom_diff_str
+from bupp.src.state import AgentSnapshot, AgentSnapshotList
+from bupp.src.dom_diff import get_dom_diff_str
 
 PREV_DOMS = []
 

@@ -128,7 +128,7 @@ Activated
 
 if __name__ == "__main__":
     import asyncio
-    from browser_use_plusplus.src.llm_models import openai_41
+    from bupp.src.llm_models import openai_41
         
     async def run_find_persistent_nav_elements():
         """Single iteration of FindPersistentNavElements"""
