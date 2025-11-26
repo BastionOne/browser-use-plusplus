@@ -1,0 +1,7 @@
+{
+    "start_urls": [
+        "https://ginandjuice.shop/"
+    ],
+    "max_steps": 20,
+    "max_pages": 4
+}

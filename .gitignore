@@ -209,3 +209,4 @@ traces/
 .min_agent
 .browser_profiles
 .navigation_agent
+.bupp/agent_results/

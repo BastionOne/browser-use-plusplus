@@ -1,11 +1,13 @@
-import json
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
-import asyncio
 from pathlib import Path
+from enum import Enum
+import json
+import asyncio
 import time
- 
-from common.constants import BROWSER_USE_MODEL, TEMPLATE_FILE
+import requests
+
+from common.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
 
 from bupp.src.dom import DOMState
 from bupp.src.prompts.planv4 import (
@@ -26,7 +28,7 @@ from bupp.src.state import (
     BrowserUseAgentState,
 )
 from bupp.src.dom_diff import get_dom_diff_str
-from bupp.src import utils as discovery_utils
+from bupp.src.utils import ScreenshotService, find_links_on_page
 from bupp.src.tools import ToolsWithHistory
 
 from browser_use.llm.messages import SystemMessage
@@ -54,109 +56,18 @@ from common.utils import (
 )
 import logging
 
-# HTTP capture hooks from old architecture are not used with the new BrowserSession
-NO_OP_TASK = "Do nothing unless necessary. If a popup appears, dismiss it. Then emit done."
+class PageStatus(str, Enum):
+    NORMAL = "normal"
+    LOGIN_PAGE = "login_page"
+    BAD = "bad"
 
+# TODO: do we really need this
 INCLUDE_ATTRIBUTES: List[str] = (
     ["title", "type", "name", "role", "aria-label", "placeholder", "value", "alt"]
 )
-EMPTY_MSG = {"role": "user", "content": ""}
-
-class LLMNextActionsError(Exception):
-    def __init__(self, message: str, errors: list[dict[str, str]]):
-        super().__init__(message)
-        self.errors = errors
-
-# Wrapper classes for action and result to introduce a layer of indirection
-# for when we potentially want to switch to stagehand
-class AgentAction(BaseModel):
-    action: ActionModel
-
-    def __str__(self) -> str:
-        return self.action.model_dump_json(exclude_unset=True)
-
-class AgentResult(BaseModel):
-    result: ActionResult
-
-    @property
-    def error(self) -> str:
-        if self.result.error:
-            return self.result.error.split('\n')[-1]
-        return ""
-
-    def __str__(self) -> str:
-        return self.result.model_dump_json(exclude_unset=True)
-
-async def pre_execution(agent: "DiscoveryAgent"):
-    if agent.is_transition_step:
-        agent.curr_url = agent.url_queue.pop()
-        agent._log(f"[PAGE_TRANSITION_STEP]: Transitioning to new URL -> {agent.curr_url}")
-
-        await agent.tools.navigate(
-            url=agent.curr_url,
-            new_tab=False,
-            browser_session=agent.browser_session,
-        )
-        await asyncio.sleep(5)
-        
-        agent.pages.add_page(Page(url=agent.curr_url))
-        browser_state = await agent.browser_session.get_browser_state_summary(
-            include_screenshot=False,
-            include_recent_events=False,
-        )
-        agent.curr_dom_str = await agent._get_llm_representation(browser_state)
-        agent.curr_dom_tree = browser_state.dom_tree
-
-        agent.full_log.info(f"[PRE_EXECUTION_DOM]: {agent.curr_dom_str}")
-
-        if not agent.initial_plan:
-            agent._create_new_plan()
-        else:
-            agent.plan = agent.initial_plan
-            agent._update_plan_and_task(agent.initial_plan)
-            agent.initial_plan = None
-            # skip plan creation step
-            agent.is_transition_step = False
-
-        agent._log(f"[INITIAL_PLAN]:\n{str(agent.plan)}")
-    else:
-        agent._log(f"[NORMAL_STEP] No page transition")
 
 PAGE_TRANSITION_NEXT_GOAL = "The agent just transitioned to a new page, waiting for create_plan() to come up with a new plan"
 PAGE_TRANSITION_EVALUATION = "The agent just transitioned to a new page, so no prev actions to evaluate"
-
-async def post_execution(agent: "DiscoveryAgent"):
-    model_output = agent.state.last_model_output
-    if not model_output:
-        raise ValueError("Model output is not initialized")
-
-    # NOTE: need to wait here purely for UI actions to settle
-    # Ongoing HTTP requests timeouts are handled by get_browser_state_summary 
-    await asyncio.sleep(1.5)
-    new_browser_state = await agent.browser_session.get_browser_state_summary(
-        include_screenshot=True,
-        include_recent_events=False,
-    )
-    new_page = await agent._curr_page_check(new_browser_state)
-
-    if new_page:
-        agent._log(f"[ACCIDENTAL_TRANSITION] Rewinding page transition and exiting step()")
-        agent._check_single_plan_complete(model_output.next_goal)
-        
-        # agent.agent_log.info(f"[plan]{agent.plan}")
-        return
-        
-    await agent._check_plan_complete(
-        model_output.current_state.next_goal,
-        new_browser_state,
-    )
-    agent._log(f"[UPDATE_STATE_AND_PLAN ] Updating agent state and checking plan completeness")
-    await agent._update_plan(new_browser_state)
-
-    new_dom_str = await agent._get_llm_representation(new_browser_state)
-    agent.curr_dom_str = new_dom_str
-    if agent.screen_shot_service and new_browser_state.screenshot:
-        await agent.screen_shot_service.store_screenshot(new_browser_state.screenshot, agent.curr_step)
 
 PLACEHOLDER_TASK = "<PLACEHOLDER_TASK>"
 
@@ -260,7 +171,7 @@ class DiscoveryAgent(BrowserUseAgent):
 
         if self.take_screenshot and self.agent_dir:
             # NOTE: purposely named to *not* override BrowserAgent's screenshot_service so we can control screenshot execution
-            self.screen_shot_service = discovery_utils.ScreenshotService(self.agent_dir) if self.agent_dir else None
+            self.screen_shot_service = ScreenshotService(self.agent_dir) if self.agent_dir else None
         # always want to be taking screenshots ...
         # else:
         #     self.screen_shot_service = None
@@ -297,6 +208,21 @@ class DiscoveryAgent(BrowserUseAgent):
         # elif self.execution_mode == "discovery_mode":
         #     self.tools = Tools(exclude_actions=["done"])
 
+    def check_url(self, url: str) -> bool:
+        """Check if a single URL returns HTTP 200.
+
+        - url: the URL to check
+        
+        Returns True if URL is accessible (HTTP 200), False otherwise.
+        """
+        try:
+            response = requests.get(url, timeout=CHECK_URL_TIMEOUT)
+            if response.status_code != 200:
+                return PageStatus.BAD
+            return PageStatus.NORMAL
+        except Exception:
+            return PageStatus.BAD
+
     async def pre_run(self):
         pass
 
@@ -314,7 +240,7 @@ class DiscoveryAgent(BrowserUseAgent):
             
             self.pages.add_page(Page(url=self.curr_url))
             browser_state = await self.browser_session.get_browser_state_summary(
-                include_screenshot=False,
+                include_screenshot=False, 
                 include_recent_events=False,
             )
             self.curr_dom_str = await self._get_llm_representation(browser_state)
@@ -409,7 +335,7 @@ class DiscoveryAgent(BrowserUseAgent):
             log_this_prompt=self.full_log
         )
         self._update_plan_and_task(new_plan)
-        discovery_utils.find_links_on_page(self.curr_dom_tree, self.curr_url, self.url_queue, self.agent_log)
+        find_links_on_page(self.curr_dom_tree, self.curr_url, self.url_queue, self.agent_log)
 
         # needed so that the next eval step doesnt fail
         # self.agent_context.update_event(
@@ -518,7 +444,7 @@ class DiscoveryAgent(BrowserUseAgent):
         # add items to plan
         new_plan = res.apply(self.plan)
         self._update_plan_and_task(new_plan)
-        discovery_utils.find_links_on_page(self.curr_dom_tree, self.curr_url, self.url_queue, self.agent_log)
+        find_links_on_page(self.curr_dom_tree, self.curr_url, self.url_queue, self.agent_log)
 
     def _update_plan_and_task(self, plan: PlanItem):
         self.plan = plan
@@ -715,6 +641,18 @@ class DiscoveryAgent(BrowserUseAgent):
                 #     },
                 # )
 
+                # confirm that next the URL is accessible
+                if len(self.url_queue) < 1:
+                    self.logger.info(f"No URLs left in queue, exiting")
+                    return
+                
+                next_url = self.url_queue.peek(0)
+                url_status = self.check_url(next_url)
+                if url_status != PageStatus.NORMAL:
+                    self.logger.info(f"Next URL {next_url} is not accessible, removing from queue")
+                    self.url_queue.remove(next_url)
+                    continue
+
                 is_done = await self._execute_step(
                     # needed because browser-use start from 0-based indexing
                     self.curr_step - 1, 
@@ -756,9 +694,9 @@ class DiscoveryAgent(BrowserUseAgent):
 
                     # clear last_model_output to smooth transition to next page
                     self.state.last_model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
-                    self.state.last_model_output.evaluation_prev_goal = PAGE_TRANSITION_EVALUATION
+                    self.state.last_model_output.evaluation_previous_goal = PAGE_TRANSITION_EVALUATION
                     self.history.history[-1].model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
-                    self.history.history[-1].model_output.evaluation_prev_goal = PAGE_TRANSITION_EVALUATION
+                    self.history.history[-1].model_output.evaluation_previous_goal = PAGE_TRANSITION_EVALUATION
 
                 self._log(f"Completing: [page_step: {self.page_step}, agent_step: {self.curr_step}]")
 

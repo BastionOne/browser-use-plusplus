@@ -87,7 +87,7 @@ class OrderedSet:
         """
         self._items[item] = None
 
-    def peak(self, index: int) -> Any:
+    def peek(self, index: int) -> Any:
         """
         Return the item at the given index without removing it.
         

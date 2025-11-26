@@ -6,6 +6,7 @@ import asyncio
 from urllib.parse import urljoin, urlparse
 
 import requests
+from enum import Enum
 
 # browser-use imports
 from browser_use.browser import BrowserSession
@@ -27,34 +28,6 @@ from bupp.src.links import parse_links_from_str
 
 class NavigateActionModel(ActionModel):
     navigate: NavigateAction | None = None
-
-def check_urls(url_queue: Any, logger: Any) -> None:
-    """Remove URLs from the queue that do not return HTTP 200.
-
-    - url_queue: a set-like collection supporting iteration and .remove()
-    - logger: object with .info/.warning methods
-    """
-    urls_to_remove: List[tuple[str, int]] = []
-    for url in list(url_queue):
-        try:
-            response = requests.get(url, timeout=CHECK_URL_TIMEOUT)
-            if response.status_code != 200:
-                logger.warning(f"GET {url} returned {response.status_code}, removing from queue")
-                urls_to_remove.append((url, response.status_code))
-        except Exception:
-            logger.warning(f"GET {url} failed, removing from queue")
-            urls_to_remove.append((url, -1))
-
-    for url, status_code in urls_to_remove:
-        logger.info(f"Removing URL: {url} from queue with status code: {status_code}")
-        try:
-            url_queue.remove(url)
-            if len(url_queue) == 0:
-                raise Exception("No URLs left in queue, exiting")
-        except Exception:
-            # queue may already have been mutated or not support remove gracefully
-            pass
-
 
 def set_screenshot_service(agent_dir: Any, logger: Any):
     """Initialize and return a ScreenshotService instance for the given dir."""
@@ -145,16 +118,7 @@ def find_links_on_page(
     base_url = get_base_url(curr_url)
     for link in links:
         logger.info(f"Discovered additional link: {link}")
-        try:
-            url_queue.add(urljoin(base_url, link))
-        except Exception:
-            # fallback for collections without .add
-            try:
-                url_queue.append(urljoin(base_url, link))  # type: ignore[attr-defined]
-            except Exception:
-                pass
-
-    check_urls(url_queue, logger)
+        url_queue.add(urljoin(base_url, link))
 
 class ScreenshotService:
     def __init__(self, agent_dir: Path):
