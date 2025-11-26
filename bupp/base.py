@@ -24,7 +24,8 @@ from common.constants import (
     BROWSER_CDP_HOST,
     BROWSER_CDP_PORT,
     BROWSER_PROXY_HOST,
-    BROWSER_PROXY_PORT
+    BROWSER_PROXY_PORT,
+    AGENT_RESULTS_FOLDER
 )
 from common.browser_config_service import BrowserConfigService
 from bupp.logger import get_or_init_log_factory
@@ -47,6 +48,10 @@ class BrowserContextManager:
         self.scopes = scopes
         self.headless = headless
         self.use_proxy = use_proxy
+        
+        if n > 1:
+            raise ValueError("BrowserContextManager currently only supports a single browser instance")
+        
         self.n = n
         self.pw = None
         self.browsers = []
@@ -169,22 +174,37 @@ class BrowserContextManager:
         # Always try to release the lock, even if cleanup failed
         self.config_service.release_lock()
 
-async def start_discovery_agent(
+async def start_discovery_agent_from_config(
     browser_data: BrowserData,
-    start_urls: List[str], 
-    agent_log: logging.Logger,
-    full_log: logging.Logger,
-    agent_dir: Path,
-    initial_plan: Optional[PlanItem] = None,
-    auth_cookies: List[Dict[str, Any]] | None = None,
-    max_steps: int = 10,
-    max_pages: int = 1,
+    config_path: Path,
+    **kwargs,
 ):
-    """Initialize SimpleAgent using the new BrowserSession-based API."""
+    """Initialize DiscoveryAgent from a JSON configuration file."""
+    import json
+    
+    # Load configuration from JSON file
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+    
+    # Extract configuration values with defaults, allowing kwargs to override
+    start_urls = kwargs.get('start_urls', config.get('start_urls', []))
+    max_steps = kwargs.get('max_steps', config.get('max_steps', 10))
+    max_pages = kwargs.get('max_pages', config.get('max_pages', 1))
+    auth_cookies = kwargs.get('auth_cookies', config.get('auth_cookies'))
+    initial_plan = kwargs.get('initial_plan', config.get('initial_plan'))
+    streaming = kwargs.get('streaming', config.get('streaming', False))
+    
+    server_log_factory = get_or_init_log_factory(
+        base_dir=AGENT_RESULTS_FOLDER, 
+    )
+    agent_log, full_log = server_log_factory.get_discovery_agent_loggers(
+        streaming=streaming
+    )
+    log_dir = server_log_factory.get_log_dir()
     browser_session, proxy_handler, _ = browser_data
 
     try:
-        # SimpleAgent for single-shot execution
+        # DiscoveryAgent for single-shot execution
         agent = DiscoveryAgent(
             browser=browser_session,
             start_urls=start_urls,
@@ -197,7 +217,7 @@ async def start_discovery_agent(
             agent_log=agent_log,
             full_log=full_log,
             auth_cookies=auth_cookies,
-            agent_dir=agent_dir,
+            agent_dir=log_dir,
         )
         await agent.run_agent()
 
@@ -215,7 +235,7 @@ async def start_discovery_agent_from_session(
 ):
     """Initialize SimpleAgent using the new BrowserSession-based API."""
     server_log_factory = get_or_init_log_factory(
-        base_dir=".min_agent", 
+        base_dir=AGENT_RESULTS_FOLDER, 
     )
     agent_log, full_log = server_log_factory.get_discovery_agent_loggers(
         streaming=streaming

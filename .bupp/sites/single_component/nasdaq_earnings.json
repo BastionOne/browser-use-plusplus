@@ -1,0 +1,7 @@
+{
+    "start_urls": [
+        "https://www.nasdaq.com/market-activity/earnings"
+    ],
+    "max_steps": 10,
+    "max_pages": 1
+}

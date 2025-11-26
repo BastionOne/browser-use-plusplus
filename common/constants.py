@@ -10,26 +10,21 @@ TEMPLATE_FILE = Path("browser-use/browser_use/agent/system_prompt.md")
 MAX_DISCOVERY_AGENT_STEPS = 6
 MAX_DISCOVERY_PAGE_STEPS = 15
 SCREENSHOTS = False
+CHECK_URL_TIMEOUT = 3
 
-# server workers
+# browser config
 BROWSER_PROXY_HOST = "127.0.0.1"
 BROWSER_PROXY_PORT = 8081
 BROWSER_CDP_HOST = "127.0.0.1"
 BROWSER_CDP_PORT = 9900
 
-# detection prompt
-NUM_SCHEDULED_ACTIONS = 5
+# folders
+BUPP_FOLDER = Path(".bupp")
+SNAPSHOTS_FOLDER = BUPP_FOLDER / "snapshots"
+PLANS_FOLDER = BUPP_FOLDER / "plans"
+SITES_FOLDER = BUPP_FOLDER / "sites"
+AGENT_RESULTS_FOLDER = BUPP_FOLDER / "agent_results"
 
-SNAPSHOTS_FOLDER = Path(".snapshots") / "snapshots"
-PLANS_FOLDER = Path(".snapshots") / "plans"
-
-# llm configurations
-SERVER_MODEL_CONFIG = {
-    "model_config": {
-        "detection": "gpt-4.1",
-        "observations": "o3-mini"
-    }
-}
 BROWSER_USE_MODEL = "gpt-4.1"
 DISCOVERY_MODEL_CONFIG = {
     "model_config": {
@@ -43,20 +38,3 @@ DISCOVERY_MODEL_CONFIG = {
         "aggregate_persisted_components": "gpt-4.1"
     }
 }
-EXPLOIT_MODEL_CONFIG = {
-    "model_config": {
-        "classify-steps": "o4-mini",
-        "agent": "gpt-4.1"
-    }
-}
-DETECTION_STRATEGY_MODEL_CONFIG = {
-    "model_config": {
-        "deprioritize": "gpt-4.1"
-    }
-}
-
-# manual approval for exploit agents
-MANUAL_APPROVAL_EXPLOIT_AGENT: bool = True
-
-# logging
-SERVER_LOG_DIR = ".server_logs"

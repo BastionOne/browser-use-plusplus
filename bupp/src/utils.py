@@ -22,6 +22,7 @@ from pathlib import Path
 
 # project imports
 from common.utils import get_base_url
+from common.constants import CHECK_URL_TIMEOUT
 from bupp.src.links import parse_links_from_str
 
 class NavigateActionModel(ActionModel):
@@ -36,7 +37,7 @@ def check_urls(url_queue: Any, logger: Any) -> None:
     urls_to_remove: List[tuple[str, int]] = []
     for url in list(url_queue):
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=CHECK_URL_TIMEOUT)
             if response.status_code != 200:
                 logger.warning(f"GET {url} returned {response.status_code}, removing from queue")
                 urls_to_remove.append((url, response.status_code))
