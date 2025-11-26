@@ -1,6 +1,6 @@
 import json
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional
 import asyncio
 from pathlib import Path
 import time
@@ -14,7 +14,6 @@ from bupp.src.prompts.planv4 import (
     UpdatePlanNestedV3 as UpdatePlanNested,
     CheckNestedPlanCompletion,
     CheckSinglePlanComplete,
-    # TASK_PROMPT_WITH_PLAN,
     TASK_PROMPT_WITH_PLAN_NO_THINKING as TASK_PROMPT_WITH_PLAN
 )
 from bupp.src.llm_models import LLMHub, ChatModelWithLogging
@@ -183,7 +182,7 @@ class DiscoveryAgent(BrowserUseAgent):
         auth_cookies: Optional[List[Dict[str, Any]]] = None,
      ):
         tools = ToolsWithHistory(agent=self)
-        with open("browser-use/browser_use/agent/system_prompt.md", "r") as f:
+        with open(Path(__file__).parent / "custom_prompt.md", "r") as f:
             override_system_message = f.read()
 
         # Call parent Agent constructor
@@ -410,7 +409,7 @@ class DiscoveryAgent(BrowserUseAgent):
             log_this_prompt=self.full_log
         )
         self._update_plan_and_task(new_plan)
-        # discovery_utils.find_links_on_page(self.curr_dom_tree, self.curr_url, self.url_queue, self.agent_log)
+        discovery_utils.find_links_on_page(self.curr_dom_tree, self.curr_url, self.url_queue, self.agent_log)
 
         # needed so that the next eval step doesnt fail
         # self.agent_context.update_event(
@@ -519,7 +518,7 @@ class DiscoveryAgent(BrowserUseAgent):
         # add items to plan
         new_plan = res.apply(self.plan)
         self._update_plan_and_task(new_plan)
-        # discovery_utils.find_links_on_page(self.curr_dom_tree, self.curr_url, self.url_queue, self.agent_log)
+        discovery_utils.find_links_on_page(self.curr_dom_tree, self.curr_url, self.url_queue, self.agent_log)
 
     def _update_plan_and_task(self, plan: PlanItem):
         self.plan = plan
@@ -809,10 +808,16 @@ class DiscoveryAgent(BrowserUseAgent):
             await self.token_cost_service.log_usage_summary()
 
             # Save snapshots
-            if self.save_snapshots and self.agent_dir:
-                with open(self.agent_dir / "snapshots.json", "w") as f:
-                    serialized_snapshots = self.agent_snapshots.model_dump()
-                    json.dump(serialized_snapshots, f)
+            if self.agent_dir:
+                if self.save_snapshots:
+                    with open(self.agent_dir / "snapshots.json", "w") as f:
+                        serialized_snapshots = self.agent_snapshots.model_dump()
+                        json.dump(serialized_snapshots, f)
+                
+                if self.pages.get_req_count() > 0:
+                    with open(self.agent_dir / "pages.json", "w") as f:
+                        serialized_pages = await self.pages.to_json()
+                        json.dump(serialized_pages, f)
 
             # Unregister signal handlers before cleanup
             signal_handler.unregister()
@@ -928,14 +933,11 @@ class DiscoveryAgent(BrowserUseAgent):
 
         # recreate initial page state deterministically
         target_url = state.bu_agent_state.history.history[0].state.url
-        print("navigating to: ", target_url)
         await agent.tools.navigate(
             url=target_url,
             new_tab=False,
             browser_session=agent.browser_session,
         )
         await asyncio.sleep(3)
-        print("navigated to: ", target_url)
-
         await agent.rerun_history(state.bu_agent_state.history)
         return agent

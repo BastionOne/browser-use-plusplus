@@ -627,6 +627,9 @@ class PageObservations:
             out += f"PAGE: {page.id}.\n{str(page)}\n"
         return out
 
+    def get_req_count(self) -> int:
+        return sum(len(page.http_msgs) for page in self.pages)
+
     def to_str_summary_view(self, low_priority_hm_ids: Optional[Set[str]] = None) -> str:
         """
         Generate a summary view of all pages grouped by their unique request

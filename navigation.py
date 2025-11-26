@@ -8,13 +8,11 @@ from pydantic import BaseModel
 from common.constants import DISCOVERY_MODEL_CONFIG
 
 from browser_use.dom.views import DOMSelectorMap, DOMInteractedElement
-from browser_use.llm.base import BaseChatModel
+
 from bupp.logger import get_or_init_log_factory
-from bupp.src.links import parse_links_from_str
-from bupp.sites.base import BrowserContextManager
+from bupp.base import BrowserContextManager
 from bupp.src.agent import DiscoveryAgent
 from bupp.src.llm_provider import LMP
-
 from bupp.src.llm_models import LLMHub
 
 logger = logging.getLogger(__name__)

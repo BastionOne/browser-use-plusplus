@@ -181,7 +181,7 @@ async def start_discovery_agent(
     max_pages: int = 1,
 ):
     """Initialize SimpleAgent using the new BrowserSession-based API."""
-    browser_session, proxy_handler, browser = browser_data
+    browser_session, proxy_handler, _ = browser_data
 
     try:
         # SimpleAgent for single-shot execution
@@ -201,35 +201,9 @@ async def start_discovery_agent(
         )
         await agent.run_agent()
 
-        # with open(outfile, "w") as f:
-        #     f.write(json.dumps(await agent.pages.to_json(), indent=2))
-
-        # costs = agent.llm_hub.get_costs()
-        # print("Costs: ", costs)
-
     except Exception as e:  
         import traceback
         traceback.print_exc()
-
-
-async def start_discovery_agent_single_task(
-    init_task: str,
-    browser_data: BrowserData | None = None,
-):
-    """Initialize SimpleAgent using the new BrowserSession-based API."""
-    if browser_data is None:
-        raise ValueError("browser_data is required")
-
-    browser_session, _, _ = browser_data
-    llm = ChatOpenAI(model=BROWSER_USE_MODEL)
-    
-    agent = BrowserUseAgent(
-        browser=browser_session,
-        llm=llm,
-        task=init_task,
-        use_judge=False
-    )
-    await agent.run()
 
 async def start_discovery_agent_from_session(
     browser_data: BrowserData,

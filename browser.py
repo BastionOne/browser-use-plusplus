@@ -1,7 +1,7 @@
 import asyncio
 import signal
 import sys
-from bupp.sites.base import BrowserContextManager
+from bupp.base import BrowserContextManager
 
 async def main():
     """Open a browser and keep it open until the user hits Ctrl+C"""

@@ -22,6 +22,7 @@ Currently, it works ... kinda. As you guys well know, Browser x LLM has a bajill
 
 Here is a list cool/interesting things in browser-use-plusplus:
 - Plan is hierarchal to reflect the UI hierarchy of webpages. This is important because certain actions depend on re-triggering UI interactions (ie. re-opening a submenu) and the UI hierarchy makes the "interaction dependency" obvious
+- DOM diffing 
 And a couple of tweaks (fixes?) on the BrowserUse codebase:
 - For rerun_from_history, added a step after the initial match returns multiple candidates, then further match by their respective child strings. Note, this does require DOMInteractedElement to store the children_string   (https://github.com/BastionOne/browser-use/commit/4b49d909effa71b4a0e381951c119218b25efcb7)
 - For detecting clickable elements, I (or well, Claude) wrote a short JS script to:

@@ -2,7 +2,7 @@ import asyncio
 
 from common.constants import SNAPSHOTS_FOLDER, DISCOVERY_MODEL_CONFIG
 
-from bupp.sites.base import (
+from bupp.base import (
     BrowserContextManager,
     start_discovery_agent_from_session,
 )

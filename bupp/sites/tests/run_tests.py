@@ -1,14 +1,12 @@
-import argparse
 import asyncio
-import logging
-import sys
 from importlib import import_module
-from typing import List
+from typing import Awaitable, List
 
+import click
 import uvicorn
 
 from bupp.logger import get_or_init_log_factory
-from bupp.sites.base import (
+from bupp.base import (
     BrowserContextManager,
     start_discovery_agent,
 )
@@ -16,7 +14,6 @@ from bupp.sites.tests.scenario import Scenario, ScenarioRegistry
 from bupp.sites.tests.registry import TEST_REGISTRY
 
 
-LOGGER = logging.getLogger(__name__)
 MAX_STEPS = 3
 NUM_BROWSERS = 1
 MAX_PAGES = 1
@@ -64,11 +61,8 @@ class FixtureServer:
         self._task: asyncio.Task | None = None
 
     async def start(self) -> None:
-        LOGGER.info(
-            "Starting fixture server for %s (%s:%s)",
-            self.scenario.slug,
-            self.host,
-            self.port,
+        print(
+            f"Starting fixture server for {self.scenario.slug} ({self.host}:{self.port})"
         )
         module = import_module(self.scenario.module)
         app = getattr(module, "app", None)
@@ -88,7 +82,7 @@ class FixtureServer:
     async def stop(self) -> None:
         if not self._server or not self._task:
             return
-        LOGGER.info("Stopping fixture server for %s", self.scenario.slug)
+        print(f"Stopping fixture server for {self.scenario.slug}")
         self._server.should_exit = True
         self._server.force_exit = True
         await self._task
@@ -117,67 +111,89 @@ class FixtureServer:
         await self._task
 
 
-async def run_scenario(
+async def run_tests(
+    test_group: str | None = None,
+    scenario_numbers: List[int] | None = None,
+    host: str = "127.0.0.1",
+    port: int = 8100,
+    headless: bool = False,
+) -> None:
+    """
+    Run tests for scenarios. Can run a single scenario, multiple scenarios from a group,
+    or all scenarios across all groups.
+    
+    Args:
+        test_group: If None, runs all groups. If provided, runs scenarios from this group.
+        scenario_numbers: If empty/None, runs all scenarios in the group(s).
+        host: Host for the fixture server
+        port: Port for the fixture server
+        headless: Whether to run browser in headless mode
+    """
+    if test_group is None:
+        # Run all groups
+        for group_name in sorted(TEST_REGISTRY):
+            print(f"Executing all scenarios for group {group_name}")
+            _, scenarios = _resolve_scenarios(group_name, [])
+            for scenario in scenarios:
+                print(f"Executing scenario {scenario.number} ({scenario.slug})")
+                await _run_single_scenario(scenario, host, port, headless)
+    else:
+        # Run specific group with optional scenario filtering
+        scenario_numbers = scenario_numbers or []
+        _, scenarios = _resolve_scenarios(test_group, scenario_numbers)
+        for scenario in scenarios:
+            print(f"Executing scenario {scenario.number} ({scenario.slug})")
+            await _run_single_scenario(scenario, host, port, headless)
+
+
+async def _run_single_scenario(
     scenario: Scenario,
     host: str,
     port: int,
     headless: bool,
 ) -> None:
+    """Run a single scenario with its fixture server."""
     server = FixtureServer(scenario, host, port)
     await server.start()
     try:
-        await _execute_agent(scenario, host, port, headless)
+        start_url = f"http://{host}:{port}"
+        print(f"Running discovery agent on {scenario.slug}")
+        await _execute_agent(
+            start_url=start_url,
+            headless=headless,
+        )
     finally:
         await server.stop()
 
 
 async def _execute_agent(
-    scenario: Scenario,
-    host: str,
-    port: int,
+    start_url: str,
     headless: bool,
+    capture_request: bool = False,
+    max_steps: int = MAX_STEPS,
+    max_pages: int = MAX_PAGES,
 ) -> None:
     server_log_factory = get_or_init_log_factory(base_dir=".min_agent", new=True)
     agent_log, full_log = server_log_factory.get_discovery_agent_loggers(
         streaming=False
     )
     log_dir = server_log_factory.get_log_dir()
-    start_url = f"http://{host}:{port}"
     async with BrowserContextManager(
         scopes=[start_url],
         headless=headless,
-        use_proxy=False,
+        use_proxy=capture_request,
         n=NUM_BROWSERS,
     ) as browser_data_list:
         browser_data = browser_data_list[0]
-        LOGGER.info("Running discovery agent on %s", scenario.slug)
         await start_discovery_agent(
             browser_data=browser_data,
             start_urls=[start_url],
             agent_log=agent_log,
             full_log=full_log,
             agent_dir=log_dir,
-            max_steps=MAX_STEPS,
-            max_pages=MAX_PAGES,
+            max_steps=max_steps,
+            max_pages=max_pages,
         )
-
-async def run_group(
-    test_group: str,
-    scenario_numbers: List[int],
-    host: str,
-    port: int,
-    headless: bool,
-) -> None:
-    _, scenarios = _resolve_scenarios(test_group, scenario_numbers)
-    for scenario in scenarios:
-        LOGGER.info("Executing scenario %s (%s)", scenario.number, scenario.slug)
-        await run_scenario(scenario, host, port, headless)
-
-
-async def run_all_groups(host: str, port: int, headless: bool) -> None:
-    for test_group in sorted(TEST_REGISTRY):
-        LOGGER.info("Executing all scenarios for group %s", test_group)
-        await run_group(test_group, [], host, port, headless)
 
 
 async def serve_fixture(
@@ -193,18 +209,13 @@ async def serve_fixture(
         raise SystemExit("Serve command accepts exactly one scenario number.")
     scenario = scenarios[0]
     if not scenario_numbers:
-        LOGGER.info(
-            "No scenario number provided; defaulting to %s (%s)",
-            scenario.number,
-            scenario.slug,
+        print(
+            f"No scenario number provided; defaulting to {scenario.number} ({scenario.slug})"
         )
     server = FixtureServer(scenario, host, port)
     await server.start()
-    LOGGER.info(
-        "Fixture server for %s running at http://%s:%s. Press Ctrl+C to stop.",
-        scenario.slug,
-        host,
-        port,
+    print(
+        f"Fixture server for {scenario.slug} running at http://{host}:{port}. Press Ctrl+C to stop."
     )
     try:
         await server.wait_until_stopped()
@@ -224,97 +235,120 @@ def list_scenarios(test_group: str, scenario_numbers: List[int]) -> None:
             print()
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    argv = list(sys.argv[1:] if argv is None else argv)
-    command_names = {"run", "serve", "list", "run-all"}
-    if not argv:
-        argv = ["run-all"]
-    elif argv[0] not in command_names:
-        argv = ["run", *argv]
+def _run_cli_coro(coro: Awaitable[None], failure_message: str) -> None:
+    try:
+        asyncio.run(coro)
+    except KeyboardInterrupt:
+        print("Received shutdown signal, exiting.")
+    except Exception as exc:
+        print(f"{failure_message}: {exc}")
+        raise
 
-    parser = argparse.ArgumentParser(
-        description="Run discovery agent tests against the single-page fixtures."
+
+@click.group(invoke_without_command=True)
+@click.pass_context
+def cli(ctx):
+    """Run discovery agent tests against the single-page fixtures."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+
+@cli.command()
+@click.argument("start_url")
+@click.option(
+    "--headless/--no-headless",
+    default=False,
+    show_default=True,
+    help="Launch the browser in headless mode.",
+)
+@click.option(
+    "--capture-request",
+    is_flag=True,
+    help="Proxy traffic to capture requests (sets BrowserContextManager.use_proxy).",
+)
+@click.option(
+    "--max-steps",
+    default=MAX_STEPS,
+    show_default=True,
+    type=int,
+    help="Maximum agent steps.",
+)
+@click.option(
+    "--max-pages",
+    default=MAX_PAGES,
+    show_default=True,
+    type=int,
+    help="Maximum pages the agent may visit.",
+)
+def run(start_url, headless, capture_request, max_steps, max_pages):
+    """Execute the discovery agent directly against a start URL."""
+    _run_cli_coro(
+        _execute_agent(
+            start_url=start_url,
+            headless=headless,
+            capture_request=capture_request,
+            max_steps=max_steps,
+            max_pages=max_pages,
+        ),
+        "run failed",
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
 
-    def add_server_options(subparser: argparse.ArgumentParser) -> None:
-        subparser.add_argument("--host", default="127.0.0.1", help="Fixture server host")
-        subparser.add_argument(
-            "--port",
-            type=int,
-            default=8100,
-            help="Fixture server port",
-        )
 
-    def add_group_arguments(subparser: argparse.ArgumentParser) -> None:
-        subparser.add_argument(
-            "test_group",
-            choices=sorted(TEST_REGISTRY.keys()),
-            help=f"Test group to target ({_available_groups()})",
-        )
-        subparser.add_argument(
-            "tests",
-            nargs="*",
-            type=int,
-            metavar="TEST",
-            help="Scenario numbers to operate on. Omit to include every scenario.",
-        )
-
-    run_parser = subparsers.add_parser("run", help="Execute discovery runs")
-    add_server_options(run_parser)
-    add_group_arguments(run_parser)
-    run_parser.add_argument(
-        "--headless",
-        action="store_true",
-        help="Launch the browser in headless mode",
+@cli.command(name="run_test")
+@click.argument(
+    "test_group",
+    required=False,
+    type=click.Choice(sorted(TEST_REGISTRY.keys())),
+)
+@click.argument("tests", nargs=-1, type=int)
+@click.option("--host", default="127.0.0.1", help="Fixture server host.")
+@click.option("--port", default=8100, type=int, help="Fixture server port.")
+@click.option(
+    "--headless",
+    is_flag=True,
+    help="Launch the browser in headless mode.",
+)
+def run_test_command(test_group, tests, host, port, headless):
+    """Execute discovery runs for a group, a subset, or every scenario."""
+    if test_group is None and tests:
+        raise click.BadArgumentUsage("Scenario numbers require a test group.")
+    scenario_numbers = list(tests)
+    _run_cli_coro(
+        run_tests(
+            test_group=test_group,
+            scenario_numbers=scenario_numbers if test_group else None,
+            host=host,
+            port=port,
+            headless=headless,
+        ),
+        "run_test failed",
     )
 
-    run_all_parser = subparsers.add_parser(
-        "run-all",
-        help="Execute every scenario across all groups",
-    )
-    add_server_options(run_all_parser)
-    run_all_parser.add_argument(
-        "--headless",
-        action="store_true",
-        help="Launch the browser in headless mode",
+
+@cli.command()
+@click.argument("test_group", type=click.Choice(sorted(TEST_REGISTRY.keys())))
+@click.argument("tests", nargs=-1, type=int)
+@click.option("--host", default="127.0.0.1", help="Fixture server host.")
+@click.option("--port", default=8100, type=int, help="Fixture server port.")
+def serve(test_group, tests, host, port):
+    """Start a fixture server for a scenario."""
+    _run_cli_coro(
+        serve_fixture(test_group, list(tests), host, port),
+        "serve failed",
     )
 
-    serve_parser = subparsers.add_parser(
-        "serve", help="Start a fixture server for a scenario"
-    )
-    add_server_options(serve_parser)
-    add_group_arguments(serve_parser)
 
-    list_parser = subparsers.add_parser(
-        "list", help=f"Display scenario descriptions for a group. Available groups: {', '.join(sorted(TEST_REGISTRY.keys()))}"
-    )
-    add_group_arguments(list_parser)
-
-    return parser.parse_args(argv)
+@cli.command()
+@click.argument("test_group", type=click.Choice(sorted(TEST_REGISTRY.keys())))
+@click.argument("tests", nargs=-1, type=int)
+def list(test_group, tests):
+    """Display scenario descriptions for a group."""
+    list_scenarios(test_group, list(tests))
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO)
-    args = parse_args()
-    try:
-        if args.command == "serve":
-            asyncio.run(serve_fixture(args.test_group, args.tests, args.host, args.port))
-        elif args.command == "list":
-            list_scenarios(args.test_group, args.tests)
-        elif args.command == "run-all":
-            asyncio.run(run_all_groups(args.host, args.port, args.headless))
-        else:
-            asyncio.run(
-                run_group(args.test_group, args.tests, args.host, args.port, args.headless)
-            )
-    except KeyboardInterrupt:
-        LOGGER.info("Received shutdown signal, exiting.")
-    except Exception:
-        LOGGER.exception("run_test failed")
-        raise
+    cli()
 
 
 if __name__ == "__main__":
     main()
-
