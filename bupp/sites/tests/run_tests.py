@@ -312,7 +312,7 @@ def run_test_command(test_group, tests, host, port, headless):
     """Execute discovery runs for a group, a subset, or every scenario."""
     if test_group is None and tests:
         raise click.BadArgumentUsage("Scenario numbers require a test group.")
-    scenario_numbers = list(tests)
+    scenario_numbers = [*tests]
     _run_cli_coro(
         run_tests(
             test_group=test_group,
@@ -330,20 +330,12 @@ def run_test_command(test_group, tests, host, port, headless):
 @click.argument("tests", nargs=-1, type=int)
 @click.option("--host", default="127.0.0.1", help="Fixture server host.")
 @click.option("--port", default=8100, type=int, help="Fixture server port.")
-def serve(test_group, tests, host, port):
+def serve_command(test_group, tests, host, port):
     """Start a fixture server for a scenario."""
     _run_cli_coro(
-        serve_fixture(test_group, list(tests), host, port),
+        serve_fixture(test_group, [*tests], host, port),
         "serve failed",
     )
-
-
-@cli.command()
-@click.argument("test_group", type=click.Choice(sorted(TEST_REGISTRY.keys())))
-@click.argument("tests", nargs=-1, type=int)
-def list(test_group, tests):
-    """Display scenario descriptions for a group."""
-    list_scenarios(test_group, list(tests))
 
 
 def main() -> None:
