@@ -5,7 +5,7 @@ git clone --recurse-submodules git@github.com:BastionOne/browser-use-plusplus.gi
 ```
 ## 2. Install dependencies (and install our modified version of browser-use)
 ```
-uv pip install . && uv pip install browser-use 
+uv pip install . && uv pip install ./browser-use 
 ```
 
 ### Running
