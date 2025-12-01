@@ -1,0 +1,8 @@
+{
+    "start_urls": [
+        "https://0a80000404b2716f81abcfe3006e00a8.web-security-academy.net/"
+    ],
+    "task_guidance": "Only look at one blogpost. Do not add \"Back to Lab\" to the plan.",
+    "max_steps": 16,
+    "max_pages": 4
+}

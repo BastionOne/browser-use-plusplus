@@ -33,6 +33,7 @@ DISCOVERY_MODEL_CONFIG = {
         "create_plan": "o3-mini",
         "check_plan_completion": "gpt-4.1",
         "check_single_plan_complete": "gpt-4.1",
+        "prune_urls": "gpt-4.1",
         # Navigation
         "find_persisted_components": "gpt-4.1",
         "aggregate_persisted_components": "gpt-4.1"

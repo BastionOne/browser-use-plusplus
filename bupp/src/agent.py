@@ -1,11 +1,12 @@
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 from enum import Enum
 import json
 import asyncio
 import time
 import requests
+from urllib.parse import urljoin
 
 from common.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
 
@@ -16,10 +17,10 @@ from bupp.src.prompts.planv4 import (
     UpdatePlanNestedV3 as UpdatePlanNested,
     CheckNestedPlanCompletion,
     CheckSinglePlanComplete,
-    TASK_PROMPT_WITH_PLAN_NO_THINKING as TASK_PROMPT_WITH_PLAN
+    # TASK_PROMPT_WITH_PLAN_NO_THINKING as TASK_PROMPT_WITH_PLAN
+    TASK_PROMPT_WITH_PLAN as TASK_PROMPT_WITH_PLAN
 )
 from bupp.src.llm_models import LLMHub, ChatModelWithLogging
-from bupp.src.utils import url_did_change
 from bupp.src.pages import Page, PageObservations
 from bupp.src.proxy import MitmProxyHTTPHandler
 from bupp.src.state import (
@@ -28,8 +29,17 @@ from bupp.src.state import (
     BrowserUseAgentState,
 )
 from bupp.src.dom_diff import get_dom_diff_str
-from bupp.src.utils import ScreenshotService, find_links_on_page
+from bupp.src.utils import (
+    ScreenshotService, 
+)
+from bupp.src.transition import (
+    url_did_change,
+    parse_links_from_str,
+    get_base_url,
+    URLQueue,
+)
 from bupp.src.tools import ToolsWithHistory
+from bupp.src.browser_use.run import bu_run
 
 from browser_use.llm.messages import SystemMessage
 from browser_use.agent.service import Agent as BrowserUseAgent
@@ -49,9 +59,8 @@ from browser_use.tools.service import Tools
 from browser_use.utils import time_execution_async
 from browser_use.agent.service import AgentHookFunc
 
-from common.utils import (
+from bupp.src.utils import (
     extract_json,
-    OrderedSet,
     num_tokens_from_string,
 )
 import logging
@@ -80,6 +89,7 @@ class DiscoveryAgent(BrowserUseAgent):
         agent_log: logging.Logger,
         full_log: logging.Logger,
         agent_dir: Path,
+        task_guidance: str,
         initial_plan: Optional[PlanItem] = None,
         init_task: str | None = None,
         injected_agent_state: Optional[AgentState] = None,
@@ -135,11 +145,12 @@ class DiscoveryAgent(BrowserUseAgent):
         self.auth_cookies = auth_cookies
         self.is_transition_step = True
         self.initial_plan = initial_plan
+        self.task_guidance = task_guidance
 
         self.save_snapshots = save_snapshots
         # System prompt and schema for actions
         self.sys_prompt = ""
-        self.url_queue = OrderedSet(start_urls)
+        self.url_queue = URLQueue(start_urls)
 
         # Agent steps
         self.max_steps = max_steps
@@ -178,7 +189,6 @@ class DiscoveryAgent(BrowserUseAgent):
 
         # Check URL accessibility
         # start_urls = [self.url_queue.peak(0)]
-        # discovery_utils.check_urls(start_urls, self.agent_log)
 
         # set execution mode based on init task
         self._set_execution_mode(init_task)
@@ -237,7 +247,7 @@ class DiscoveryAgent(BrowserUseAgent):
                 browser_session=self.browser_session,
             )
             await asyncio.sleep(5)
-            
+
             self.pages.add_page(Page(url=self.curr_url))
             browser_state = await self.browser_session.get_browser_state_summary(
                 include_screenshot=False, 
@@ -246,8 +256,13 @@ class DiscoveryAgent(BrowserUseAgent):
             self.curr_dom_str = await self._get_llm_representation(browser_state)
             self.curr_dom_tree = browser_state.dom_tree
 
+            parsed_links = parse_links_from_str(self.curr_dom_tree.to_str())
+            base_url = get_base_url(self.curr_url)
+            for link in parsed_links:
+                self.agent_log.info(f"Adding link to queue: {urljoin(base_url, link)}")
+                self.url_queue.add(urljoin(base_url, link))
+            
             self.full_log.info(f"[PRE_EXECUTION_DOM]: {self.curr_dom_str}")
-
             if not self.initial_plan:
                 self._create_new_plan()
             else:
@@ -274,7 +289,6 @@ class DiscoveryAgent(BrowserUseAgent):
             include_recent_events=False,
         )
         new_page = await self._curr_page_check(new_browser_state)
-
         if new_page:
             self._log(f"[ACCIDENTAL_TRANSITION] Rewinding page transition and exiting step()")
             self._check_single_plan_complete(model_output.next_goal)
@@ -282,6 +296,12 @@ class DiscoveryAgent(BrowserUseAgent):
             # self.logger.info(f"[plan]{self.plan}")
             return
             
+        parsed_links = parse_links_from_str(self.curr_dom_tree.to_str())
+        base_url = get_base_url(self.curr_url)
+        for link in parsed_links:
+            self.agent_log.info(f"Adding link to queue: {urljoin(base_url, link)}")
+            self.url_queue.add(urljoin(base_url, link))
+
         await self._check_plan_complete(
             model_output.current_state.next_goal,
             new_browser_state,
@@ -314,29 +334,7 @@ class DiscoveryAgent(BrowserUseAgent):
             res = await self.tools.go_back(browser_session=self.browser_session)
 
             self.logger.info(f"[Result]: {res}")
-
-            # self.agent_context.update_agent_brain(
-            #     next_goal=f"Go back to {self.curr_url}",
-            #     evaluation_previous_goal=AUTO_PASS_EVALUATION
-            # )
-            # self.agent_context.update_event(
-            #     self.curr_step, 
-            #     f"[GO_BACK] Page changed from {self.curr_url} to {state.url}, going back"
-            # )
-            return True
-        return False
-
-    def _create_new_plan(self):
-        new_plan = CreatePlanNested().invoke(
-            model=self.llm_hub.get("create_plan"),
-            prompt_args={
-                "curr_page_contents": self.curr_dom_str,
-            },
-            log_this_prompt=self.full_log
-        )
-        self._update_plan_and_task(new_plan)
-        find_links_on_page(self.curr_dom_tree, self.curr_url, self.url_queue, self.agent_log)
-
+ 
         # needed so that the next eval step doesnt fail
         # self.agent_context.update_event(
         #     self.curr_step, 
@@ -444,15 +442,17 @@ class DiscoveryAgent(BrowserUseAgent):
         # add items to plan
         new_plan = res.apply(self.plan)
         self._update_plan_and_task(new_plan)
-        find_links_on_page(self.curr_dom_tree, self.curr_url, self.url_queue, self.agent_log)
 
     def _update_plan_and_task(self, plan: PlanItem):
         self.plan = plan
         self.task = TASK_PROMPT_WITH_PLAN.format(plan=str(self.plan))
+        if self.task_guidance:
+            self.task += f"\nHere are some additional guidance for completing the plans. It is *very important* to follow these instructions."
+            self.task += f"\n{self.task_guidance}"
         self.replace_task(self.task)
 
-    async def _get_llm_representation(self, browser_state: BrowserStateSummary, max_retries: int = 5) -> str:
-        """ 
+    async def _get_llm_representation(self, browser_state: BrowserStateSummary, max_retries: int = 5) -> Tuple[str, EnhancedDOMTreeNode]:
+        """
         Get LLM representation with retry logic for page loading issues.
         Retries if the DOM tree  isempty (page still loading).
         """
@@ -521,266 +521,93 @@ class DiscoveryAgent(BrowserUseAgent):
 
     # @observe(name='agent.run', ignore_input=True, ignore_output=True)
     @time_execution_async('--run')
-    async def run_agent(self) -> AgentHistoryList[AgentStructuredOutput]:
+    async def agent_step(self) -> AgentHistoryList[AgentStructuredOutput]:
         """Execute the task with maximum number of steps"""
+        # needed because browser-use start from 0-based indexing
+        step_info = AgentStepInfo(step_number=self.curr_step - 1, max_steps=self.max_steps)
+        # TODO: integrate click elements
+        # await self.tools.navigate(
+        #     url=self.url_queue.pop(),
+        #     new_tab=False,
+        #     browser_session=self.browser_session,
+        # )
+        # await asyncio.sleep(2)
+        # browser_state = await self.browser_session.get_browser_state_summary(
+        #     include_screenshot=True,
+        #     # TODO: if cached works as intended then we can just use this
+        #     cached=True,
+        #     include_recent_events=True,
+        # )
+        # await self.dom_state.ensure_clickable_meta_for_new_nodes(
+        #     self.browser_session, 
+        #     browser_state.dom_state.selector_map
+        # )
+        # dom_str = DOMTreeSerializer.serialize_tree(
+        #     browser_state.dom_state._root, 
+        #     include_attributes=DEFAULT_INCLUDE_ATTRIBUTES,
+        #     node_metadata={
+        #         backend_id: {"clickable": click_meta.has_click_handler}
+        #         for backend_id, click_meta in self.dom_state._clickable_meta_cache.items()
+        #     },
+        # )
 
-        loop = asyncio.get_event_loop()
-        agent_run_error: str | None = None  # Initialize error tracking variable
-        self._force_exit_telemetry_logged = False  # ADDED: Flag for custom telemetry on force exit
-
-        # Set up the  signal handler with callbacks specific to this agent
-        from browser_use.utils import SignalHandler
-
-        # Define the custom exit callback function for second CTRL+C
-        def on_force_exit_log_telemetry():
-            self._log_agent_event(max_steps=self.max_steps, agent_run_error='SIGINT: Cancelled by user')
-            # NEW: Call the flush method on the telemetry instance
-            if hasattr(self, 'telemetry') and self.telemetry:
-                self.telemetry.flush()
-            self._force_exit_telemetry_logged = True  # Set the flag
-
-        signal_handler = SignalHandler(
-            loop=loop,
-            pause_callback=self.pause,
-            resume_callback=self.resume,
-            custom_exit_callback=on_force_exit_log_telemetry,  # Pass the new telemetrycallback
-            exit_on_second_int=True,
+        is_done = await self._execute_step(
+            # needed because browser-use start from 0-based indexing
+            self.curr_step - 1, 
+            self.max_steps, 
+            step_info, 
+            on_step_start=self.pre_execution, 
+            on_step_end=self.post_execution
         )
-        signal_handler.register()
+        if self.save_snapshots:
+            self.logger.info(f"Saving snapshot for step {self.curr_step}")
+            snapshot = await self.to_state()
+            dom_str, _ = await self._get_llm_representation(await self.browser_session.get_browser_state_summary())
+            self.agent_snapshots.add_snapshot(self.curr_step, snapshot)
 
-        try:
-            await self._log_agent_run()
+        server_page_skip = await self._update_server()
+        # update state for next step
+        self.curr_step += 1
+        self.page_step += 1
+        self.completed_plans = []
+        
+        # set this to False by default so we wont keep transitioning to the same page
+        self.is_transition_step = False
 
-            self.logger.debug(
-                f'🔧 Agent setup: Agent Session ID {self.session_id[-4:]}, Task ID {self.task_id[-4:]}, Browser Session ID {self.browser_session.id[-4:] if self.browser_session else "None"} {"(connecting via CDP)" if (self.browser_session and self.browser_session.cdp_url) else "(launching local browser)"}'
-            )
+        # TODO: there is bug here where if step = max_step - 1, agent will issue a done
+        # action which triggers a page change.. suspect there is a desync in steps represented to agent prompt steps
+        # and our agent.curr_step count
+        if (
+            # server_page_skip == True 
+            self.page_step > self.max_page_steps
+            or is_done
+        ):
+            # TODO: somewhat special case here because BU agent will exit at step - 1, so if we dont set break
+            # here, we will execute another step after a page transition
+            self.logger.info(f"[TRANSITION_STEP] Transitioning to new page cuz page_step > max_page_steps: {self.page_step} > {self.max_page_steps}")
+            self.logger.info(f"[TRANSITION_STEP] Transitioning to new page cuz is_done: {is_done}")
+            if self.max_pages == 1:
+                return
+            self.page_step = 1  
+            self.is_transition_step = True
 
-            # Initialize timing for session and task
-            self._session_start_time = time.time()
-            self._task_start_time = self._session_start_time  # Initialize task start time
+            # clear last_model_output to smooth transition to next page
+            self.state.last_model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
+            self.state.last_model_output.evaluation_previous_goal = PAGE_TRANSITION_EVALUATION
+            self.history.history[-1].model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
+            self.history.history[-1].model_output.evaluation_previous_goal = PAGE_TRANSITION_EVALUATION
 
-            # Only dispatch session events if this is the first run
-            if not self.state.session_initialized:
-                self.logger.debug('📡 Dispatching CreateAgentSessionEvent...')
-                # Emit CreateAgentSessionEvent at the START of run()
-                # self.eventbus.dispatch(CreateAgentSessionEvent.from_agent(self))
-
-                self.state.session_initialized = True
-
-            self.logger.debug('📡 Dispatching CreateAgentTaskEvent...')
-            # Emit CreateAgentTaskEvent at the START of run()
-            # self.eventbus.dispatch(CreateAgentTaskEvent.from_agent(self))
-
-            # Log startup message on first step (only if we haven't already done steps)
-            self._log_first_step_startup()
-            # Start browser session and attach watchdogs
-            await self.browser_session.start()
-
-            # Normally there was no try catch here but the callback can raise an InterruptedError
-            try:
-                await self._execute_initial_actions()
-            except InterruptedError:
-                pass
-            except Exception as e:
-                raise e
-
-            self.logger.info("Starting agent prerun ...")
-            skip_rest = await self.pre_run()
-            if skip_rest:
+            # prune the list of URLs collected from this apge                    
+            self.url_queue.prune(model=self.llm_hub.get("prune_urls"))
+            if len(self.url_queue) < 1:
+                self.logger.info(f"No URLs left in queue, exiting")
                 return
 
-            self.logger.debug(f'🔄 Starting main execution loop with max {self.max_steps} steps...')
-            while self.curr_step <= self.max_steps:
-                self._log(f"==================== Starting step {self.curr_step} ====================")
-                
-                # Use the consolidated pause state management
-                if self.state.paused:
-                    self.logger.debug(f'⏸️ Step {self.curr_step}: Agent paused, waiting to resume...')
-                    await self._external_pause_event.wait()
-                    signal_handler.reset()
+        self._log(f"Completing: [page_step: {self.page_step}, agent_step: {self.curr_step}]")
 
-                # Check if we should stop due to too many failures, if final_response_after_failure is True, we try one last time
-                if (self.state.consecutive_failures) >= self.settings.max_failures + int(
-                    self.settings.final_response_after_failure
-                ):
-                    self.logger.error(f'❌ Stopping due to {self.settings.max_failures} consecutive failures')
-                    agent_run_error = f'Stopped due to {self.settings.max_failures} consecutive failures'
-                    break
+    async def agent_run(self) -> AgentHistoryList[AgentStructuredOutput]:
+        return await bu_run(self, self.agent_step)
 
-                # Check control flags before each step
-                if self.state.stopped:
-                    self.logger.info('🛑 Agent stopped')
-                    agent_run_error = 'Agent stopped programmatically'
-                    break
-
-                # needed because browser-use start from 0-based indexing
-                step_info = AgentStepInfo(step_number=self.curr_step - 1, max_steps=self.max_steps)
-                # TODO: integrate click elements
-                # await self.tools.navigate(
-                #     url=self.url_queue.pop(),
-                #     new_tab=False,
-                #     browser_session=self.browser_session,
-                # )
-                # await asyncio.sleep(2)
-                # browser_state = await self.browser_session.get_browser_state_summary(
-                #     include_screenshot=True,
-                #     # TODO: if cached works as intended then we can just use this
-                #     cached=True,
-                #     include_recent_events=True,
-                # )
-                # await self.dom_state.ensure_clickable_meta_for_new_nodes(
-                #     self.browser_session, 
-                #     browser_state.dom_state.selector_map
-                # )
-                # dom_str = DOMTreeSerializer.serialize_tree(
-                #     browser_state.dom_state._root, 
-                #     include_attributes=DEFAULT_INCLUDE_ATTRIBUTES,
-                #     node_metadata={
-                #         backend_id: {"clickable": click_meta.has_click_handler}
-                #         for backend_id, click_meta in self.dom_state._clickable_meta_cache.items()
-                #     },
-                # )
-
-                # confirm that next the URL is accessible
-                if len(self.url_queue) < 1:
-                    self.logger.info(f"No URLs left in queue, exiting")
-                    return
-                
-                next_url = self.url_queue.peek(0)
-                url_status = self.check_url(next_url)
-                if url_status != PageStatus.NORMAL:
-                    self.logger.info(f"Next URL {next_url} is not accessible, removing from queue")
-                    self.url_queue.remove(next_url)
-                    continue
-
-                is_done = await self._execute_step(
-                    # needed because browser-use start from 0-based indexing
-                    self.curr_step - 1, 
-                    self.max_steps, 
-                    step_info, 
-                    on_step_start=self.pre_execution, 
-                    on_step_end=self.post_execution
-                )
-                if self.save_snapshots:
-                    self.logger.info(f"Saving snapshot for step {self.curr_step}")
-                    snapshot = await self.to_state()
-                    self.agent_snapshots.add_snapshot(self.curr_step, snapshot)
-
-                server_page_skip = await self._update_server()
-                # update state for next step
-                self.curr_step += 1
-                self.page_step += 1
-                self.completed_plans = []
-                
-                # set this to False by default so we wont keep transitioning to the same page
-                self.is_transition_step = False
-
-                # TODO: there is bug here where if step = max_step - 1, agent will issue a done
-                # action which triggers a page change.. suspect there is a desync in steps represented to agent prompt steps
-                # and our self.curr_step count
-                if (
-                    # server_page_skip == True 
-                    self.page_step > self.max_page_steps
-                    or is_done
-                ):
-                    # TODO: somewhat special case here because BU agent will exit at step - 1, so if we dont set break
-                    # here, we will execute another step after a page transition
-                    self.logger.info(f"[TRANSITION_STEP] Transitioning to new page cuz page_step > max_page_steps: {self.page_step} > {self.max_page_steps}")
-                    self.logger.info(f"[TRANSITION_STEP] Transitioning to new page cuz is_done: {is_done}")
-                    if self.max_pages == 1:
-                        break
-                    self.page_step = 1  
-                    self.is_transition_step = True
-
-                    # clear last_model_output to smooth transition to next page
-                    self.state.last_model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
-                    self.state.last_model_output.evaluation_previous_goal = PAGE_TRANSITION_EVALUATION
-                    self.history.history[-1].model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
-                    self.history.history[-1].model_output.evaluation_previous_goal = PAGE_TRANSITION_EVALUATION
-
-                self._log(f"Completing: [page_step: {self.page_step}, agent_step: {self.curr_step}]")
-
-            else:
-                agent_run_error = 'Failed to complete task in maximum steps'
-
-                self.history.add_item(
-                    AgentHistory(
-                        model_output=None,
-                        result=[ActionResult(error=agent_run_error, include_in_memory=True)],
-                        state=BrowserStateHistory(
-                            url='',
-                            title='',
-                            tabs=[],
-                            interacted_element=[],
-                            screenshot_path=None,
-                        ),
-                        metadata=None,
-                    )
-                )
-
-                self.logger.info(f'❌ {agent_run_error}')
-
-            self.history.usage = await self.token_cost_service.get_usage_summary()
-
-            # set the model output schema and call it on the fly
-            if self.history._output_model_schema is None and self.output_model_schema is not None:
-                self.history._output_model_schema = self.output_model_schema
-
-            return self.history
-
-        except KeyboardInterrupt:
-            # Already handled by our signal handler, but catch any direct KeyboardInterrupt as well
-            self.logger.debug('Got KeyboardInterrupt during execution, returning current history')
-            agent_run_error = 'KeyboardInterrupt'
-
-            self.history.usage = await self.token_cost_service.get_usage_summary()
-            return self.history
-
-        except Exception as e:
-            self.logger.error(f'Agent run failed with exception: {e}', exc_info=True)
-            agent_run_error = str(e)
-            raise e
-
-        finally:
-            # Log token usage summary
-            await self.token_cost_service.log_usage_summary()
-
-            # Save snapshots
-            if self.agent_dir:
-                if self.save_snapshots:
-                    with open(self.agent_dir / "snapshots.json", "w") as f:
-                        serialized_snapshots = self.agent_snapshots.model_dump()
-                        json.dump(serialized_snapshots, f)
-                
-                if self.pages.get_req_count() > 0:
-                    with open(self.agent_dir / "pages.json", "w") as f:
-                        serialized_pages = await self.pages.to_json()
-                        json.dump(serialized_pages, f)
-
-            # Unregister signal handlers before cleanup
-            signal_handler.unregister()
-
-            if not self._force_exit_telemetry_logged:  # MODIFIED: Check the flag
-                try:
-                    self._log_agent_event(max_steps=self.max_steps, agent_run_error=agent_run_error)
-                except Exception as log_e:  # Catch potential errors during logging itself
-                    self.logger.error(f'Failed to log telemetry event: {log_e}', exc_info=True)
-            else:
-                # ADDED: Info message when custom telemetry for SIGINT was already logged
-                self.logger.debug('Telemetry for force exit (SIGINT) was logged by custom exit callback.')
-
-            # Log final messages to user based on outcome
-            self._log_final_outcome_messages()
-
-            self.logger.info("==================== [VIEW LOGS] ============================")
-            self.logger.info(f"View logs: python view_snapshot.py {self.agent_dir}")
-
-            # Stop the event bus gracefully, waiting for all events to be processed
-            # Use longer timeout to avoid deadlocks in tests with multiple agents
-            await self.eventbus.stop(timeout=3.0)
-
-            await self.close()
-    
     async def run(self, max_steps: int = 50, on_step_start: AgentHookFunc | None = None, on_step_end: AgentHookFunc | None = None):
         """Execute the task with maximum number of steps"""
         raise NotImplementedError("This method is not implemented")

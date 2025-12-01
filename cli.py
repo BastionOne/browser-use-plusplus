@@ -1,9 +1,9 @@
 import asyncio
 from importlib import import_module
 from typing import Awaitable, List
-
 import click
 import uvicorn
+import json
 
 from bupp.base import (
     BrowserContextManager,
@@ -169,28 +169,32 @@ async def _run_single_scenario(
     finally:
         await server.stop()
 
-
 async def _execute_agent(
     config_path: Path,
     start_url: str | None = None,
     headless: bool = False,
     capture_request: bool = False,
 ) -> None:
+    # Load configuration from JSON file
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+    
+    start_urls = config.get('start_urls', [])
+    if start_url:
+        if start_urls:
+            raise ValueError("start_urls and start_url cannot both be provided")
+        config["start_urls"] = [start_url]
+    
     async with BrowserContextManager(
-        scopes=[start_url],
+        scopes=config["start_urls"],
         headless=headless,
         use_proxy=capture_request,
         n=NUM_BROWSERS,
     ) as browser_data_list:
         browser_data = browser_data_list[0]
-        kwargs = {}
-        if start_url:
-            kwargs['start_urls'] = [start_url]
-
         await start_discovery_agent_from_config(
             browser_data=browser_data,
-            config_path=config_path,
-            **kwargs,
+            **config
         )
 
 

@@ -176,24 +176,15 @@ class BrowserContextManager:
 
 async def start_discovery_agent_from_config(
     browser_data: BrowserData,
-    config_path: Path,
-    **kwargs,
+    start_urls: list[str] | None = None,
+    task_guidance: str | None = None,
+    max_steps: int | None = 10,
+    max_pages: int = 1,
+    initial_plan: str | None = None,
+    auth_cookies: dict | None = None,
+    streaming: bool = False,
 ):
     """Initialize DiscoveryAgent from a JSON configuration file."""
-    import json
-    
-    # Load configuration from JSON file
-    with open(config_path, 'r') as f:
-        config = json.load(f)
-    
-    # Extract configuration values with defaults, allowing kwargs to override
-    start_urls = kwargs.get('start_urls', config.get('start_urls', []))
-    max_steps = kwargs.get('max_steps', config.get('max_steps', 10))
-    max_pages = kwargs.get('max_pages', config.get('max_pages', 1))
-    auth_cookies = kwargs.get('auth_cookies', config.get('auth_cookies'))
-    initial_plan = kwargs.get('initial_plan', config.get('initial_plan'))
-    streaming = kwargs.get('streaming', config.get('streaming', False))
-    
     server_log_factory = get_or_init_log_factory(
         base_dir=AGENT_RESULTS_FOLDER, 
     )
@@ -210,6 +201,7 @@ async def start_discovery_agent_from_config(
             start_urls=start_urls,
             llm_config=DISCOVERY_MODEL_CONFIG["model_config"],
             # agent_sys_prompt=CUSTOM_SYSTEM_PROMPT,
+            task_guidance=task_guidance,
             max_steps=max_steps,
             max_pages=max_pages,
             initial_plan=initial_plan,

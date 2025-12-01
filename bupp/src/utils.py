@@ -7,6 +7,7 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 from enum import Enum
+import re
 
 # browser-use imports
 from browser_use.browser import BrowserSession
@@ -20,11 +21,46 @@ from browser_use.dom.views import EnhancedDOMTreeNode
 import base64
 import anyio
 from pathlib import Path
+import tiktoken
 
-# project imports
-from common.utils import get_base_url
-from common.constants import CHECK_URL_TIMEOUT
-from bupp.src.links import parse_links_from_str
+def num_tokens_from_string(string: str, encoding_name: str = "cl100k_base") -> int:
+    """Returns the number of tokens in a text string."""
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string, disallowed_special=()))
+    return num_tokens
+
+def extract_json(response: str) -> str:
+    """
+    Extracts the JSON from the response using stack-based parsing to match braces.
+    """
+    # First try to extract from markdown code blocks
+    try:
+        if "```json" in response:
+            return response.split("```json")[1].split("```")[0]
+    except IndexError:
+        pass
+    
+    # Find the first opening brace
+    start_idx = response.find("{")
+    if start_idx == -1:
+        # No JSON found, return original response
+        return response
+    
+    # Use stack-based parsing to find matching closing brace
+    stack = []
+    for i, char in enumerate(response[start_idx:], start_idx):
+        if char == "{":
+            stack.append(char)
+        elif char == "}":
+            if stack:
+                stack.pop()
+                if not stack:
+                    # Found matching closing brace
+                    return response[start_idx:i+1]
+    
+    # If we get here, unmatched braces - return from start to end
+    return response[start_idx:]
+
 
 class NavigateActionModel(ActionModel):
     navigate: NavigateAction | None = None
@@ -68,7 +104,7 @@ async def set_cookies(browser_session: BrowserSession, cookies: List[Dict[str, A
 
     cookie_list: List[Dict[str, str]] = []
     for cookie in cookies:
-        # Build CDP cookie with required fields
+        # Build CDP cookie withrequired fields
         cdp_cookie: Dict[str, str] = {
             "name": cookie["name"],
             "value": cookie["value"],
@@ -103,23 +139,6 @@ async def goto_page(
     )
     await asyncio.sleep(wait_between_actions)
 
-def find_links_on_page(
-    curr_dom_tree: Optional[EnhancedDOMTreeNode],
-    curr_url: str,
-    url_queue: Any,
-    logger: Any,
-) -> None:
-    """Scrape links from the current DOM string and add absolute URLs to url_queue."""
-    if not curr_dom_tree:
-        logger.error("Current DOM tree is not initialized!")
-        return
-
-    links = parse_links_from_str(curr_dom_tree.to_str())
-    base_url = get_base_url(curr_url)
-    for link in links:
-        logger.info(f"Discovered additional link: {link}")
-        url_queue.add(urljoin(base_url, link))
-
 class ScreenshotService:
     def __init__(self, agent_dir: Path):
         self.agent_dir = agent_dir
@@ -141,17 +160,3 @@ class ScreenshotService:
             await f.write(screenshot_data)
 
         return str(screenshot_path)
-
-def url_did_change(old_url: str, new_url: str) -> bool:
-    """
-    Check if the URL has changed.
-    """
-    # return urlparse(old_url).fragment != urlparse(new_url).fragment
-
-    old_parsed = urlparse(old_url)
-    new_parsed = urlparse(new_url)
-    
-    old_netloc_path = old_parsed.netloc + old_parsed.path.rstrip('/')
-    new_netloc_path = new_parsed.netloc + new_parsed.path.rstrip('/')
-    
-    return old_netloc_path != new_netloc_path

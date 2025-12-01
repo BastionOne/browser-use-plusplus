@@ -1,0 +1,40 @@
+Hi,
+
+I am interested in a position as a software engineer at BrowserUse. I actually have been using the open source BrowserUse repo for quite some time as a component in a pentesting AI agent (alas, gave up on this), so I am pretty familiar with the codebase. The rest of this email will describe what I've built.
+
+So to back up a bit, my original idea was to build a black box pentesting AI. But to pentest a website, I need to first map *all* of its API endpoints, by doing something like:
+1. Goto every page on the website
+2. Exhaustively trigger every single client-side interaction on each page
+3. Capture the backend API calls that the client/browser makes a result of 2.
+
+BrowserUse was core to solving 2 (thanks guys!), although there was still two main problems:
+a) Tracking interactions that have already been triggered so the agent doesnt repeat itself
+b) Handle DOM re-renders in response to actions taken by the agent
+
+I came up with a planning implementation that roughly works as follows:
+1. Arrive on new page -> create new plan
+2. Execute the next interaction on the plan
+3. Update the plan based on DOM re-renders
+
+Step 2. is browser-use LLM (with the plan and its progress in self.task), step 1. and 3. are LLM based implementations that I've added. 
+
+Currently, there are still some nasty kinks to iron out but *it works*. Some interesting usecases that I can think of for a universal web-spider:
+- pentesting as previously mentioned
+- e2e tests
+- "turn any website into an API" (parse.bot)
+- ...
+
+Anyways, would be interested in working for BrowserUse, let's chat.
+
+Cheers,
+John
+
+P.S: Here is a list cool/interesting things in browser-use-plusplus:
+- Plan is hierarchal to reflect the UI hierarchy of webpages. This is important because certain actions depend on re-triggering UI interactions (ie. re-opening a submenu) and the UI hierarchy makes the "interaction dependency" obvious
+- DOM diffing 
+And a couple of tweaks (fixes?) on the BrowserUse codebase:
+- For rerun_from_history, added a step after the initial match returns multiple candidates, then further match by their respective child strings. Note, this does require DOMInteractedElement to store the children_string   (https://github.com/BastionOne/browser-use/commit/4b49d909effa71b4a0e381951c119218b25efcb7)
+- For detecting clickable elements, I (or well, Claude) wrote a short JS script to:
+1. Send onhover events to all elements
+2. Detect CSS changes / cursor changes
+Yet to integrate this yet, actually not quite sure where to put it (https://gist.github.com/JohnPeng47/6a856fb636bf714d34fcdba172fd91a1)

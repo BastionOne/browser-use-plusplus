@@ -10,16 +10,16 @@ from bupp.logger import get_agent_loggers
 
 agent_log, full_log = get_agent_loggers()
 
-TASK_PROMPT_WITH_PLAN_NO_THINKING = """
-Your task is to execute each action in the following plan
-Execute each plan-item in the order they are defined
-If a plan-item is complete, it will contain a * in the checkbox
-Do not re-execute completed plan-items
-If a plan includes nested plan-items, then execute all of these before moving on
-Respond only with a "" in the thinking field
+# TASK_PROMPT_WITH_PLAN_NO_THINKING = """
+# Your task is to execute each action in the following plan
+# Execute each plan-item in the order they are defined
+# If a plan-item is complete, it will contain a * in the checkbox
+# Do not re-execute completed plan-items
+# If a plan includes nested plan-items, then execute all of these before moving on
+# Respond only with a "" in the thinking field
 
-{plan}
-"""
+# {plan}
+# """
 
 TASK_PROMPT_WITH_PLAN = """
 Your task is to execute each action in the following plan
@@ -192,6 +192,32 @@ class PlanItem(BaseModel):
 
 class InitialPlan(BaseModel):
     plan_descriptions: List[str]
+
+class CreatePlanNestedV2(LMP):
+    prompt = """
+You are tasked with creating a plan for triggering all meaningful DOM interaction on the webpage except for navigational actions. Meaningful actions are actions that change the application functional state, rather than purely cosmetic changes.
+
+Here is the current webpage:
+{{curr_page_contents}}
+
+Guidelines for writing the plan:
+- Focus on describing the overall goal of the plan rather than specific step
+- Focus on interacting with DOM elements *only* and *not* responsive interactions like screen resizing, voice-over screen reader, etc.
+- Do not try to create plans items that trigger onfocus, onhover, onblur, type of events
+- Refer to interactive elements by their visible label, not a numeric index.
+- List higher-leverage interactions earlier
+- If there are repeated elements on a page select a representative sample to include rather than all of them
+
+Return JSON that conforms to the Plan schema.
+"""
+    response_format = InitialPlan
+    
+    def _process_result(self, res: InitialPlan, **prompt_args) -> PlanItem:
+        root = PlanItem(description="HomePage")
+        for plan_description in res.plan_descriptions:
+            root.add_to_root(plan_description)
+        return root
+
 
 class CreatePlanNested(LMP):
     prompt = """
@@ -638,15 +664,6 @@ Now try to determine which *new* plan items have been completed by the agent and
             if not re.match(r"^(\d+(?:\.\d+)*)$", index):
                 raise ValueError(f"Invalid plan_indices format: '{index}'. Expected format: digits separated by dots (e.g., '1', '1.2', '1.2.3')")
         return True
-
-
-# class DetectSubmenuElements(LMP):
-#     prompt = """
-# You are tasked with detemining 
-# """
-
-
-# -------------------- example usage ----------------------- #
 
 if __name__ == "__main__":
     root = PlanItem(description="Page")
