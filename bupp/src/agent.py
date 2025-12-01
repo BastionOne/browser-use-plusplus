@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from pathlib import Path
 from enum import Enum
 import json
@@ -249,12 +249,12 @@ class DiscoveryAgent(BrowserUseAgent):
             await asyncio.sleep(5)
 
             self.pages.add_page(Page(url=self.curr_url))
-            browser_state = await self.browser_session.get_browser_state_summary(
-                include_screenshot=False, 
+            browser_state = await self._get_browser_state(
+                include_screenshot=False,
                 include_recent_events=False,
             )
-            self.curr_dom_str = await self._get_llm_representation(browser_state)
             self.curr_dom_tree = browser_state.dom_tree
+            self.curr_dom_str = browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
 
             parsed_links = parse_links_from_str(self.curr_dom_tree.to_str())
             base_url = get_base_url(self.curr_url)
@@ -284,7 +284,7 @@ class DiscoveryAgent(BrowserUseAgent):
         # NOTE: need to wait here purely for UI actions to settle
         # Ongoing HTTP requests timeouts are handled by get_browser_state_summary 
         await asyncio.sleep(1.5)
-        new_browser_state = await self.browser_session.get_browser_state_summary(
+        new_browser_state = await self._get_browser_state(
             include_screenshot=True,
             include_recent_events=False,
         )
@@ -309,7 +309,7 @@ class DiscoveryAgent(BrowserUseAgent):
         self._log(f"[UPDATE_STATE_AND_PLAN ] Updating agent state and checking plan completeness")
         await self._update_plan(new_browser_state)
 
-        new_dom_str = await self._get_llm_representation(new_browser_state)
+        new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
         self.curr_dom_str = new_dom_str
         if self.screen_shot_service and new_browser_state.screenshot:
             await self.screen_shot_service.store_screenshot(new_browser_state.screenshot, self.curr_step)
@@ -341,6 +341,22 @@ class DiscoveryAgent(BrowserUseAgent):
         #     f"[NEW_PAGE] Forced browsing to go to {self.curr_url}, you should ignore the result of executing the next action"
         # )
 
+    def _create_new_plan(self):
+        new_plan = CreatePlanNested().invoke(
+            model=self.llm_hub.get("create_plan"),
+            prompt_args={
+                "curr_page_contents": self.curr_dom_str,
+            },
+            log_this_prompt=self.full_log
+        )
+        self._update_plan_and_task(new_plan)
+
+        # needed so that the next eval step doesnt fail
+        # self.agent_context.update_event(
+        #     self.curr_step, 
+        #     f"[NEW_PAGE] Forced browsing to go to {self.curr_url}, you should ignore the result of executing the next action"
+        # )
+
     async def _check_plan_complete(
         self, 
         curr_goal: str, 
@@ -353,10 +369,10 @@ class DiscoveryAgent(BrowserUseAgent):
             raise ValueError("Plan is not initialized")
 
         prev_dom_str = self.curr_dom_str
-        new_dom_str = await self._get_llm_representation(new_browser_state)
+        new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
         dom_diff = get_dom_diff_str(prev_dom_str, new_dom_str)
         completed = CheckNestedPlanCompletion().invoke(
-            model=self.llm_hub.get("check_plan_completion"),
+            model=self.llm_hub.get("_check_plan_completion"),
             prompt_args={
                 "plan": self.plan,
                 "curr_dom": new_dom_str,
@@ -369,7 +385,7 @@ class DiscoveryAgent(BrowserUseAgent):
             node = self.plan.get(compl)
             if node is not None:                
                 node.completed = True
-                self.logger.info(f"[COMPLETE_PLAN_ITEM]: {node.description}")
+                self.logger.info(f"[COMPLETEPLAN_ITEM]: {node.description}")
 
                 self.completed_plans.append(node)
             else:
@@ -411,7 +427,7 @@ class DiscoveryAgent(BrowserUseAgent):
         LAST_N_HISTORY = 5
         
         prev_dom_str = self.curr_dom_str
-        new_dom_str = await self._get_llm_representation(new_browser_state)
+        new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
         dom_diff = get_dom_diff_str(prev_dom_str, new_dom_str)
         agent_history = ""
         for i, h in enumerate(self.history.history[-LAST_N_HISTORY:], start=1):
@@ -451,37 +467,46 @@ class DiscoveryAgent(BrowserUseAgent):
             self.task += f"\n{self.task_guidance}"
         self.replace_task(self.task)
 
-    async def _get_llm_representation(self, browser_state: BrowserStateSummary, max_retries: int = 5) -> Tuple[str, EnhancedDOMTreeNode]:
+    async def _get_browser_state(
+        self,
+        *,
+        include_screenshot: bool = True,
+        include_recent_events: bool = True,
+        cached: bool = True,
+        max_retries: int = 5,
+    ) -> BrowserStateSummary:
         """
-        Get LLM representation with retry logic for page loading issues.
-        Retries if the DOM tree  isempty (page still loading).
+        Wrapper around browser_state retrieval that waits for a populated DOM before returning.
         """
         MIN_DOM_LENGTH = 5
+        browser_state: Optional[BrowserStateSummary] = None
 
-        dom_str = ""
         for attempt in range(1, max_retries + 1):
-            dom_str = browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
+            browser_state = await self.browser_session.get_browser_state_summary(
+                include_screenshot=include_screenshot,
+                include_recent_events=include_recent_events,
+                cached=cached if attempt == 1 else False,
+            )
 
-            # TODO: might have come up with better way to handle this        
-            if len(dom_str.splitlines()) < MIN_DOM_LENGTH:
-                if attempt < max_retries:
-                    self.agent_log.warning(f"Empty DOM tree on attempt {attempt}/{max_retries}, waiting for page to load...")
-                    await asyncio.sleep(3)
-                    # Refresh browser state
-                    browser_state = await self.browser_session.get_browser_state_summary(
-                        include_screenshot=True,
-                        cached=False,
-                        include_recent_events=True,
-                    )
-                else:
-                    self.agent_log.error(f"Empty DOM tree after {max_retries} attempts")
-                    return dom_str
-            else:
+            dom_str = browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
+            if len(dom_str.splitlines()) >= MIN_DOM_LENGTH:
                 if attempt > 1:
                     self.logger.info(f"Successfully got DOM representation on attempt {attempt}")
-                return dom_str
-        
-        return dom_str
+                return browser_state
+
+            if attempt < max_retries:
+                self.agent_log.warning(
+                    f"Empty DOM tree on attempt {attempt}/{max_retries}, waiting for page to load..."
+                )
+                await asyncio.sleep(3)
+            else:
+                self.agent_log.error(f"Empty DOM tree after {max_retries} attempts")
+
+        if browser_state is None:
+            self.agent_log.error("Failed to fetch browser state after retries")
+            raise RuntimeError("Failed to fetch browser state after retries")
+
+        return browser_state
 
     def _check_done(self, results: List[ActionResult]) -> bool:
         # New API: Done indicated via is_done flag
@@ -561,8 +586,10 @@ class DiscoveryAgent(BrowserUseAgent):
         )
         if self.save_snapshots:
             self.logger.info(f"Saving snapshot for step {self.curr_step}")
+            browser_state = await self._get_browser_state()
+            self.curr_dom_tree = browser_state.dom_tree
+            self.curr_dom_str = browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
             snapshot = await self.to_state()
-            dom_str, _ = await self._get_llm_representation(await self.browser_session.get_browser_state_summary())
             self.agent_snapshots.add_snapshot(self.curr_step, snapshot)
 
         server_page_skip = await self._update_server()
