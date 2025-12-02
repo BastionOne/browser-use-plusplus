@@ -1,6 +1,6 @@
 # @file purpose: Serializes enhanced DOM trees to string format for LLM consumption
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from browser_use.dom.serializer.clickable_elements import ClickableElementDetector
 from browser_use.dom.serializer.paint_order import PaintOrderRemover
@@ -14,6 +14,9 @@ from browser_use.dom.views import (
 	SerializedDOMState,
 	SimplifiedNode,
 )
+
+if TYPE_CHECKING:
+	from bupp.src.clickable_detector import ClickableDetectorStrategy
 
 DISABLED_ELEMENTS = {'style', 'script', 'head', 'meta', 'link', 'title'}
 
@@ -63,6 +66,7 @@ class DOMTreeSerializer:
 		enable_bbox_filtering: bool = True,
 		containment_threshold: float | None = None,
 		paint_order_filtering: bool = True,
+		clickable_detector: "ClickableDetectorStrategy | None" = None,
 	):
 		self.root_node = root_node
 		self._interactive_counter = 1
@@ -77,6 +81,8 @@ class DOMTreeSerializer:
 		self.containment_threshold = containment_threshold or self.DEFAULT_CONTAINMENT_THRESHOLD
 		# Paint order filtering configuration
 		self.paint_order_filtering = paint_order_filtering
+		# Clickable detection strategy (None = use default static detector)
+		self._clickable_detector = clickable_detector
 
 	def _safe_parse_number(self, value_str: str, default: float) -> float:
 		"""Parse string to float, handling negatives and decimals."""
@@ -418,7 +424,11 @@ class DOMTreeSerializer:
 			import time
 
 			start_time = time.time()
-			result = ClickableElementDetector.is_interactive(node)
+			# Use injected detector if available, otherwise fall back to static detector
+			if self._clickable_detector is not None:
+				result = self._clickable_detector.is_interactive(node)
+			else:
+				result = ClickableElementDetector.is_interactive(node)
 			end_time = time.time()
 
 			if 'clickable_detection_time' not in self.timing_info:

@@ -7,7 +7,7 @@ import json
 
 from bupp.base import (
     BrowserContextManager,
-    start_discovery_agent_from_config,
+    start_discovery_agent,
 )
 from bupp.sites.tests.scenario import Scenario, ScenarioRegistry
 from bupp.sites.tests.registry import TEST_REGISTRY
@@ -192,7 +192,7 @@ async def _execute_agent(
         n=NUM_BROWSERS,
     ) as browser_data_list:
         browser_data = browser_data_list[0]
-        await start_discovery_agent_from_config(
+        await start_discovery_agent(
             browser_data=browser_data,
             **config
         )

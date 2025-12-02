@@ -206,7 +206,9 @@ screenshots/
 videos/
 traces/
 
+# bupp artifacts
 .min_agent
 .browser_profiles
 .navigation_agent
 .bupp/agent_results/
+tests/experiments/clickable_detection_output/websites

@@ -23,7 +23,7 @@ async def bu_run(agent: Agent, step_fn: Callable[[], Awaitable[bool]]) -> AgentH
     from browser_use.utils import SignalHandler
 
     # Define the custom exit callback function for second CTRL+C
-    def on_force_exit_log_telemetry():
+    def on_force_exit_log_telemetry ():
         agent._log_agent_event(max_steps=agent.max_steps, agent_run_error='SIGINT: Cancelled by user')
         # NEW: Call the flush method on the telemetry instance
         if hasattr(agent, 'telemetry') and agent.telemetry:

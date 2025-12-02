@@ -44,10 +44,12 @@ class BrowserContextManager:
         use_proxy: bool = True,
         n: int = 1,
         config_service: BrowserConfigService | None = None,
+        browser_exe: Optional[str] = None,
     ):
         self.scopes = scopes
         self.headless = headless
         self.use_proxy = use_proxy
+        self.browser_exe = browser_exe
         
         if n > 1:
             raise ValueError("BrowserContextManager currently only supports a single browser instance")
@@ -63,7 +65,7 @@ class BrowserContextManager:
         self.config_service = config_service or BrowserConfigService()
 
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> List[BrowserData]:
         """Initialize and start all browser resources."""
         browser_infra_list: List[Tuple[int, int, str]] = []
         try:
@@ -87,10 +89,13 @@ class BrowserContextManager:
                 if self.use_proxy:
                     proxy_config = {"server": f"http://{BROWSER_PROXY_HOST}:{browser_port}"}
                 
+                # Use provided browser_exe or default
+                executable_path = self.browser_exe or r"C:\Users\jpeng\AppData\Local\ms-playwright\chromium-1161\chrome-win\chrome.exe"
+                
                 browser = await self.pw.chromium.launch_persistent_context(
                     user_data_dir=browser_profile,
                     headless=self.headless,
-                    executable_path=r"C:\Users\jpeng\AppData\Local\ms-playwright\chromium-1161\chrome-win\chrome.exe",
+                    executable_path=executable_path,
                     args=[f"--remote-debugging-port={cdp_port}", f"--remote-debugging-address={BROWSER_CDP_HOST}"],
                     proxy=proxy_config,
                 )
@@ -173,8 +178,7 @@ class BrowserContextManager:
         
         # Always try to release the lock, even if cleanup failed
         self.config_service.release_lock()
-
-async def start_discovery_agent_from_config(
+async def start_discovery_agent(
     browser_data: BrowserData,
     start_urls: list[str] | None = None,
     task_guidance: str | None = None,

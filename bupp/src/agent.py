@@ -11,6 +11,13 @@ from urllib.parse import urljoin
 from common.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
 
 from bupp.src.dom import DOMState
+from bupp.src.clickable_detector import (
+    ClickableDetectorStrategy,
+    ClickableDetectorType,
+    get_clickable_detector,
+    StaticClickableDetector,
+)
+from bupp.src.dom_serializer import DOMTreeSerializer
 from bupp.src.prompts.planv4 import (
     PlanItem,
     CreatePlanNested,
@@ -101,6 +108,7 @@ class DiscoveryAgent(BrowserUseAgent):
         proxy_handler: Optional[MitmProxyHTTPHandler] = None,
         take_screenshots: bool = True,
         auth_cookies: Optional[List[Dict[str, Any]]] = None,
+        clickable_detector_type: ClickableDetectorType | str = ClickableDetectorType.STATIC,
      ):
         tools = ToolsWithHistory(agent=self)
         with open(Path(__file__).parent / "custom_prompt.md", "r") as f:
@@ -180,6 +188,10 @@ class DiscoveryAgent(BrowserUseAgent):
         # dom state
         self.dom_state = DOMState()
 
+        # clickable element detection strategy (hot-swappable)
+        self.clickable_detector_type = clickable_detector_type
+        self.clickable_detector: ClickableDetectorStrategy = get_clickable_detector(clickable_detector_type)
+
         if self.take_screenshot and self.agent_dir:
             # NOTE: purposely named to *not* override BrowserAgent's screenshot_service so we can control screenshot execution
             self.screen_shot_service = ScreenshotService(self.agent_dir) if self.agent_dir else None
@@ -236,6 +248,47 @@ class DiscoveryAgent(BrowserUseAgent):
     async def pre_run(self):
         pass
 
+    async def _serialize_dom_with_detector(
+        self,
+        browser_state: BrowserStateSummary,
+        include_attributes: Optional[List[str]] = None,
+    ) -> str:
+        """
+        Serialize DOM using the configured clickable detector strategy.
+        
+        This method re-serializes the DOM tree using our custom serializer
+        with the hot-swappable clickable detector, allowing dynamic detection
+        methods to be used instead of the default static heuristics.
+        
+        Args:
+            browser_state: The browser state containing the DOM tree
+            include_attributes: List of HTML attributes to include in output
+            
+        Returns:
+            LLM-friendly string representation of the DOM
+        """
+        if include_attributes is None:
+            include_attributes = INCLUDE_ATTRIBUTES
+        
+        # Prepare the detector (runs JS detection for dynamic/hybrid detectors)
+        await self.clickable_detector.prepare(self.browser_session)
+        
+        # Create serializer with our detector
+        serializer = DOMTreeSerializer(
+            root_node=browser_state.dom_tree,
+            previous_cached_state=browser_state.dom_state if hasattr(browser_state, "dom_state") else None,
+            clickable_detector=self.clickable_detector,
+        )
+        
+        # Serialize and get the DOM state
+        serialized_state, timing_info = serializer.serialize_accessible_elements()
+        
+        # Log timing info for debugging
+        self.logger.debug(f"[SERIALIZE_TIMING] {timing_info}")
+        
+        # Return the LLM representation
+        return serialized_state.llm_representation(include_attributes=include_attributes)
+
     async def pre_execution(self, *useless_args):
         if self.is_transition_step:
             self.curr_url = self.url_queue.pop()
@@ -254,7 +307,11 @@ class DiscoveryAgent(BrowserUseAgent):
                 include_recent_events=False,
             )
             self.curr_dom_tree = browser_state.dom_tree
-            self.curr_dom_str = browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
+            # Use custom serializer if non-static detector is configured
+            if self.clickable_detector_type != ClickableDetectorType.STATIC:
+                self.curr_dom_str = await self._serialize_dom_with_detector(browser_state)
+            else:
+                self.curr_dom_str = browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
 
             parsed_links = parse_links_from_str(self.curr_dom_tree.to_str())
             base_url = get_base_url(self.curr_url)
@@ -309,7 +366,11 @@ class DiscoveryAgent(BrowserUseAgent):
         self._log(f"[UPDATE_STATE_AND_PLAN ] Updating agent state and checking plan completeness")
         await self._update_plan(new_browser_state)
 
-        new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
+        # Use custom serializer if non-static detector is configured
+        if self.clickable_detector_type != ClickableDetectorType.STATIC:
+            new_dom_str = await self._serialize_dom_with_detector(new_browser_state)
+        else:
+            new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
         self.curr_dom_str = new_dom_str
         if self.screen_shot_service and new_browser_state.screenshot:
             await self.screen_shot_service.store_screenshot(new_browser_state.screenshot, self.curr_step)
@@ -369,7 +430,11 @@ class DiscoveryAgent(BrowserUseAgent):
             raise ValueError("Plan is not initialized")
 
         prev_dom_str = self.curr_dom_str
-        new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
+        # Use custom serializer if non-static detector is configured
+        if self.clickable_detector_type != ClickableDetectorType.STATIC:
+            new_dom_str = await self._serialize_dom_with_detector(new_browser_state)
+        else:
+            new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
         dom_diff = get_dom_diff_str(prev_dom_str, new_dom_str)
         completed = CheckNestedPlanCompletion().invoke(
             model=self.llm_hub.get("_check_plan_completion"),
@@ -427,7 +492,11 @@ class DiscoveryAgent(BrowserUseAgent):
         LAST_N_HISTORY = 5
         
         prev_dom_str = self.curr_dom_str
-        new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
+        # Use custom serializer if non-static detector is configured
+        if self.clickable_detector_type != ClickableDetectorType.STATIC:
+            new_dom_str = await self._serialize_dom_with_detector(new_browser_state)
+        else:
+            new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
         dom_diff = get_dom_diff_str(prev_dom_str, new_dom_str)
         agent_history = ""
         for i, h in enumerate(self.history.history[-LAST_N_HISTORY:], start=1):
@@ -632,7 +701,7 @@ class DiscoveryAgent(BrowserUseAgent):
 
         self._log(f"Completing: [page_step: {self.page_step}, agent_step: {self.curr_step}]")
 
-    async def agent_run(self) -> AgentHistoryList[AgentStructuredOutput]:
+    async def run_agent(self) -> AgentHistoryList[AgentStructuredOutput]:
         return await bu_run(self, self.agent_step)
 
     async def run(self, max_steps: int = 50, on_step_start: AgentHookFunc | None = None, on_step_end: AgentHookFunc | None = None):
