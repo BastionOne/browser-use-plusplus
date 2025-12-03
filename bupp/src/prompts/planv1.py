@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Type
-from bupp.src.llm_provider import LMP
+from bupp.src.llm.llm_provider import LMP
 
 class PlanItem(BaseModel):
     description: str

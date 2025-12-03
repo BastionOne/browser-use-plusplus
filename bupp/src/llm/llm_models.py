@@ -1,15 +1,15 @@
+import asyncio
+import json
+import os
 from pathlib import Path
-from typing import Dict, Any, Callable, TypeVar, Optional, Mapping
-from langchain_core.messages import BaseMessage, HumanMessage
+from typing import Dict, Any, Callable, TypeVar, Optional, Mapping, List
 
+from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.language_models.chat_models import BaseChatModel as LangChainModel
     
 from browser_use.llm.base import BaseChatModel
 from browser_use.llm.openai.chat import ChatOpenAI
 from browser_use.llm.messages import UserMessage
-
-import json
-import os
 
 COST_MAP = None
 
@@ -84,7 +84,7 @@ class ChatModelWithName(BaseChatModel):
     def __init__(self, model: LangChainModel, model_name: str):
         self._model = model
         # Align with BaseChatModel Protocol: establish a public `model` name
-        self.model = model_name
+        self.model_name = model_name
         self.log_fn: Optional[Callable[[float, str], None]] = None
         self.function_name: str = ""
 
@@ -162,7 +162,7 @@ class ChatModelWithName(BaseChatModel):
         return res
 
     async def ainvoke(self, messages: Any, output_format: Any | None = None) -> Any: # type: ignore
-        model = ChatOpenAI(model="gpt-4.1")
+        model = ChatOpenAI(model=self.model_name) 
         if isinstance(messages, str):
             messages = [UserMessage(content=messages)]
         elif isinstance(messages, list):
@@ -419,3 +419,58 @@ class LLMHub:
         chat_dir = self._chat_logdirs.get(function_name) if self._chat_logdir else None
         chat_model.set_log_fn(self.log_cost, function_name, chat_dir)
         return chat_model
+
+
+class LLMHarness:
+    """
+    Multithreaded harness for invoking LLM prompts multiple times in parallel.
+    """
+
+    def __init__(self, model_name: str):
+        if model_name not in LLM_MODELS:
+            raise KeyError(f"Model {model_name!r} not found. Available: {list(LLM_MODELS.keys())}")
+        self.model_name = model_name
+
+    def _create_model(self) -> ChatModelWithName:
+        """Create a fresh model instance for each invocation."""
+        return LLM_MODELS[self.model_name]()
+
+    async def _invoke_once(self, prompt: str, index: int) -> Dict[str, Any]:
+        """Invoke the prompt once and return result with metadata."""
+        model = self._create_model()
+        try:
+            result = await model.ainvoke(prompt)
+            content = result.content if hasattr(result, "content") else str(result)
+            return {
+                "index": index,
+                "status": "success",
+                "content": content,
+                "model": self.model_name,
+            }
+        except Exception as e:
+            print(f"[Harness] Invocation {index} failed: {e}")
+            return {
+                "index": index,
+                "status": "error",
+                "error": str(e),
+                "model": self.model_name,
+            }
+
+    async def invoke_parallel(self, prompt: str, n: int) -> List[Dict[str, Any]]:
+        """
+        Invoke the prompt n times in parallel using asyncio.
+
+        Args:
+            prompt: The prompt text to send to the model.
+            n: Number of times to invoke.
+
+        Returns:
+            List of result dictionaries with index, status, content/error, and model.
+        """
+        tasks = [self._invoke_once(prompt, i) for i in range(n)]
+        results = await asyncio.gather(*tasks)
+        return list(results)
+
+    def invoke_parallel_sync(self, prompt: str, n: int) -> List[Dict[str, Any]]:
+        """Synchronous wrapper for invoke_parallel."""
+        return asyncio.run(self.invoke_parallel(prompt, n))

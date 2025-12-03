@@ -15,8 +15,8 @@ from browser_use.tools.registry.views import ActionModel
 from browser_use.tools.views import NavigateAction
 
 # project imports
-from bupp.src.llm_provider import LMP
-from bupp.src.llm_models import BaseChatModel
+from bupp.src.llm.llm_provider import LMP
+from bupp.src.llm.llm_models import BaseChatModel
 
 def get_base_url(url: str) -> str:
     """
@@ -82,18 +82,16 @@ regex_str = r"""
 
 context_delimiter_str = "\n"
 # Extensions blacklist to ignore
-# blacklisted_extensions = [
-#     # Images
-#     '.svg', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.bmp', '.tiff',
-#     # Documents/media
-#     '.pdf', '.zip', '.tar', '.gz', '.mp4', '.mp3', '.wav', '.avi', '.mov',
-#     # Static assets
-#     '.css', '.js', '.woff', '.woff2', '.ttf', '.eot', '.map',
-#     # Data
-#     '.json', '.xml', '.rss', '.atom', '.csv',
-# ]
-blacklisted_extensions = []
-
+blacklisted_extensions = [
+    # Images
+    '.svg', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.bmp', '.tiff',
+    # Documents/media
+    '.pdf', '.zip', '.tar', '.gz', '.mp4', '.mp3', '.wav', '.avi', '.mov',
+    # Static assets
+    '.css', '.js', '.woff', '.woff2', '.ttf', '.eot', '.map',
+    # Data
+    '.json', '.xml', '.rss', '.atom', '.csv',
+]
 
 def getContext(list_matches, content, include_delimiter=0, context_delimiter_str="\n"):
     """

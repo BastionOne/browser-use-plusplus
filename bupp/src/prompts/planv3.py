@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from bupp.src.llm_provider import LMP
+from bupp.src.llm.llm_provider import LMP
 from bupp.logger import get_agent_loggers
 
 agent_log, full_log = get_agent_loggers()

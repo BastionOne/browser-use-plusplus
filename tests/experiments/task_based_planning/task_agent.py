@@ -27,7 +27,7 @@ from bupp.src.prompts.planv4 import (
     # TASK_PROMPT_WITH_PLAN_NO_THINKING as TASK_PROMPT_WITH_PLAN
     TASK_PROMPT_WITH_PLAN as TASK_PROMPT_WITH_PLAN
 )
-from bupp.src.llm_models import LLMHub, ChatModelWithLogging
+from bupp.src.llm.llm_models import LLMHub, ChatModelWithLogging
 from bupp.src.pages import Page, PageObservations
 from bupp.src.proxy import MitmProxyHTTPHandler
 from bupp.src.state import (

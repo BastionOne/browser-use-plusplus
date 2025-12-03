@@ -1,0 +1,1549 @@
+{
+  "method": "static",
+  "url": "https://www.ca.kayak.com/",
+  "timestamp": "20251202_234807",
+  "element_count": 153,
+  "elements": [
+    {
+      "backend_node_id": 954,
+      "xpath": "html/body/div[2]/div/div/header/div/div[2]/div/div[1]/div[1]/div",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "role": "button",
+        "tabindex": "0",
+        "class": "ZGw- ZGw--mod-size-medium ZGw--mod-variant-default",
+        "aria-label": "Open main navigation"
+      }
+    },
+    {
+      "backend_node_id": 959,
+      "xpath": "html/body/div[2]/div/div/header/div/div[2]/div/div[1]/div[2]/div/a",
+      "tag": "a",
+      "text": "",
+      "attributes": {
+        "class": "gPDR-main-logo-link",
+        "href": "/",
+        "itemprop": "https://schema.org/logo",
+        "aria-label": "Go to the kayak homepage"
+      }
+    },
+    {
+      "backend_node_id": 970,
+      "xpath": "html/body/div[2]/div/div/header/div/div[2]/div/div[3]/div/div/div",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "ui-layout-header-HeaderTripsItem"
+      }
+    },
+    {
+      "backend_node_id": 971,
+      "xpath": "html/body/div[2]/div/div/header/div/div[2]/div/div[3]/div/div/div/div",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "trips-drawer-wrapper theme-light"
+      }
+    },
+    {
+      "backend_node_id": 973,
+      "xpath": "html/body/div[2]/div/div/header/div/div[2]/div/div[3]/div/div/div/div/div/div",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "role": "button",
+        "tabindex": "0",
+        "class": "ZGw- ZGw--mod-size-medium ZGw--mod-variant-round",
+        "aria-label": "Open Trips drawer"
+      }
+    },
+    {
+      "backend_node_id": 979,
+      "xpath": "html/body/div[2]/div/div/header/div/div[2]/div/div[3]/div/div/span/div/div",
+      "tag": "div",
+      "text": "Sign in",
+      "attributes": {
+        "role": "button",
+        "tabindex": "0",
+        "class": "ZGw- ZGw--mod-size-medium ZGw--mod-variant-default"
+      }
+    },
+    {
+      "backend_node_id": 987,
+      "xpath": "html/body/div[2]/div/div/header/div/div[2]/div/div[4]/div/div",
+      "tag": "div",
+      "text": "Flights\nStays\nCars\nFlight+Hotel\nAI Mode\nExplore\nFlight Tracker\nBest Time to Travel\nKAYAK for Busines",
+      "attributes": {
+        "tabindex": "-1",
+        "class": "pRB0 pRB0-collapsed pRB0-mod-expand-animated pRB0-mod-variant-drawer-hidden pRB0-mod-position-sticky",
+        "style": "top:80px;height:calc(100vh - 80px)"
+      }
+    },
+    {
+      "backend_node_id": 1608,
+      "xpath": "html/body/div[2]/div/div/div[2]",
+      "tag": "div",
+      "text": "Compare flight deals from 100s of sites\n.\nFlights\nStays\nCars\nFlight+Hotel\nAI Mode\nRound-trip\n0 bags\n",
+      "attributes": {
+        "class": "JjjA-main JjjA-compactSearch JjjA-new-nav-breakpoints JjjA-mod-padding-bottom",
+        "id": "main",
+        "role": "main"
+      }
+    },
+    {
+      "backend_node_id": 1610,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]",
+      "tag": "div",
+      "text": "Compare flight deals from 100s of sites\n.\nFlights\nStays\nCars\nFlight+Hotel\nAI Mode\nRound-trip\n0 bags\n",
+      "attributes": {
+        "role": "search",
+        "aria-label": "flight",
+        "id": "main-search-form"
+      }
+    },
+    {
+      "backend_node_id": 1624,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/nav/ul/li[1]",
+      "tag": "li",
+      "text": "Flights",
+      "attributes": {
+        "role": "menuitem",
+        "class": "o7vm"
+      }
+    },
+    {
+      "backend_node_id": 1625,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/nav/ul/li[1]/a",
+      "tag": "a",
+      "text": "",
+      "attributes": {
+        "class": "y8q4 y8q4-mod-theme-active y8q4-mod-border-default",
+        "aria-label": "Search for flights",
+        "aria-current": "page",
+        "href": "/flights",
+        "tabindex": "0"
+      }
+    },
+    {
+      "backend_node_id": 1630,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/nav/ul/li[2]",
+      "tag": "li",
+      "text": "Stays",
+      "attributes": {
+        "role": "menuitem",
+        "class": "o7vm"
+      }
+    },
+    {
+      "backend_node_id": 1631,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/nav/ul/li[2]/a",
+      "tag": "a",
+      "text": "",
+      "attributes": {
+        "class": "y8q4 y8q4-mod-theme-default y8q4-mod-border-default",
+        "aria-label": "Search for stays",
+        "aria-current": "false",
+        "href": "/stays",
+        "tabindex": "-1"
+      }
+    },
+    {
+      "backend_node_id": 1636,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/nav/ul/li[3]",
+      "tag": "li",
+      "text": "Cars",
+      "attributes": {
+        "role": "menuitem",
+        "class": "o7vm"
+      }
+    },
+    {
+      "backend_node_id": 1637,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/nav/ul/li[3]/a",
+      "tag": "a",
+      "text": "",
+      "attributes": {
+        "class": "y8q4 y8q4-mod-theme-default y8q4-mod-border-default",
+        "aria-label": "Search for cars",
+        "aria-current": "false",
+        "href": "/cars",
+        "tabindex": "-1"
+      }
+    },
+    {
+      "backend_node_id": 1642,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/nav/ul/li[4]",
+      "tag": "li",
+      "text": "Flight+Hotel",
+      "attributes": {
+        "role": "menuitem",
+        "class": "o7vm"
+      }
+    },
+    {
+      "backend_node_id": 1643,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/nav/ul/li[4]/a",
+      "tag": "a",
+      "text": "",
+      "attributes": {
+        "class": "y8q4 y8q4-mod-theme-default y8q4-mod-border-default",
+        "href": "/packages",
+        "aria-label": "Search for packages",
+        "aria-current": "false",
+        "tabindex": "-1"
+      }
+    },
+    {
+      "backend_node_id": 1648,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/nav/ul/li[5]",
+      "tag": "li",
+      "text": "AI Mode",
+      "attributes": {
+        "role": "menuitem",
+        "class": "o7vm"
+      }
+    },
+    {
+      "backend_node_id": 1654,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/nav/ul/li[5]/div[1]/div[2]/a",
+      "tag": "a",
+      "text": "",
+      "attributes": {
+        "class": "y8q4 y8q4-mod-theme-default",
+        "aria-label": "Go to AI Mode",
+        "aria-current": "false",
+        "href": "/aimode",
+        "tabindex": "-1"
+      }
+    },
+    {
+      "backend_node_id": 1665,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/div/div/div/div[1]/div/div[1]/div/div",
+      "tag": "div",
+      "text": "Round-trip",
+      "attributes": {
+        "class": "udzg udzg-mod-size-small udzg-mod-radius-none udzg-mod-state-default udzg-mod-alignment-left udzg-mod-variant-default udzg-mod-full-width",
+        "role": "combobox",
+        "aria-controls": "flight-trip-type-dropdown",
+        "aria-haspopup": "listbox",
+        "aria-expanded": "false",
+        "tabindex": "0",
+        "aria-label": "Trip type Round-trip"
+      }
+    },
+    {
+      "backend_node_id": 1673,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/div/div/div/div[1]/div/div[2]/div",
+      "tag": "div",
+      "text": "0 bags",
+      "attributes": {
+        "role": "button",
+        "tabindex": "0",
+        "class": "uVPW uVPW-pres-default"
+      }
+    },
+    {
+      "backend_node_id": 1692,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/div/div/div/div[2]/div[1]/div[1]/div/div[1]/div/div/div/div/div[2]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "c_neb-item-close"
+      }
+    },
+    {
+      "backend_node_id": 1693,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/div/div/div/div[2]/div[1]/div[1]/div/div[1]/div/div/div/div/div[2]/div",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "role": "button",
+        "tabindex": "-1",
+        "class": "c_neb-item-button",
+        "aria-label": "Remove value"
+      }
+    },
+    {
+      "backend_node_id": 17,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/div/div/div/div[2]/div[1]/div[1]/div/div[1]/div/div/input",
+      "tag": "input",
+      "text": "",
+      "attributes": {
+        "class": "AQWr-mod-padding-left-none AQWr-mod-padding-right-none NhpT NhpT-mod-radius-none NhpT-mod-corner-radius-all NhpT-mod-size-large NhpT-mod-state-default NhpT-mod-text-overflow-ellipsis NhpT-mod-theme-search NhpT-mod-validation-state-neutral NhpT-mod-validation-style-border NhpT-mod-bricks NhpT-mod-reset-default-width NhpT-mod-full-width-height",
+        "type": "text",
+        "tabindex": "0",
+        "aria-readonly": "false",
+        "role": "combobox",
+        "placeholder": "",
+        "aria-label": "Origin location",
+        "aria-autocomplete": "list",
+        "aria-haspopup": "listbox",
+        "aria-expanded": "false",
+        "data-test-origin": "YTO",
+        "value": ""
+      }
+    },
+    {
+      "backend_node_id": 1696,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/div/div/div/div[2]/div[1]/div[1]/div/div[2]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "role": "button",
+        "tabindex": "0",
+        "class": "z8m1 z8m1-mod-collapse-m N4mz-switch-button",
+        "aria-label": "Swap origin and destination locations"
+      }
+    },
+    {
+      "backend_node_id": 18,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/div/div/div/div[2]/div[1]/div[1]/div/div[3]/div/div/input",
+      "tag": "input",
+      "text": "",
+      "attributes": {
+        "class": "AQWr-mod-padding-left-none AQWr-mod-padding-right-none NhpT NhpT-mod-radius-none NhpT-mod-corner-radius-all NhpT-mod-size-large NhpT-mod-state-default NhpT-mod-text-overflow-ellipsis NhpT-mod-theme-search NhpT-mod-validation-state-neutral NhpT-mod-validation-style-border NhpT-mod-reset-default-width NhpT-mod-full-width-height",
+        "type": "text",
+        "tabindex": "0",
+        "aria-readonly": "false",
+        "role": "combobox",
+        "placeholder": "To?",
+        "aria-label": "Destination location",
+        "aria-autocomplete": "list",
+        "aria-haspopup": "listbox",
+        "aria-expanded": "false",
+        "data-test-destination": "",
+        "value": ""
+      }
+    },
+    {
+      "backend_node_id": 1710,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/div/div/div/div[2]/div[1]/div[2]/div/div/div/div[1]/div/div",
+      "tag": "div",
+      "text": "Departure",
+      "attributes": {
+        "role": "button",
+        "tabindex": "0",
+        "class": "xAR_ xAR_-mod-padding-start-base xAR_-mod-padding-end-base xAR_-mod-grow xAR_-mod-taller-l",
+        "aria-label": "Departure date"
+      }
+    },
+    {
+      "backend_node_id": 1721,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/div/div/div/div[2]/div[1]/div[2]/div/div/div/div[3]/div/div",
+      "tag": "div",
+      "text": "Return",
+      "attributes": {
+        "role": "button",
+        "tabindex": "0",
+        "class": "xAR_ xAR_-mod-padding-start-base xAR_-mod-padding-end-base xAR_-mod-grow xAR_-mod-taller-l",
+        "aria-label": "Return date"
+      }
+    },
+    {
+      "backend_node_id": 1729,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/div/div/div/div[2]/div[1]/div[3]/span/div",
+      "tag": "div",
+      "text": "1 adult, Economy",
+      "attributes": {
+        "class": "udzg udzg-mod-size-base udzg-mod-radius-none udzg-mod-state-default udzg-mod-alignment-left udzg-pres-default udzg-mod-variant-default",
+        "role": "combobox",
+        "aria-controls": "flight-horizontal-search-form-travelers-dropdown",
+        "aria-haspopup": "listbox",
+        "aria-expanded": "false",
+        "tabindex": "0",
+        "aria-label": "Trip type"
+      }
+    },
+    {
+      "backend_node_id": 1736,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[1]/section/div/div/div/div[1]/div/div/div/div[2]/div[1]/div[4]/div/button",
+      "tag": "button",
+      "text": "Search",
+      "attributes": {
+        "class": "RxNS RxNS-mod-stretch RxNS-mod-animation-search RxNS-mod-variant-solid RxNS-mod-theme-progress RxNS-mod-shape-default RxNS-mod-spacing-base RxNS-mod-size-medium",
+        "tabindex": "0",
+        "aria-disabled": "false",
+        "role": "button",
+        "type": "submit",
+        "aria-label": "Search"
+      }
+    },
+    {
+      "backend_node_id": 1775,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[1]/div/div[1]/div/div[1]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "c4hc-image"
+      }
+    },
+    {
+      "backend_node_id": 1776,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[1]/div/div[1]/div/div[1]/img",
+      "tag": "img",
+      "text": "",
+      "attributes": {
+        "class": "DU4n",
+        "alt": "",
+        "src": "https://content.r9cdn.net/rimg/provider-logos/airlines/v/AC.png?crop=false&width=108&height=92&fallback=default1.png&_v=0c9c508395bb634d0a68fb50eb9f3c57"
+      }
+    },
+    {
+      "backend_node_id": 1777,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[1]/div/div[1]/div/div[2]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "c4hc-image"
+      }
+    },
+    {
+      "backend_node_id": 1778,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[1]/div/div[1]/div/div[2]/img",
+      "tag": "img",
+      "text": "",
+      "attributes": {
+        "class": "DU4n",
+        "alt": "",
+        "src": "https://content.r9cdn.net/rimg/provider-logos/airlines/v/UA.png?crop=false&width=108&height=92&fallback=default1.png&_v=0c95e6df5bcf556791991bfcdc6e1763"
+      }
+    },
+    {
+      "backend_node_id": 1779,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[1]/div/div[1]/div/div[3]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "c4hc-image"
+      }
+    },
+    {
+      "backend_node_id": 1780,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[1]/div/div[1]/div/div[3]/img",
+      "tag": "img",
+      "text": "",
+      "attributes": {
+        "class": "DU4n",
+        "alt": "",
+        "src": "https://content.r9cdn.net/rimg/provider-logos/airlines/v/GOTOGATE.png?crop=false&width=108&height=92&fallback=default3.png&_v=eb99dafd77477f4e78495f8e7decda95"
+      }
+    },
+    {
+      "backend_node_id": 1781,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[1]/div/div[1]/div/div[4]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "c4hc-image"
+      }
+    },
+    {
+      "backend_node_id": 1782,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[1]/div/div[1]/div/div[4]/img",
+      "tag": "img",
+      "text": "",
+      "attributes": {
+        "class": "DU4n",
+        "alt": "",
+        "src": "https://content.r9cdn.net/rimg/provider-logos/airlines/v/BOOKINGDOTCOM.png?crop=false&width=108&height=92&fallback=default2.png&_v=03069496a07fcfe21089ba19a049677e"
+      }
+    },
+    {
+      "backend_node_id": 1783,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[1]/div/div[1]/div/div[5]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "c4hc-image"
+      }
+    },
+    {
+      "backend_node_id": 1784,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[1]/div/div[1]/div/div[5]/img",
+      "tag": "img",
+      "text": "",
+      "attributes": {
+        "class": "DU4n",
+        "alt": "",
+        "src": "https://content.r9cdn.net/rimg/provider-logos/airlines/v/DL.png?crop=false&width=108&height=92&fallback=default1.png&_v=02a9af26513d796d51e54147426d15b5"
+      }
+    },
+    {
+      "backend_node_id": 1792,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[2]/div/div[1]/div/div[1]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "c4hc-image"
+      }
+    },
+    {
+      "backend_node_id": 1793,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[2]/div/div[1]/div/div[1]/img",
+      "tag": "img",
+      "text": "",
+      "attributes": {
+        "class": "DU4n",
+        "alt": "",
+        "src": "https://content.r9cdn.net/res/images/people/avatar-1.png?v=cfaf5a64667edf6169023e3dffb09f76169c346b&cluster=4"
+      }
+    },
+    {
+      "backend_node_id": 1794,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[2]/div/div[1]/div/div[2]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "c4hc-image"
+      }
+    },
+    {
+      "backend_node_id": 1795,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[2]/div/div[1]/div/div[2]/img",
+      "tag": "img",
+      "text": "",
+      "attributes": {
+        "class": "DU4n",
+        "alt": "",
+        "src": "https://content.r9cdn.net/res/images/people/avatar-2.png?v=d8c9229643d04552ba0f0278e87791af856f4371&cluster=4"
+      }
+    },
+    {
+      "backend_node_id": 1796,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[2]/div/div[1]/div/div[3]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "c4hc-image"
+      }
+    },
+    {
+      "backend_node_id": 1797,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[2]/div/div[1]/div/div[3]/img",
+      "tag": "img",
+      "text": "",
+      "attributes": {
+        "class": "DU4n",
+        "alt": "",
+        "src": "https://content.r9cdn.net/res/images/people/avatar-3.png?v=00227cc2d66e60b9a38e87a0d7d97010597fd5f3&cluster=4"
+      }
+    },
+    {
+      "backend_node_id": 1810,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[3]/div/div[1]/div/svg[1]",
+      "tag": "svg",
+      "text": "",
+      "attributes": {
+        "viewBox": "0 0 200 200",
+        "width": "1.25em",
+        "height": "1.25em",
+        "xmlns": "http://www.w3.org/2000/svg",
+        "class": "B3H9-star",
+        "role": "presentation"
+      }
+    },
+    {
+      "backend_node_id": 1812,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[3]/div/div[1]/div/svg[2]",
+      "tag": "svg",
+      "text": "",
+      "attributes": {
+        "viewBox": "0 0 200 200",
+        "width": "1.25em",
+        "height": "1.25em",
+        "xmlns": "http://www.w3.org/2000/svg",
+        "class": "B3H9-star",
+        "role": "presentation"
+      }
+    },
+    {
+      "backend_node_id": 1814,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[3]/div/div[1]/div/svg[3]",
+      "tag": "svg",
+      "text": "",
+      "attributes": {
+        "viewBox": "0 0 200 200",
+        "width": "1.25em",
+        "height": "1.25em",
+        "xmlns": "http://www.w3.org/2000/svg",
+        "class": "B3H9-star",
+        "role": "presentation"
+      }
+    },
+    {
+      "backend_node_id": 1816,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[3]/div/div[1]/div/svg[4]",
+      "tag": "svg",
+      "text": "",
+      "attributes": {
+        "viewBox": "0 0 200 200",
+        "width": "1.25em",
+        "height": "1.25em",
+        "xmlns": "http://www.w3.org/2000/svg",
+        "class": "B3H9-star",
+        "role": "presentation"
+      }
+    },
+    {
+      "backend_node_id": 1818,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[1]/section/div/div[2]/div/div[1]/div/div[3]/div/div[1]/div/svg[5]",
+      "tag": "svg",
+      "text": "",
+      "attributes": {
+        "viewBox": "0 0 200 200",
+        "width": "1.25em",
+        "height": "1.25em",
+        "xmlns": "http://www.w3.org/2000/svg",
+        "class": "B3H9-star",
+        "role": "presentation"
+      }
+    },
+    {
+      "backend_node_id": 1845,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[1]/div/header/div/div[2]/div/a",
+      "tag": "a",
+      "text": "Explore more",
+      "attributes": {
+        "class": "RxNS RxNS-mod-variant-interactive RxNS-mod-theme-base RxNS-mod-shape-default RxNS-mod-spacing-small RxNS-mod-size-small",
+        "tabindex": "0",
+        "aria-disabled": "false",
+        "href": "/explore/YYZ/20260101,20260131?stops=0&tripdurationrange=3%2C7",
+        "role": "link"
+      }
+    },
+    {
+      "backend_node_id": 1860,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div",
+      "tag": "div",
+      "text": "Halifax\n2h 40m, direct\nStart date\nThu 15/1\nEnd date\nMon 19/1\nfrom C$ 118",
+      "attributes": {
+        "role": "group",
+        "tabindex": "-1",
+        "class": "Japq Japq-mod-interactive",
+        "aria-label": "Halifax"
+      }
+    },
+    {
+      "backend_node_id": 1864,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[1]/div/div/div[1]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "l6Lz l6Lz-mod-spacing-none l6Lz-mod-border-radius-none l6Lz-mod-position-relative l6Lz-mod-color-default c2IA4-image-placeholder Japq-img",
+        "style": "--shimmerAnimationDelay: 0ms; --shimmerAngle: 90deg; --shimmerDuration: 2s;"
+      }
+    },
+    {
+      "backend_node_id": 1867,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]",
+      "tag": "div",
+      "text": "Halifax\n2h 40m, direct\nStart date\nThu 15/1\nEnd date\nMon 19/1\nfrom C$ 118",
+      "attributes": {
+        "class": "Japq-content"
+      }
+    },
+    {
+      "backend_node_id": 1868,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/h3",
+      "tag": "h3",
+      "text": "Halifax",
+      "attributes": {
+        "class": "Japq-title"
+      }
+    },
+    {
+      "backend_node_id": 1869,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/h3/a",
+      "tag": "a",
+      "text": "Halifax",
+      "attributes": {
+        "href": "/flights/YYZ-YHZ/2026-01-15/2026-01-19/",
+        "target": "_blank"
+      }
+    },
+    {
+      "backend_node_id": 1871,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/div",
+      "tag": "div",
+      "text": "2h 40m, direct\nStart date\nThu 15/1\nEnd date\nMon 19/1\nfrom C$ 118",
+      "attributes": {
+        "class": "esgW esgW-mod-theme-split-content"
+      }
+    },
+    {
+      "backend_node_id": 1872,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/div/div[1]",
+      "tag": "div",
+      "text": "2h 40m, direct\nStart date\nThu 15/1\nEnd date\nMon 19/1",
+      "attributes": {
+        "class": "esgW-content"
+      }
+    },
+    {
+      "backend_node_id": 1873,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/div/div[1]/div[1]",
+      "tag": "div",
+      "text": "2h 40m, direct",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1875,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/div/div[1]/div[2]",
+      "tag": "div",
+      "text": "Start date\nThu 15/1\nEnd date\nMon 19/1",
+      "attributes": {
+        "class": "esgW-dates"
+      }
+    },
+    {
+      "backend_node_id": 1876,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/div/div[1]/div[2]/span[1]",
+      "tag": "span",
+      "text": "Start date\nThu 15/1",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1877,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/div/div[1]/div[2]/span[1]/span",
+      "tag": "span",
+      "text": "Start date",
+      "attributes": {
+        "class": "hEI8"
+      }
+    },
+    {
+      "backend_node_id": 1880,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/div/div[1]/div[2]/svg",
+      "tag": "svg",
+      "text": "",
+      "attributes": {
+        "viewBox": "0 0 200 200",
+        "width": "1.25em",
+        "height": "1.25em",
+        "xmlns": "http://www.w3.org/2000/svg",
+        "class": "esgW-arrow",
+        "role": "presentation"
+      }
+    },
+    {
+      "backend_node_id": 1882,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/div/div[1]/div[2]/span[2]",
+      "tag": "span",
+      "text": "End date\nMon 19/1",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1883,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/div/div[1]/div[2]/span[2]/span",
+      "tag": "span",
+      "text": "End date",
+      "attributes": {
+        "class": "hEI8"
+      }
+    },
+    {
+      "backend_node_id": 1886,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/div/div[2]",
+      "tag": "div",
+      "text": "from C$ 118",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1887,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/div/div[2]/div",
+      "tag": "div",
+      "text": "from C$ 118",
+      "attributes": {
+        "class": "esgW-price-holder"
+      }
+    },
+    {
+      "backend_node_id": 1888,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div/div[2]/div/div[2]/div/div",
+      "tag": "div",
+      "text": "from C$ 118",
+      "attributes": {
+        "class": "esgW-price"
+      }
+    },
+    {
+      "backend_node_id": 1893,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div",
+      "tag": "div",
+      "text": "Fort Lauderdale\n3h 25m, direct\nStart date\nSun 18/1\nEnd date\nThu 22/1\nfrom C$ 139",
+      "attributes": {
+        "role": "group",
+        "tabindex": "-1",
+        "class": "Japq Japq-mod-interactive",
+        "aria-label": "Fort Lauderdale"
+      }
+    },
+    {
+      "backend_node_id": 1897,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[1]/div/div/div[1]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "l6Lz l6Lz-mod-spacing-none l6Lz-mod-border-radius-none l6Lz-mod-position-relative l6Lz-mod-color-default c2IA4-image-placeholder Japq-img",
+        "style": "--shimmerAnimationDelay: 0ms; --shimmerAngle: 90deg; --shimmerDuration: 2s;"
+      }
+    },
+    {
+      "backend_node_id": 1900,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]",
+      "tag": "div",
+      "text": "Fort Lauderdale\n3h 25m, direct\nStart date\nSun 18/1\nEnd date\nThu 22/1\nfrom C$ 139",
+      "attributes": {
+        "class": "Japq-content"
+      }
+    },
+    {
+      "backend_node_id": 1901,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/h3",
+      "tag": "h3",
+      "text": "Fort Lauderdale",
+      "attributes": {
+        "class": "Japq-title"
+      }
+    },
+    {
+      "backend_node_id": 1902,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/h3/a",
+      "tag": "a",
+      "text": "Fort Lauderdale",
+      "attributes": {
+        "href": "/flights/YYZ-FLL/2026-01-18/2026-01-22/",
+        "target": "_blank"
+      }
+    },
+    {
+      "backend_node_id": 1904,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/div",
+      "tag": "div",
+      "text": "3h 25m, direct\nStart date\nSun 18/1\nEnd date\nThu 22/1\nfrom C$ 139",
+      "attributes": {
+        "class": "esgW esgW-mod-theme-split-content"
+      }
+    },
+    {
+      "backend_node_id": 1905,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/div/div[1]",
+      "tag": "div",
+      "text": "3h 25m, direct\nStart date\nSun 18/1\nEnd date\nThu 22/1",
+      "attributes": {
+        "class": "esgW-content"
+      }
+    },
+    {
+      "backend_node_id": 1906,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/div/div[1]/div[1]",
+      "tag": "div",
+      "text": "3h 25m, direct",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1908,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/div/div[1]/div[2]",
+      "tag": "div",
+      "text": "Start date\nSun 18/1\nEnd date\nThu 22/1",
+      "attributes": {
+        "class": "esgW-dates"
+      }
+    },
+    {
+      "backend_node_id": 1909,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/div/div[1]/div[2]/span[1]",
+      "tag": "span",
+      "text": "Start date\nSun 18/1",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1910,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/div/div[1]/div[2]/span[1]/span",
+      "tag": "span",
+      "text": "Start date",
+      "attributes": {
+        "class": "hEI8"
+      }
+    },
+    {
+      "backend_node_id": 1913,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/div/div[1]/div[2]/svg",
+      "tag": "svg",
+      "text": "",
+      "attributes": {
+        "viewBox": "0 0 200 200",
+        "width": "1.25em",
+        "height": "1.25em",
+        "xmlns": "http://www.w3.org/2000/svg",
+        "class": "esgW-arrow",
+        "role": "presentation"
+      }
+    },
+    {
+      "backend_node_id": 1915,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/div/div[1]/div[2]/span[2]",
+      "tag": "span",
+      "text": "End date\nThu 22/1",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1916,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/div/div[1]/div[2]/span[2]/span",
+      "tag": "span",
+      "text": "End date",
+      "attributes": {
+        "class": "hEI8"
+      }
+    },
+    {
+      "backend_node_id": 1919,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/div/div[2]",
+      "tag": "div",
+      "text": "from C$ 139",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1920,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/div/div[2]/div",
+      "tag": "div",
+      "text": "from C$ 139",
+      "attributes": {
+        "class": "esgW-price-holder"
+      }
+    },
+    {
+      "backend_node_id": 1921,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div/div[2]/div/div[2]/div/div",
+      "tag": "div",
+      "text": "from C$ 139",
+      "attributes": {
+        "class": "esgW-price"
+      }
+    },
+    {
+      "backend_node_id": 1926,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div",
+      "tag": "div",
+      "text": "Orlando\n3h 7m, direct\nStart date\nFri 16/1\nEnd date\nFri 23/1\nfrom C$ 182",
+      "attributes": {
+        "role": "group",
+        "tabindex": "-1",
+        "class": "Japq Japq-mod-interactive",
+        "aria-label": "Orlando"
+      }
+    },
+    {
+      "backend_node_id": 1930,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[1]/div/div/div[1]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "l6Lz l6Lz-mod-spacing-none l6Lz-mod-border-radius-none l6Lz-mod-position-relative l6Lz-mod-color-default c2IA4-image-placeholder Japq-img",
+        "style": "--shimmerAnimationDelay: 0ms; --shimmerAngle: 90deg; --shimmerDuration: 2s;"
+      }
+    },
+    {
+      "backend_node_id": 1933,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]",
+      "tag": "div",
+      "text": "Orlando\n3h 7m, direct\nStart date\nFri 16/1\nEnd date\nFri 23/1\nfrom C$ 182",
+      "attributes": {
+        "class": "Japq-content"
+      }
+    },
+    {
+      "backend_node_id": 1934,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/h3",
+      "tag": "h3",
+      "text": "Orlando",
+      "attributes": {
+        "class": "Japq-title"
+      }
+    },
+    {
+      "backend_node_id": 1935,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/h3/a",
+      "tag": "a",
+      "text": "Orlando",
+      "attributes": {
+        "href": "/flights/YYZ-ORL/2026-01-16/2026-01-23/",
+        "target": "_blank"
+      }
+    },
+    {
+      "backend_node_id": 1937,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/div",
+      "tag": "div",
+      "text": "3h 7m, direct\nStart date\nFri 16/1\nEnd date\nFri 23/1\nfrom C$ 182",
+      "attributes": {
+        "class": "esgW esgW-mod-theme-split-content"
+      }
+    },
+    {
+      "backend_node_id": 1938,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/div/div[1]",
+      "tag": "div",
+      "text": "3h 7m, direct\nStart date\nFri 16/1\nEnd date\nFri 23/1",
+      "attributes": {
+        "class": "esgW-content"
+      }
+    },
+    {
+      "backend_node_id": 1939,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/div/div[1]/div[1]",
+      "tag": "div",
+      "text": "3h 7m, direct",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1941,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/div/div[1]/div[2]",
+      "tag": "div",
+      "text": "Start date\nFri 16/1\nEnd date\nFri 23/1",
+      "attributes": {
+        "class": "esgW-dates"
+      }
+    },
+    {
+      "backend_node_id": 1942,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/div/div[1]/div[2]/span[1]",
+      "tag": "span",
+      "text": "Start date\nFri 16/1",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1943,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/div/div[1]/div[2]/span[1]/span",
+      "tag": "span",
+      "text": "Start date",
+      "attributes": {
+        "class": "hEI8"
+      }
+    },
+    {
+      "backend_node_id": 1946,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/div/div[1]/div[2]/svg",
+      "tag": "svg",
+      "text": "",
+      "attributes": {
+        "viewBox": "0 0 200 200",
+        "width": "1.25em",
+        "height": "1.25em",
+        "xmlns": "http://www.w3.org/2000/svg",
+        "class": "esgW-arrow",
+        "role": "presentation"
+      }
+    },
+    {
+      "backend_node_id": 1948,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/div/div[1]/div[2]/span[2]",
+      "tag": "span",
+      "text": "End date\nFri 23/1",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1949,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/div/div[1]/div[2]/span[2]/span",
+      "tag": "span",
+      "text": "End date",
+      "attributes": {
+        "class": "hEI8"
+      }
+    },
+    {
+      "backend_node_id": 1952,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/div/div[2]",
+      "tag": "div",
+      "text": "from C$ 182",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1953,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/div/div[2]/div",
+      "tag": "div",
+      "text": "from C$ 182",
+      "attributes": {
+        "class": "esgW-price-holder"
+      }
+    },
+    {
+      "backend_node_id": 1954,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div/div[2]/div/div[2]/div/div",
+      "tag": "div",
+      "text": "from C$ 182",
+      "attributes": {
+        "class": "esgW-price"
+      }
+    },
+    {
+      "backend_node_id": 1959,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div",
+      "tag": "div",
+      "text": "Fort Myers\n3h 25m, direct\nStart date\nWed 21/1\nEnd date\nSun 25/1\nfrom C$ 210",
+      "attributes": {
+        "role": "group",
+        "tabindex": "-1",
+        "class": "Japq Japq-mod-interactive",
+        "aria-label": "Fort Myers"
+      }
+    },
+    {
+      "backend_node_id": 1963,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[1]/div/div/div[1]",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "l6Lz l6Lz-mod-spacing-none l6Lz-mod-border-radius-none l6Lz-mod-position-relative l6Lz-mod-color-default c2IA4-image-placeholder Japq-img",
+        "style": "--shimmerAnimationDelay: 0ms; --shimmerAngle: 90deg; --shimmerDuration: 2s;"
+      }
+    },
+    {
+      "backend_node_id": 1966,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]",
+      "tag": "div",
+      "text": "Fort Myers\n3h 25m, direct\nStart date\nWed 21/1\nEnd date\nSun 25/1\nfrom C$ 210",
+      "attributes": {
+        "class": "Japq-content"
+      }
+    },
+    {
+      "backend_node_id": 1967,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/h3",
+      "tag": "h3",
+      "text": "Fort Myers",
+      "attributes": {
+        "class": "Japq-title"
+      }
+    },
+    {
+      "backend_node_id": 1968,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/h3/a",
+      "tag": "a",
+      "text": "Fort Myers",
+      "attributes": {
+        "href": "/flights/YYZ-RSW/2026-01-21/2026-01-25/",
+        "target": "_blank"
+      }
+    },
+    {
+      "backend_node_id": 1970,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/div",
+      "tag": "div",
+      "text": "3h 25m, direct\nStart date\nWed 21/1\nEnd date\nSun 25/1\nfrom C$ 210",
+      "attributes": {
+        "class": "esgW esgW-mod-theme-split-content"
+      }
+    },
+    {
+      "backend_node_id": 1971,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/div/div[1]",
+      "tag": "div",
+      "text": "3h 25m, direct\nStart date\nWed 21/1\nEnd date\nSun 25/1",
+      "attributes": {
+        "class": "esgW-content"
+      }
+    },
+    {
+      "backend_node_id": 1972,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/div/div[1]/div[1]",
+      "tag": "div",
+      "text": "3h 25m, direct",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1974,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/div/div[1]/div[2]",
+      "tag": "div",
+      "text": "Start date\nWed 21/1\nEnd date\nSun 25/1",
+      "attributes": {
+        "class": "esgW-dates"
+      }
+    },
+    {
+      "backend_node_id": 1975,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/div/div[1]/div[2]/span[1]",
+      "tag": "span",
+      "text": "Start date\nWed 21/1",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1976,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/div/div[1]/div[2]/span[1]/span",
+      "tag": "span",
+      "text": "Start date",
+      "attributes": {
+        "class": "hEI8"
+      }
+    },
+    {
+      "backend_node_id": 1979,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/div/div[1]/div[2]/svg",
+      "tag": "svg",
+      "text": "",
+      "attributes": {
+        "viewBox": "0 0 200 200",
+        "width": "1.25em",
+        "height": "1.25em",
+        "xmlns": "http://www.w3.org/2000/svg",
+        "class": "esgW-arrow",
+        "role": "presentation"
+      }
+    },
+    {
+      "backend_node_id": 1981,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/div/div[1]/div[2]/span[2]",
+      "tag": "span",
+      "text": "End date\nSun 25/1",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1982,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/div/div[1]/div[2]/span[2]/span",
+      "tag": "span",
+      "text": "End date",
+      "attributes": {
+        "class": "hEI8"
+      }
+    },
+    {
+      "backend_node_id": 1985,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/div/div[2]",
+      "tag": "div",
+      "text": "from C$ 210",
+      "attributes": {}
+    },
+    {
+      "backend_node_id": 1986,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/div/div[2]/div",
+      "tag": "div",
+      "text": "from C$ 210",
+      "attributes": {
+        "class": "esgW-price-holder"
+      }
+    },
+    {
+      "backend_node_id": 1987,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[2]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div/div[2]/div/div[2]/div/div",
+      "tag": "div",
+      "text": "from C$ 210",
+      "attributes": {
+        "class": "esgW-price"
+      }
+    },
+    {
+      "backend_node_id": 2144,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div",
+      "tag": "div",
+      "text": "KAYAK.ai\nBETA\nGet travel questions answered",
+      "attributes": {
+        "role": "group",
+        "tabindex": "-1",
+        "class": "vdb4 vdb4-pres-quarter vdb4-mod-variant-card vdb4-mod-fluid-fixed vdb4-mod-theme-greyed-out vdb4-mod-animate vdb4-mod-interactive"
+      }
+    },
+    {
+      "backend_node_id": 2145,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div[1]",
+      "tag": "div",
+      "text": "KAYAK.ai\nBETA\nGet travel questions answered",
+      "attributes": {
+        "class": "vdb4-content vdb4-mod-no-padding"
+      }
+    },
+    {
+      "backend_node_id": 2146,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div[1]/div",
+      "tag": "div",
+      "text": "KAYAK.ai\nBETA\nGet travel questions answered",
+      "attributes": {
+        "class": "vdb4-title-description"
+      }
+    },
+    {
+      "backend_node_id": 2147,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div[1]/div/h3",
+      "tag": "h3",
+      "text": "KAYAK.ai\nBETA",
+      "attributes": {
+        "class": "vdb4-title vdb4-mod-title-with-content"
+      }
+    },
+    {
+      "backend_node_id": 2148,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div[1]/div/h3/a",
+      "tag": "a",
+      "text": "KAYAK.ai",
+      "attributes": {
+        "href": "#",
+        "target": "_self"
+      }
+    },
+    {
+      "backend_node_id": 2150,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div[1]/div/h3/span",
+      "tag": "span",
+      "text": "BETA",
+      "attributes": {
+        "class": "vdb4-title-badge"
+      }
+    },
+    {
+      "backend_node_id": 2152,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div[1]/div/div",
+      "tag": "div",
+      "text": "Get travel questions answered",
+      "attributes": {
+        "class": "W4ha-mod-content-variant-greyCard"
+      }
+    },
+    {
+      "backend_node_id": 2153,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div[1]/div/div/span",
+      "tag": "span",
+      "text": "Get travel questions answered",
+      "attributes": {
+        "class": "W4ha-description"
+      }
+    },
+    {
+      "backend_node_id": 2157,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[1]/div/div/div/div[2]/div/div",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "l6Lz l6Lz-mod-spacing-none l6Lz-mod-border-radius-medium l6Lz-mod-position-relative l6Lz-mod-color-default vdb4-image",
+        "style": "--shimmerAnimationDelay: 0ms; --shimmerAngle: 90deg; --shimmerDuration: 2s;"
+      }
+    },
+    {
+      "backend_node_id": 2162,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div",
+      "tag": "div",
+      "text": "Best Time to Travel\nKnow when to save",
+      "attributes": {
+        "role": "group",
+        "tabindex": "-1",
+        "class": "vdb4 vdb4-pres-quarter vdb4-mod-variant-card vdb4-mod-fluid-fixed vdb4-mod-theme-greyed-out vdb4-mod-animate vdb4-mod-interactive"
+      }
+    },
+    {
+      "backend_node_id": 2163,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div[1]",
+      "tag": "div",
+      "text": "Best Time to Travel\nKnow when to save",
+      "attributes": {
+        "class": "vdb4-content"
+      }
+    },
+    {
+      "backend_node_id": 2164,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div[1]/div",
+      "tag": "div",
+      "text": "Best Time to Travel\nKnow when to save",
+      "attributes": {
+        "class": "vdb4-title-description"
+      }
+    },
+    {
+      "backend_node_id": 2165,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div[1]/div/h3",
+      "tag": "h3",
+      "text": "Best Time to Travel",
+      "attributes": {
+        "class": "vdb4-title vdb4-mod-title-with-content"
+      }
+    },
+    {
+      "backend_node_id": 2166,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div[1]/div/h3/a",
+      "tag": "a",
+      "text": "Best Time to Travel",
+      "attributes": {
+        "href": "/best-time-to-travel",
+        "target": "_self"
+      }
+    },
+    {
+      "backend_node_id": 2168,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div[1]/div/div",
+      "tag": "div",
+      "text": "Know when to save",
+      "attributes": {
+        "class": "W4ha-mod-content-variant-greyCard"
+      }
+    },
+    {
+      "backend_node_id": 2169,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div[1]/div/div/span",
+      "tag": "span",
+      "text": "Know when to save",
+      "attributes": {
+        "class": "W4ha-description"
+      }
+    },
+    {
+      "backend_node_id": 2173,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div[2]/div/div",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "l6Lz l6Lz-mod-spacing-none l6Lz-mod-border-radius-medium l6Lz-mod-position-relative l6Lz-mod-color-default vdb4-image",
+        "style": "--shimmerAnimationDelay: 0ms; --shimmerAngle: 90deg; --shimmerDuration: 2s;"
+      }
+    },
+    {
+      "backend_node_id": 2178,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div",
+      "tag": "div",
+      "text": "Explore\nSee destinations on your budget",
+      "attributes": {
+        "role": "group",
+        "tabindex": "-1",
+        "class": "vdb4 vdb4-pres-quarter vdb4-mod-variant-card vdb4-mod-fluid-fixed vdb4-mod-theme-greyed-out vdb4-mod-animate vdb4-mod-interactive"
+      }
+    },
+    {
+      "backend_node_id": 2179,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div[1]",
+      "tag": "div",
+      "text": "Explore\nSee destinations on your budget",
+      "attributes": {
+        "class": "vdb4-content"
+      }
+    },
+    {
+      "backend_node_id": 2180,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div[1]/div",
+      "tag": "div",
+      "text": "Explore\nSee destinations on your budget",
+      "attributes": {
+        "class": "vdb4-title-description"
+      }
+    },
+    {
+      "backend_node_id": 2181,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div[1]/div/h3",
+      "tag": "h3",
+      "text": "Explore",
+      "attributes": {
+        "class": "vdb4-title vdb4-mod-title-with-content"
+      }
+    },
+    {
+      "backend_node_id": 2182,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div[1]/div/h3/a",
+      "tag": "a",
+      "text": "Explore",
+      "attributes": {
+        "href": "/explore",
+        "target": "_self"
+      }
+    },
+    {
+      "backend_node_id": 2184,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div[1]/div/div",
+      "tag": "div",
+      "text": "See destinations on your budget",
+      "attributes": {
+        "class": "W4ha-mod-content-variant-greyCard"
+      }
+    },
+    {
+      "backend_node_id": 2185,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div[1]/div/div/span",
+      "tag": "span",
+      "text": "See destinations on your budget",
+      "attributes": {
+        "class": "W4ha-description"
+      }
+    },
+    {
+      "backend_node_id": 2189,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[3]/div/div/div/div[2]/div/div",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "l6Lz l6Lz-mod-spacing-none l6Lz-mod-border-radius-medium l6Lz-mod-position-relative l6Lz-mod-color-default vdb4-image",
+        "style": "--shimmerAnimationDelay: 0ms; --shimmerAngle: 90deg; --shimmerDuration: 2s;"
+      }
+    },
+    {
+      "backend_node_id": 2194,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div",
+      "tag": "div",
+      "text": "Trips\nKeep all your plans in one place",
+      "attributes": {
+        "role": "group",
+        "tabindex": "-1",
+        "class": "vdb4 vdb4-pres-quarter vdb4-mod-variant-card vdb4-mod-fluid-fixed vdb4-mod-theme-greyed-out vdb4-mod-animate vdb4-mod-interactive"
+      }
+    },
+    {
+      "backend_node_id": 2195,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div[1]",
+      "tag": "div",
+      "text": "Trips\nKeep all your plans in one place",
+      "attributes": {
+        "class": "vdb4-content"
+      }
+    },
+    {
+      "backend_node_id": 2196,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div[1]/div",
+      "tag": "div",
+      "text": "Trips\nKeep all your plans in one place",
+      "attributes": {
+        "class": "vdb4-title-description"
+      }
+    },
+    {
+      "backend_node_id": 2197,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div[1]/div/h3",
+      "tag": "h3",
+      "text": "Trips",
+      "attributes": {
+        "class": "vdb4-title vdb4-mod-title-with-content"
+      }
+    },
+    {
+      "backend_node_id": 2198,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div[1]/div/h3/a",
+      "tag": "a",
+      "text": "Trips",
+      "attributes": {
+        "href": "/trips",
+        "target": "_self"
+      }
+    },
+    {
+      "backend_node_id": 2200,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div[1]/div/div",
+      "tag": "div",
+      "text": "Keep all your plans in one place",
+      "attributes": {
+        "class": "W4ha-mod-content-variant-greyCard"
+      }
+    },
+    {
+      "backend_node_id": 2201,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div[1]/div/div/span",
+      "tag": "span",
+      "text": "Keep all your plans in one place",
+      "attributes": {
+        "class": "W4ha-description"
+      }
+    },
+    {
+      "backend_node_id": 2205,
+      "xpath": "html/body/div[2]/div/div/div[2]/main/div[3]/div[2]/div[3]/div/section/div/div[2]/div/div[1]/div/div/div[4]/div/div/div/div[2]/div/div",
+      "tag": "div",
+      "text": "",
+      "attributes": {
+        "class": "l6Lz l6Lz-mod-spacing-none l6Lz-mod-border-radius-medium l6Lz-mod-position-relative l6Lz-mod-color-default vdb4-image",
+        "style": "--shimmerAnimationDelay: 0ms; --shimmerAngle: 90deg; --shimmerDuration: 2s;"
+      }
+    }
+  ]
+}

@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import List, Optional, Tuple, Literal
 from pydantic import BaseModel, Field
 
-from bupp.src.llm_provider import LMP
+from bupp.src.llm.llm_provider import LMP
 
 class PlanItem(BaseModel):
     description: str

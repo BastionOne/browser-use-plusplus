@@ -1,6 +1,8 @@
 from __future__ import annotations  # type: ignore[all]
 import time
 import asyncio
+from pathlib import Path
+from datetime import datetime
 
 from jinja2 import Template, Environment, meta
 import json
@@ -10,17 +12,65 @@ from collections.abc import Iterable
 from typing import Callable, Dict, Generic, Any, TypeVar, get_args, get_origin, List, Optional, Type, Tuple, Set
 import opik
 
-from pydantic import BaseModel, create_model, ValidationError
+from pydantic import create_model
 
 from instructor.dsl.iterable import IterableModel
 from instructor.dsl.simple_type import ModelAdapter, is_simple_type
 from instructor.function_calls import OpenAISchema, openai_schema
 
-from bupp.src.llm_models import openai_41 as lazy_openai_41
+from bupp.src.llm.llm_models import openai_41 as lazy_openai_41
 
-manual_rewrite_model = lazy_openai_41
+T = TypeVar("T")
 
-T = TypeVar("T") 
+
+def log_prompt_to_files(
+    prompt_logdir: Path | None,
+    prompt_template: str,
+    prompt_args: Dict[str, Any],
+    lmp_name: str = ""
+) -> None:
+    """
+    Logs the prompt template and prompt_args to separate files.
+    
+    Args:
+        prompt_logdir: Directory to write log files to
+        prompt_template: The raw prompt template string (without variables substituted)
+        prompt_args: The arguments that were passed to render the template
+        lmp_name: Name of the LMP class for the file prefix
+    """
+    if prompt_logdir is None:
+        return
+
+    prompt_logdir.mkdir(parents=True, exist_ok=True)
+
+    # Find the next available log file number
+    counter = 1
+    while True:
+        template_file = prompt_logdir / f"{counter}_template.txt"
+        if not template_file.exists():
+            break
+        counter += 1
+
+    # Write prompt template
+    template_file = prompt_logdir / f"{counter}_template.txt"
+    with open(template_file, "w", encoding="utf-8") as f:
+        if lmp_name:
+            f.write(f"# LMP: {lmp_name}\n")
+            f.write(f"# Timestamp: {datetime.now().isoformat()}\n\n")
+        f.write(prompt_template)
+
+    # Write prompt_args as JSON
+    args_file = prompt_logdir / f"{counter}_args.json"
+    with open(args_file, "w", encoding="utf-8") as f:
+        # Convert non-JSON-serializable values to strings
+        serializable_args = {}
+        for k, v in prompt_args.items():
+            try:
+                json.dumps(v)
+                serializable_args[k] = v
+            except (TypeError, ValueError):
+                serializable_args[k] = str(v)
+        json.dump(serializable_args, f, indent=2, ensure_ascii=False) 
 
 def extract_json(response: str) -> str:
     """
@@ -140,16 +190,8 @@ class LMP(Generic[T]):
     prompt: str
     response_format: Any
     templates: Dict = {}
-    manual_response_models: List[str] = [
-        "gemini-2.5-pro"
-    ]
-    manual_rewrite_model: Optional[Any] = None
-    manual_rewrite_prompt: str = """
-Convert the following response into a valid JSON object:
-
-{response}
-"""
     opik_prompt: Optional[opik.Prompt] = None
+    prompt_logdir: Optional[Path] = None
 
     def __init__(self, opik_config: Optional[Dict] = None):
         self._error_message = None
@@ -171,26 +213,28 @@ Convert the following response into a valid JSON object:
     def _prepare_prompt(
         self, 
         templates={}, 
-        manual_rewrite: bool = False,
         **prompt_args
-    ) -> str:
+    ) -> Tuple[str, Dict[str, Any]]:
+        """
+        Prepares the prompt string by rendering the template with provided arguments.
+        
+        Returns:
+            Tuple of (rendered_prompt_string, combined_prompt_args)
+        """
         template_vars = get_all_template_variables(self.prompt)
-
         if self._error_message:
             if "error_message" in template_vars:
                 prompt_args["error_message"] = self._error_message
             else:
                 raise ValueError(f"Error message provided but 'error_message' is not a template variable in the prompt")
 
-        prompt_str = Template(self.prompt).render(**prompt_args, **templates)
-        if not manual_rewrite:
-            return prompt_str + self._get_instructor_prompt()
-        else:
-            return prompt_str
-    
-    def _prepare_manual_rewrite_prompt(self, response: str) -> str:
-        prompt_str = self.manual_rewrite_prompt.format(response=response)
-        return prompt_str + self._get_instructor_prompt()
+        prompt_str = self.prompt + self._get_instructor_prompt()
+        
+        # Combine prompt_args and templates for logging
+        combined_args = {**prompt_args, **templates}
+
+        prompt_str = Template(prompt_str).render(**prompt_args, **templates)
+        return prompt_str, combined_args
 
     def set_error_message(self, error_message: str) -> None:
         self._error_message = error_message
@@ -223,7 +267,7 @@ Make sure to return an instance of the JSON, not the schema itself
             **prompt_args
         ) -> Any:
         res = model.invoke(msgs)
-        content = res.content
+        content = res.content   
 
         if not isinstance(content, str):
             raise Exception("[LLM] CONTENT IS NOT A STRING")
@@ -237,18 +281,26 @@ Make sure to return an instance of the JSON, not the schema itself
         return content
 
     def invoke(self, 
-               model: Any,
-               max_retries: int = 5,
-               retry_delay: int = 1,
-               prompt_args: Dict = {},
-               log_this_prompt: Optional[Logger] = None,
-               prompt_log_preamble: Optional[str] = "",
-               manual_rewrite: bool = False) -> Any:
-        prompt = self._prepare_prompt(
+            model: Any,
+            max_retries: int = 5,
+            retry_delay: int = 1,
+            prompt_args: Dict = {},
+            log_this_prompt: Optional[Logger] = None,
+            prompt_log_preamble: Optional[str] = ""
+        ) -> Any:
+        prompt, combined_args = self._prepare_prompt(
             templates=self.templates,
-            manual_rewrite=manual_rewrite,
             **prompt_args,
         )
+        
+        # Log prompt template and args to files
+        log_prompt_to_files(
+            self.prompt_logdir,
+            self.prompt,  # raw template without variables
+            combined_args,
+            self.__class__.__name__
+        )
+        
         if log_this_prompt:
             log_this_prompt.info(f"{prompt_log_preamble}\n[{self.__class__.__name__}]: {prompt}")
 
@@ -257,17 +309,7 @@ Make sure to return an instance of the JSON, not the schema itself
         while current_retry <= max_retries:
             try:
                 res = model.invoke(prompt)
-
-                # two part model invocation
-                if model.model_name in self.manual_response_models or manual_rewrite:
-                    if not self.manual_rewrite_model:
-                        self.manual_rewrite_model = lazy_openai_41()
-
-                    prompt = self._prepare_manual_rewrite_prompt(res.content)
-                    rewrite_res = self.manual_rewrite_model.invoke(prompt)
-                    content = rewrite_res.content
-                else:
-                    content = res.content
+                content = res.content
 
                 if not isinstance(content, str):
                     raise Exception("[LLM] CONTENT IS NOT A STRING")
@@ -303,20 +345,26 @@ Make sure to return an instance of the JSON, not the schema itself
         prompt_args: Dict = {},
         prompt_logger: Optional[Logger] = None,
         prompt_log_preamble: Optional[str] = "",
-        manual_rewrite: bool = False,
         dry_run: bool = False,
         clean_res: Callable[str,[str]] = None
     ) -> Any:
         """Async version of invoke that leverages model.ainvoke when available.
 
         Falls back to running the sync invoke in a thread if the model has no ainvoke.
-        Also supports the manual rewrite flow using an async call when available.
         """
-        prompt = self._prepare_prompt(
+        prompt, combined_args = self._prepare_prompt(
             templates=self.templates,
-            manual_rewrite=manual_rewrite,
             **prompt_args,
         )
+        
+        # Log prompt template and args to files
+        log_prompt_to_files(
+            self.prompt_logdir,
+            self.prompt,  # raw template without variables
+            combined_args,
+            self.__class__.__name__
+        )
+        
         if prompt_logger:
             prompt_logger.info(f"{prompt_log_preamble}\n[{self.__class__.__name__}]: {prompt}")
         

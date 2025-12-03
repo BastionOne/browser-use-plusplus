@@ -1,0 +1,216 @@
+[954]<div role=button aria-label=Open main navigation />
+[959]<a aria-label=Go to the kayak homepage />
+[970]<div />
+	[971]<div />
+		[973]<div role=button aria-label=Open Trips drawer />
+[979]<div role=button />
+	Sign in
+|SCROLL[987]<div /> (0.0 pages above, 0.0 pages below horizontal 0%)
+[1608]<div role=main />
+	[1610]<div role=search aria-label=flight />
+		Compare flight deals from 100s of sites
+		[1624]<li role=menuitem />
+			[1625]<a aria-label=Search for flights />
+			Flights
+		[1630]<li role=menuitem />
+			[1631]<a aria-label=Search for stays />
+			Stays
+		[1636]<li role=menuitem />
+			[1637]<a aria-label=Search for cars />
+			Cars
+		[1642]<li role=menuitem />
+			[1643]<a aria-label=Search for packages />
+			Flight+Hotel
+		[1648]<li role=menuitem />
+			[1654]<a aria-label=Go to AI Mode />
+			AI Mode
+		[1665]<div role=combobox aria-label=Trip type Round-trip />
+			Round-trip
+		[1673]<div role=button />
+			0 bags
+		Toronto (YTO)
+		[1692]<div />
+			[1693]<div role=button aria-label=Remove value />
+		|SHADOW(open)|[17]<input type=text role=combobox aria-label=Origin location />
+		[1696]<div role=button aria-label=Swap origin and destination locations />
+		|SHADOW(open)|[18]<input type=text role=combobox placeholder=To? aria-label=Destination location />
+		[1710]<div role=button aria-label=Departure date />
+			Departure
+		[1721]<div role=button aria-label=Return date />
+			Return
+		[1729]<div role=combobox aria-label=Trip type />
+			1 adult, Economy
+		[1736]<button role=button type=submit aria-label=Search />
+			Search
+	|SCROLL|<div />
+		[1775]<div />
+			[1776]<img />
+		[1777]<div />
+			[1778]<img />
+		[1779]<div />
+			[1780]<img />
+		[1781]<div />
+			[1782]<img />
+		[1783]<div />
+			[1784]<img />
+		Save when you compare
+		More deals. More sites. One search.
+		[1792]<div />
+			[1793]<img />
+		[1794]<div />
+			[1795]<img />
+		[1796]<div />
+			[1797]<img />
+		41,000,000+
+		searches this week
+		[1810]<svg role=presentation /> <!-- SVG content collapsed -->
+		[1812]<svg role=presentation /> <!-- SVG content collapsed -->
+		[1814]<svg role=presentation /> <!-- SVG content collapsed -->
+		[1816]<svg role=presentation /> <!-- SVG content collapsed -->
+		[1818]<svg role=presentation /> <!-- SVG content collapsed -->
+		Travellers love us
+		1M+ ratings on our app
+	Travel deals under C$ 298
+	[1845]<a role=link />
+		Explore more
+	|SCROLL|<div /> (horizontal 0%)
+		[1860]<div role=group aria-label=Halifax />
+			[1864]<div />
+			[1867]<div />
+				[1868]<h3 />
+					[1869]<a />
+						Halifax
+				[1871]<div />
+					[1872]<div />
+						[1873]<div />
+							2h 40m, direct
+						[1875]<div />
+							[1876]<span />
+								[1877]<span />
+									Start date
+								Thu 15/1
+							[1880]<svg role=presentation /> <!-- SVG content collapsed -->
+							[1882]<span />
+								[1883]<span />
+									End date
+								Mon 19/1
+					[1886]<div />
+						[1887]<div />
+							[1888]<div />
+								from C$ 118
+		[1893]<div role=group aria-label=Fort Lauderdale />
+			[1897]<div />
+			[1900]<div />
+				[1901]<h3 />
+					[1902]<a />
+						Fort Lauderdale
+				[1904]<div />
+					[1905]<div />
+						[1906]<div />
+							3h 25m, direct
+						[1908]<div />
+							[1909]<span />
+								[1910]<span />
+									Start date
+								Sun 18/1
+							[1913]<svg role=presentation /> <!-- SVG content collapsed -->
+							[1915]<span />
+								[1916]<span />
+									End date
+								Thu 22/1
+					[1919]<div />
+						[1920]<div />
+							[1921]<div />
+								from C$ 139
+		[1926]<div role=group aria-label=Orlando />
+			[1930]<div />
+			[1933]<div />
+				[1934]<h3 />
+					[1935]<a />
+						Orlando
+				[1937]<div />
+					[1938]<div />
+						[1939]<div />
+							3h 7m, direct
+						[1941]<div />
+							[1942]<span />
+								[1943]<span />
+									Start date
+								Fri 16/1
+							[1946]<svg role=presentation /> <!-- SVG content collapsed -->
+							[1948]<span />
+								[1949]<span />
+									End date
+								Fri 23/1
+					[1952]<div />
+						[1953]<div />
+							[1954]<div />
+								from C$ 182
+		[1959]<div role=group aria-label=Fort Myers />
+			[1963]<div />
+			[1966]<div />
+				[1967]<h3 />
+					[1968]<a />
+						Fort Myers
+				[1970]<div />
+					[1971]<div />
+						[1972]<div />
+							3h 25m, direct
+						[1974]<div />
+							[1975]<span />
+								[1976]<span />
+									Start date
+								Wed 21/1
+							[1979]<svg role=presentation /> <!-- SVG content collapsed -->
+							[1981]<span />
+								[1982]<span />
+									End date
+								Sun 25/1
+					[1985]<div />
+						[1986]<div />
+							[1987]<div />
+								from C$ 210
+	For travel pros
+	|SCROLL|<div /> (horizontal 0%)
+		[2144]<div role=group />
+			[2145]<div />
+				[2146]<div />
+					[2147]<h3 />
+						[2148]<a />
+							KAYAK.ai
+						[2150]<span />
+							BETA
+					[2152]<div />
+						[2153]<span />
+							Get travel questions answered
+			[2157]<div />
+		[2162]<div role=group />
+			[2163]<div />
+				[2164]<div />
+					[2165]<h3 />
+						[2166]<a />
+							Best Time to Travel
+					[2168]<div />
+						[2169]<span />
+							Know when to save
+			[2173]<div />
+		[2178]<div role=group />
+			[2179]<div />
+				[2180]<div />
+					[2181]<h3 />
+						[2182]<a />
+							Explore
+					[2184]<div />
+						[2185]<span />
+							See destinations on your budget
+			[2189]<div />
+		[2194]<div role=group />
+			[2195]<div />
+				[2196]<div />
+					[2197]<h3 />
+						[2198]<a />
+							Trips
+					[2200]<div />
+						[2201]<span />
+							Keep all your plans in one place
+			[2205]<div />

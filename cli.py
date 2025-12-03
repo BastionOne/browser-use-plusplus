@@ -1,9 +1,11 @@
 import asyncio
+import json
 from importlib import import_module
+from pathlib import Path
 from typing import Awaitable, List
+
 import click
 import uvicorn
-import json
 
 from bupp.base import (
     BrowserContextManager,
@@ -11,10 +13,9 @@ from bupp.base import (
 )
 from bupp.sites.tests.scenario import Scenario, ScenarioRegistry
 from bupp.sites.tests.registry import TEST_REGISTRY
+from bupp.src.llm.llm_models import LLMHarness
 
 from common.constants import SITES_FOLDER
-
-from pathlib import Path
 
 MAX_STEPS = 3
 NUM_BROWSERS = 1
@@ -320,6 +321,58 @@ def serve_command(test_group, tests, host, port):
         serve_fixture(test_group, [*tests], host, port),
         "serve failed",
     )
+
+
+@cli.command()
+@click.argument("prompt_path", type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "-n",
+    "--num-invocations",
+    default=1,
+    type=int,
+    show_default=True,
+    help="Number of times to invoke the prompt in parallel.",
+)
+def invoke(prompt_path: Path, num_invocations: int):
+    """
+    Invoke an LLM prompt multiple times in parallel.
+
+    Reads the prompt from PROMPT_PATH and the model name from model.txt
+    in the same directory. Prints results as formatted JSON.
+    """
+    prompt_path = Path(prompt_path).resolve()
+    model_txt_path = prompt_path.parent / "model.txt"
+
+    if not model_txt_path.exists():
+        raise click.ClickException(
+            f"model.txt not found in {prompt_path.parent}. "
+            "Expected a model.txt file alongside the prompt file."
+        )
+
+    # Read model name
+    model_name = model_txt_path.read_text(encoding="utf-8").strip()
+    if not model_name:
+        raise click.ClickException("model.txt is empty. Please specify a model name.")
+
+    # Read prompt
+    prompt_content = prompt_path.read_text(encoding="utf-8")
+    if not prompt_content.strip():
+        raise click.ClickException("Prompt file is empty.")
+
+    print(f"Model: {model_name}")
+    print(f"Prompt file: {prompt_path}")
+    print(f"Invocations: {num_invocations}")
+    print("-" * 40)
+
+    try:
+        harness = LLMHarness(model_name)
+    except KeyError as e:
+        raise click.ClickException(str(e))
+
+    results = harness.invoke_parallel_sync(prompt_content, num_invocations)
+
+    # Print results as formatted JSON
+    print(json.dumps(results, indent=2, ensure_ascii=False))
 
 
 def main() -> None:

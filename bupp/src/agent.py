@@ -27,7 +27,7 @@ from bupp.src.prompts.planv4 import (
     # TASK_PROMPT_WITH_PLAN_NO_THINKING as TASK_PROMPT_WITH_PLAN
     TASK_PROMPT_WITH_PLAN as TASK_PROMPT_WITH_PLAN
 )
-from bupp.src.llm_models import LLMHub, ChatModelWithLogging
+from bupp.src.llm.llm_models import LLMHub, ChatModelWithLogging
 from bupp.src.pages import Page, PageObservations
 from bupp.src.proxy import MitmProxyHTTPHandler
 from bupp.src.state import (
@@ -120,7 +120,8 @@ class DiscoveryAgent(BrowserUseAgent):
             system_prompt=override_system_message,
             task=init_task or PLACEHOLDER_TASK,
             llm=ChatModelWithLogging(
-                model=BROWSER_USE_MODEL, chat_logdir=agent_dir / "llm" / "browser_use"
+                model=BROWSER_USE_MODEL, 
+                chat_logdir=agent_dir / "llm" / "browser_use"
             ),
             controller=tools,
             use_vision=False,
@@ -437,7 +438,7 @@ class DiscoveryAgent(BrowserUseAgent):
             new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
         dom_diff = get_dom_diff_str(prev_dom_str, new_dom_str)
         completed = CheckNestedPlanCompletion().invoke(
-            model=self.llm_hub.get("_check_plan_completion"),
+            model=self.llm_hub.get("check_plan_completion"),
             prompt_args={
                 "plan": self.plan,
                 "curr_dom": new_dom_str,
@@ -705,7 +706,7 @@ class DiscoveryAgent(BrowserUseAgent):
         return await bu_run(self, self.agent_step)
 
     async def run(self, max_steps: int = 50, on_step_start: AgentHookFunc | None = None, on_step_end: AgentHookFunc | None = None):
-        """Execute the task with maximum number of steps"""
+        """Execute the task with maximum number of steps""" 
         raise NotImplementedError("This method is not implemented")
 
     async def to_state(self) -> "DiscoveryAgentState":

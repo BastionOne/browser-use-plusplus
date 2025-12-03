@@ -12,8 +12,8 @@ from browser_use.dom.views import DOMSelectorMap, DOMInteractedElement
 from bupp.logger import get_or_init_log_factory
 from bupp.base import BrowserContextManager
 from bupp.src.agent import DiscoveryAgent
-from bupp.src.llm_provider import LMP
-from bupp.src.llm_models import LLMHub
+from bupp.src.llm.llm_provider import LMP
+from bupp.src.llm.llm_models import LLMHub
 
 logger = logging.getLogger(__name__)
 
