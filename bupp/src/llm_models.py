@@ -152,12 +152,13 @@ class ChatModelWithName(BaseChatModel):
             self.log_fn(invoke_cost, self.function_name)
 
     def invoke(self, prompt: str) -> Any:
+        model = ChatOpenAI(model=self.model_name)
         if not isinstance(prompt, str):
             raise ValueError(f"Message must be a string, got {type(message)}")
 
         log_messages(self.chat_logdir, str_to_messages(prompt), self.model)
 
-        res = self._model.invoke(prompt)
+        res = model.invoke(prompt)
         self.log_cost(res)
         return res
 

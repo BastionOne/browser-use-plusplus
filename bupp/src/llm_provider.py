@@ -16,10 +16,6 @@ from instructor.dsl.iterable import IterableModel
 from instructor.dsl.simple_type import ModelAdapter, is_simple_type
 from instructor.function_calls import OpenAISchema, openai_schema
 
-from bupp.src.llm_models import openai_41 as lazy_openai_41
-
-manual_rewrite_model = lazy_openai_41
-
 T = TypeVar("T") 
 
 def extract_json(response: str) -> str:
@@ -140,15 +136,6 @@ class LMP(Generic[T]):
     prompt: str
     response_format: Any
     templates: Dict = {}
-    manual_response_models: List[str] = [
-        "gemini-2.5-pro"
-    ]
-    manual_rewrite_model: Optional[Any] = None
-    manual_rewrite_prompt: str = """
-Convert the following response into a valid JSON object:
-
-{response}
-"""
     opik_prompt: Optional[opik.Prompt] = None
 
     def __init__(self, opik_config: Optional[Dict] = None):
@@ -171,7 +158,6 @@ Convert the following response into a valid JSON object:
     def _prepare_prompt(
         self, 
         templates={}, 
-        manual_rewrite: bool = False,
         **prompt_args
     ) -> str:
         template_vars = get_all_template_variables(self.prompt)
@@ -183,13 +169,6 @@ Convert the following response into a valid JSON object:
                 raise ValueError(f"Error message provided but 'error_message' is not a template variable in the prompt")
 
         prompt_str = Template(self.prompt).render(**prompt_args, **templates)
-        if not manual_rewrite:
-            return prompt_str + self._get_instructor_prompt()
-        else:
-            return prompt_str
-    
-    def _prepare_manual_rewrite_prompt(self, response: str) -> str:
-        prompt_str = self.manual_rewrite_prompt.format(response=response)
         return prompt_str + self._get_instructor_prompt()
 
     def set_error_message(self, error_message: str) -> None:
@@ -242,11 +221,9 @@ Make sure to return an instance of the JSON, not the schema itself
                retry_delay: int = 1,
                prompt_args: Dict = {},
                log_this_prompt: Optional[Logger] = None,
-               prompt_log_preamble: Optional[str] = "",
-               manual_rewrite: bool = False) -> Any:
+               prompt_log_preamble: Optional[str] = "") -> Any:
         prompt = self._prepare_prompt(
             templates=self.templates,
-            manual_rewrite=manual_rewrite,
             **prompt_args,
         )
         if log_this_prompt:
@@ -257,17 +234,7 @@ Make sure to return an instance of the JSON, not the schema itself
         while current_retry <= max_retries:
             try:
                 res = model.invoke(prompt)
-
-                # two part model invocation
-                if model.model_name in self.manual_response_models or manual_rewrite:
-                    if not self.manual_rewrite_model:
-                        self.manual_rewrite_model = lazy_openai_41()
-
-                    prompt = self._prepare_manual_rewrite_prompt(res.content)
-                    rewrite_res = self.manual_rewrite_model.invoke(prompt)
-                    content = rewrite_res.content
-                else:
-                    content = res.content
+                content = res.content
 
                 if not isinstance(content, str):
                     raise Exception("[LLM] CONTENT IS NOT A STRING")
@@ -303,18 +270,15 @@ Make sure to return an instance of the JSON, not the schema itself
         prompt_args: Dict = {},
         prompt_logger: Optional[Logger] = None,
         prompt_log_preamble: Optional[str] = "",
-        manual_rewrite: bool = False,
         dry_run: bool = False,
         clean_res: Callable[str,[str]] = None
     ) -> Any:
         """Async version of invoke that leverages model.ainvoke when available.
 
         Falls back to running the sync invoke in a thread if the model has no ainvoke.
-        Also supports the manual rewrite flow using an async call when available.
         """
         prompt = self._prepare_prompt(
             templates=self.templates,
-            manual_rewrite=manual_rewrite,
             **prompt_args,
         )
         if prompt_logger:
