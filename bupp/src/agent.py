@@ -6,6 +6,7 @@ import json
 import asyncio
 import time
 import requests
+import opik
 from urllib.parse import urljoin
 
 from common.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
@@ -143,7 +144,7 @@ class DiscoveryAgent(BrowserUseAgent):
             self.llm_hub = LLMHub(llm_config, chat_logdir=llm_logdir)
         else:
             self.llm_hub = LLMHub(llm_config)
- 
+
         self.take_screenshot = take_screenshots
         self.llm_config = llm_config
         self.agent_dir = agent_dir

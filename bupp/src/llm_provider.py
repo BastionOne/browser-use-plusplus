@@ -215,6 +215,7 @@ Make sure to return an instance of the JSON, not the schema itself
         # skip process_result
         return content
 
+    @opik.track
     def invoke(self, 
                model: Any,
                max_retries: int = 5,
@@ -261,7 +262,8 @@ Make sure to return an instance of the JSON, not the schema itself
                 current_delay = retry_delay * (2 ** (current_retry - 1))
                 time.sleep(current_delay)
                 print(f"Retry attempt {current_retry}/{max_retries} after error: {str(e)}. Waiting {current_delay}s")
-
+    
+    @opik.track
     async def ainvoke(
         self,
         model: Any,
