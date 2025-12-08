@@ -29,7 +29,7 @@ from bupp.src.prompts.planv4 import (
     TASK_PROMPT_WITH_PLAN as TASK_PROMPT_WITH_PLAN
 )
 from bupp.src.llm.llm_models import LLMHub, ChatModelWithLogging
-from bupp.src.pages import Page, PageObservations
+from bupp.src.pages import Page, SiteMap
 from bupp.src.proxy import MitmProxyHTTPHandler
 from bupp.src.state import (
     AgentSnapshot as DiscoveryAgentState,
@@ -170,7 +170,7 @@ class DiscoveryAgent(BrowserUseAgent):
         self.curr_step = 1
         self.page_step = 1
 
-        self.pages: PageObservations = PageObservations()
+        self.pages: SiteMap = SiteMap()
         self.plan: Optional[PlanItem] = None
         self.curr_dom_tree: Optional[EnhancedDOMTreeNode] = None
         self.curr_url: str = ""

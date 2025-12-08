@@ -368,7 +368,7 @@ class Page:
 
         return cls(url=url, http_msgs=normalized)
 
-class PageObservations:
+class SiteMap:
     """Container for all observed pages and cross-page indexing.
 
     Dual ID system (page-local vs. global):
@@ -562,7 +562,7 @@ class PageObservations:
                 mapping[hm] = pid
         return mapping
 
-    def missing_from(self, other: "PageObservations") -> List[HTTPMessage]:
+    def missing_from(self, other: "SiteMap") -> List[HTTPMessage]:
         """Return HTTPMessage instances present in ``other`` but missing from ``self``.
 
         Uniqueness and comparison are determined by the tuple (METHOD, url),
