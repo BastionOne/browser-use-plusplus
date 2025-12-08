@@ -276,7 +276,6 @@ class AddPlanItemListV2(BaseModel):
         return plan
 
 
-
 # TODO TODO TODO TODO TODO
 # # CAVEATE: account for case when UI transitions *backwads instead of forwards*; our current dom diffing method does not work so well going backwards
 # class UpdatePlanNestedV3(LMP):
@@ -664,6 +663,67 @@ Now try to determine which *new* plan items have been completed by the agent and
             if not re.match(r"^(\d+(?:\.\d+)*)$", index):
                 raise ValueError(f"Invalid plan_indices format: '{index}'. Expected format: digits separated by dots (e.g., '1', '1.2', '1.2.3')")
         return True
+
+class DOMStr(BaseModel):
+    transformed_dom: str
+
+class TransformDOMToStr(LMP):
+    prompt = """
+You are given the minimized DOM of a webpage, which is meant to represent only interactive nodes and removes any extraneous attributes.
+Your task you transform this further, to identify the main interactive nodes, and instead of using HTML, use semantic tags to denote page feature/page content
+
+Here is an example of what your output might look like:
+[NAV]
+├── [MENU_TOGGLE] Open main navigation
+├── [HOME_LINK] Go to the kayak homepage
+├── [MENU_TOGGLE] Open Trips drawer
+└── [ACTION] Sign in
+ 
+[SEARCH_FORM] flight
+├── [TAB_GROUP]
+│   ├── [TAB] Flights (active)
+│   ├── [TAB] Stays
+│   ├── [TAB] Cars
+│   ├── [TAB] Flight+Hotel
+│   └── [TAB] AI Mode (beta)
+├── [FORM_CONTROLS]
+│   ├── [DROPDOWN] Trip type: Round-trip
+│   ├── [DROPDOWN] Bags: 0
+│   ├── [INPUT] Origin: Toronto (YTO)
+│   ├── [SWAP_BUTTON] Swap origin/destination
+│   ├── [INPUT] Destination: (empty)
+│   ├── [DATE_PICKER] Departure
+│   ├── [DATE_PICKER] Return
+│   ├── [DROPDOWN] Travelers: 1 adult, Economy
+│   └── [SUBMIT] Search
+
+[PROMO_BANNER]
+├── [STAT] 41,000,000+ searches this week
+└── [STAT] 1M+ ratings on our app
+
+[DEALS_SECTION] Travel deals under C$ 298
+├── [LINK] Explore more
+├── [DEAL_CARD] Halifax
+│   ├── 2h 40m, direct
+│   ├── Thu 15/1 → Mon 19/1
+│   └── from C$ 118
+├── [DEAL_CARD] Fort Lauderdale
+│   ├── 3h 25m, direct
+│   ├── Sun 18/1 → Thu 22/1
+│   └── from C$ 139
+...
+
+[FEATURES_SECTION] For travel pros
+├── [FEATURE_CARD] KAYAK.ai (BETA)
+│   └── Get travel questions answered
+....
+
+Now here is the minimized DOM: 
+{{minimized_dom}}
+
+Now return the transformed DOM as string
+"""
+
 
 if __name__ == "__main__":
     root = PlanItem(description="Page")

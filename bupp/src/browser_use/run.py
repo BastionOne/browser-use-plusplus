@@ -1,4 +1,4 @@
-from typing import Callable, Awaitable
+from typing import Callable, Awaitable, TYPE_CHECKING
 import asyncio
 import time
 import json
@@ -10,10 +10,12 @@ from browser_use.agent.views import (
     AgentStructuredOutput,
     BrowserStateHistory,
 )
-from browser_use.agent.service import Agent
 from browser_use.agent.views import AgentHistoryList, AgentStructuredOutput
 
-async def bu_run(agent: Agent, step_fn: Callable[[], Awaitable[bool]]) -> AgentHistoryList[AgentStructuredOutput]:        
+if TYPE_CHECKING:
+    from bupp.src.agent import DiscoveryAgent
+
+async def bu_run(agent: "DiscoveryAgent", step_fn: Callable[[], Awaitable[bool]]) -> AgentHistoryList[AgentStructuredOutput]:        
     """Execute the task with maximum number of steps"""
     loop = asyncio.get_event_loop()
     agent_run_error: str | None = None  # Initialize error tracking variable
@@ -150,17 +152,7 @@ async def bu_run(agent: Agent, step_fn: Callable[[], Awaitable[bool]]) -> AgentH
         # Log token usage summary
         await agent.token_cost_service.log_usage_summary()
 
-        # Save snapshots
-        if agent.agent_dir:
-            if agent.save_snapshots:
-                with open(agent.agent_dir / "snapshots.json", "w") as f:
-                    serialized_snapshots = agent.agent_snapshots.model_dump()
-                    json.dump(serialized_snapshots, f)
-            
-            if agent.pages.get_req_count() > 0:
-                with open(agent.agent_dir / "pages.json", "w") as f:
-                    serialized_pages = await agent.pages.to_json()
-                    json.dump(serialized_pages, f)
+        await agent.save_results()
 
         # Unregister signal handlers before cleanup
         signal_handler.unregister()

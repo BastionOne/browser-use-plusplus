@@ -211,4 +211,5 @@ traces/
 .browser_profiles
 .navigation_agent
 .bupp/agent_results/
+.bupp
 tests/experiments/clickable_detection_output/websites

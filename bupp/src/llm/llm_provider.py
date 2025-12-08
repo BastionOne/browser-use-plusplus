@@ -18,59 +18,7 @@ from instructor.dsl.iterable import IterableModel
 from instructor.dsl.simple_type import ModelAdapter, is_simple_type
 from instructor.function_calls import OpenAISchema, openai_schema
 
-from bupp.src.llm.llm_models import openai_41 as lazy_openai_41
-
-T = TypeVar("T")
-
-
-def log_prompt_to_files(
-    prompt_logdir: Path | None,
-    prompt_template: str,
-    prompt_args: Dict[str, Any],
-    lmp_name: str = ""
-) -> None:
-    """
-    Logs the prompt template and prompt_args to separate files.
-    
-    Args:
-        prompt_logdir: Directory to write log files to
-        prompt_template: The raw prompt template string (without variables substituted)
-        prompt_args: The arguments that were passed to render the template
-        lmp_name: Name of the LMP class for the file prefix
-    """
-    if prompt_logdir is None:
-        return
-
-    prompt_logdir.mkdir(parents=True, exist_ok=True)
-
-    # Find the next available log file number
-    counter = 1
-    while True:
-        template_file = prompt_logdir / f"{counter}_template.txt"
-        if not template_file.exists():
-            break
-        counter += 1
-
-    # Write prompt template
-    template_file = prompt_logdir / f"{counter}_template.txt"
-    with open(template_file, "w", encoding="utf-8") as f:
-        if lmp_name:
-            f.write(f"# LMP: {lmp_name}\n")
-            f.write(f"# Timestamp: {datetime.now().isoformat()}\n\n")
-        f.write(prompt_template)
-
-    # Write prompt_args as JSON
-    args_file = prompt_logdir / f"{counter}_args.json"
-    with open(args_file, "w", encoding="utf-8") as f:
-        # Convert non-JSON-serializable values to strings
-        serializable_args = {}
-        for k, v in prompt_args.items():
-            try:
-                json.dumps(v)
-                serializable_args[k] = v
-            except (TypeError, ValueError):
-                serializable_args[k] = str(v)
-        json.dump(serializable_args, f, indent=2, ensure_ascii=False) 
+T = TypeVar("T") 
 
 def extract_json(response: str) -> str:
     """
@@ -228,13 +176,8 @@ class LMP(Generic[T]):
             else:
                 raise ValueError(f"Error message provided but 'error_message' is not a template variable in the prompt")
 
-        prompt_str = self.prompt + self._get_instructor_prompt()
-        
-        # Combine prompt_args and templates for logging
-        combined_args = {**prompt_args, **templates}
-
-        prompt_str = Template(prompt_str).render(**prompt_args, **templates)
-        return prompt_str, combined_args
+        prompt_str = Template(self.prompt).render(**prompt_args, **templates)
+        return prompt_str + self._get_instructor_prompt()
 
     def set_error_message(self, error_message: str) -> None:
         self._error_message = error_message
@@ -280,15 +223,15 @@ Make sure to return an instance of the JSON, not the schema itself
         # skip process_result
         return content
 
+    @opik.track
     def invoke(self, 
-            model: Any,
-            max_retries: int = 5,
-            retry_delay: int = 1,
-            prompt_args: Dict = {},
-            log_this_prompt: Optional[Logger] = None,
-            prompt_log_preamble: Optional[str] = ""
-        ) -> Any:
-        prompt, combined_args = self._prepare_prompt(
+               model: Any,
+               max_retries: int = 5,
+               retry_delay: int = 1,
+               prompt_args: Dict = {},
+               log_this_prompt: Optional[Logger] = None,
+               prompt_log_preamble: Optional[str] = "") -> Any:
+        prompt = self._prepare_prompt(
             templates=self.templates,
             **prompt_args,
         )
@@ -336,7 +279,8 @@ Make sure to return an instance of the JSON, not the schema itself
                 current_delay = retry_delay * (2 ** (current_retry - 1))
                 time.sleep(current_delay)
                 print(f"Retry attempt {current_retry}/{max_retries} after error: {str(e)}. Waiting {current_delay}s")
-
+    
+    @opik.track
     async def ainvoke(
         self,
         model: Any,

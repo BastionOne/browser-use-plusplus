@@ -6,6 +6,7 @@ import json
 import asyncio
 import time
 import requests
+import opik
 from urllib.parse import urljoin
 
 from common.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
@@ -70,6 +71,7 @@ from bupp.src.utils import (
     extract_json,
     num_tokens_from_string,
 )
+from login_tool import LoginDetectionResult
 import logging
 
 class PageStatus(str, Enum):
@@ -144,7 +146,7 @@ class DiscoveryAgent(BrowserUseAgent):
             self.llm_hub = LLMHub(llm_config, chat_logdir=llm_logdir)
         else:
             self.llm_hub = LLMHub(llm_config)
- 
+
         self.take_screenshot = take_screenshots
         self.llm_config = llm_config
         self.agent_dir = agent_dir
@@ -322,7 +324,7 @@ class DiscoveryAgent(BrowserUseAgent):
             
             self.full_log.info(f"[PRE_EXECUTION_DOM]: {self.curr_dom_str}")
             if not self.initial_plan:
-                self._create_new_plan()
+                await self._create_new_plan()
             else:
                 self.plan = self.initial_plan
                 self._update_plan_and_task(self.initial_plan)
@@ -349,7 +351,7 @@ class DiscoveryAgent(BrowserUseAgent):
         new_page = await self._curr_page_check(new_browser_state)
         if new_page:
             self._log(f"[ACCIDENTAL_TRANSITION] Rewinding page transition and exiting step()")
-            self._check_single_plan_complete(model_output.next_goal)
+            await self._check_single_plan_complete(model_output.next_goal)
             
             # self.logger.info(f"[plan]{self.plan}")
             return
@@ -403,13 +405,13 @@ class DiscoveryAgent(BrowserUseAgent):
         #     f"[NEW_PAGE] Forced browsing to go to {self.curr_url}, you should ignore the result of executing the next action"
         # )
 
-    def _create_new_plan(self):
-        new_plan = CreatePlanNested().invoke(
+    async def _create_new_plan(self):
+        new_plan = await CreatePlanNested().ainvoke(
             model=self.llm_hub.get("create_plan"),
             prompt_args={
                 "curr_page_contents": self.curr_dom_str,
             },
-            log_this_prompt=self.full_log
+            prompt_logger=self.full_log
         )
         self._update_plan_and_task(new_plan)
 
@@ -437,7 +439,7 @@ class DiscoveryAgent(BrowserUseAgent):
         else:
             new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
         dom_diff = get_dom_diff_str(prev_dom_str, new_dom_str)
-        completed = CheckNestedPlanCompletion().invoke(
+        completed = await CheckNestedPlanCompletion().ainvoke(
             model=self.llm_hub.get("check_plan_completion"),
             prompt_args={
                 "plan": self.plan,
@@ -445,7 +447,7 @@ class DiscoveryAgent(BrowserUseAgent):
                 "dom_diff": dom_diff,
                 "curr_goal": curr_goal,
             },
-            log_this_prompt=self.full_log,
+            prompt_logger=self.full_log,
         )
         for compl in completed.plan_indices:
             node = self.plan.get(compl)
@@ -459,14 +461,14 @@ class DiscoveryAgent(BrowserUseAgent):
 
         self._update_plan_and_task(self.plan)
     
-    def _check_single_plan_complete(self, curr_goal: str | None):
+    async def _check_single_plan_complete(self, curr_goal: str | None):
         """Check off a single plan item"""
         if not self.plan:
             raise ValueError("Plan is not initialized")
         if not curr_goal:
             raise ValueError("Current goal is not initialized")
 
-        completed = CheckSinglePlanComplete().invoke(
+        completed = await CheckSinglePlanComplete().ainvoke(
             model=self.llm_hub.get("check_single_plan_complete"),
             prompt_args={
                 "plan": self.plan,
@@ -507,7 +509,7 @@ class DiscoveryAgent(BrowserUseAgent):
                 else:
                     agent_history += f"{i}. {h.model_output.next_goal or '<NO GOAL>'}\n"            
         
-        res = UpdatePlanNested().invoke(
+        res = await UpdatePlanNested().ainvoke(
             model=self.llm_hub.get("update_plan"),
             prompt_args={
                 "agent_history": agent_history,
@@ -515,7 +517,7 @@ class DiscoveryAgent(BrowserUseAgent):
                 "dom_diff": dom_diff,
                 "plan": self.plan
             },
-            # log_this_prompt=self.full_log,
+            # prompt_logger=self.full_log,
         )
         self.logger.info(f"[UPDATEPLAN] RAW: {res}")
         # very stoopid
@@ -578,6 +580,14 @@ class DiscoveryAgent(BrowserUseAgent):
 
         return browser_state
 
+    def _should_abort_for_login(self) -> bool:
+        detection: LoginDetectionResult | None = self.login_detection
+        if detection and detection.login_screen:
+            self._log(f"[LOGIN_PAGE] {detection.summary()} — stopping run")
+            self.state.stopped = True
+            return True
+        return False
+
     def _check_done(self, results: List[ActionResult]) -> bool:
         # New API: Done indicated via is_done flag
         return any(getattr(result, "is_done", False) for result in results)
@@ -591,6 +601,7 @@ class DiscoveryAgent(BrowserUseAgent):
             self._log(f"[AGENT_PHASE] Update page data")
             msgs = await self.proxy_handler.flush()
             for msg in msgs:
+                self._log(f"Adding HTTP message to current page: {msg.url}")
                 self.pages.curr_page().add_http_msg(msg)
             try:
                 if self.challenge_client:
@@ -654,6 +665,8 @@ class DiscoveryAgent(BrowserUseAgent):
             on_step_start=self.pre_execution, 
             on_step_end=self.post_execution
         )
+        # if self._should_abort_for_login():
+        #     return
         if self.save_snapshots:
             self.logger.info(f"Saving snapshot for step {self.curr_step}")
             browser_state = await self._get_browser_state()
@@ -701,6 +714,21 @@ class DiscoveryAgent(BrowserUseAgent):
                 return
 
         self._log(f"Completing: [page_step: {self.page_step}, agent_step: {self.curr_step}]")
+
+    async def save_results(self):
+        """
+        Called in run.py method
+        """
+        if self.agent_dir:
+            if self.save_snapshots:
+                with open(self.agent_dir / "snapshots.json", "w") as f:
+                    serialized_snapshots = self.agent_snapshots.model_dump()
+                    json.dump(serialized_snapshots, f)
+            
+            if self.pages.get_req_count() > 0:
+                with open(self.agent_dir / "pages.json", "w") as f:
+                    serialized_pages = await self.pages.to_json()
+                    json.dump(serialized_pages, f)
 
     async def run_agent(self) -> AgentHistoryList[AgentStructuredOutput]:
         return await bu_run(self, self.agent_step)

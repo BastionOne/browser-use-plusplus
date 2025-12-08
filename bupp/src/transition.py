@@ -92,6 +92,8 @@ blacklisted_extensions = [
     # Data
     '.json', '.xml', '.rss', '.atom', '.csv',
 ]
+# blacklisted_extensions = []
+
 
 def getContext(list_matches, content, include_delimiter=0, context_delimiter_str="\n"):
     """

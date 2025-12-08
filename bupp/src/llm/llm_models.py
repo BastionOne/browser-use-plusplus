@@ -1,6 +1,4 @@
 import asyncio
-import json
-import os
 from pathlib import Path
 from typing import Dict, Any, Callable, TypeVar, Optional, Mapping, List
 
@@ -152,12 +150,14 @@ class ChatModelWithName(BaseChatModel):
             self.log_fn(invoke_cost, self.function_name)
 
     def invoke(self, prompt: str) -> Any:
+        model = ChatOpenAI(model=self.model_name)
         if not isinstance(prompt, str):
-            raise ValueError(f"Message must be a string, got {type(message)}")
+            raise ValueError(f"Message must be a string, got {type(prompt)}")
 
         log_messages(self.chat_logdir, str_to_messages(prompt), self.model)
 
-        res = self._model.invoke(prompt)
+        # kind of dumb but the calling code has serial dependencies on sync calls
+        res = asyncio.run(model.ainvoke(prompt))
         self.log_cost(res)
         return res
 
