@@ -62,6 +62,7 @@ class Page:
         # Single ID system using PageItem-style ids (e.g., "1", "1.2", "1.2.3")
         self.id: str = item_id or ""
         self.url = url
+        # TODO: wut? defo need to merge these two
         # Maintain the raw list for serialization and analysis
         self.http_msgs: List[HTTPMessage] = []
         # Parallel list of wrapped items that include stable, per-page ids
@@ -163,7 +164,7 @@ class Page:
                 continue
             for k, v in hdrs.items():
                 last_value[k] = v
-                present_count[k] = present_count.get(k, 0) + 1
+                present_count[k] = present_count.get(k,  0) + 1
 
         shared: List[Tuple[str, str]] = []
         partial: List[Tuple[str, str, int]] = []

@@ -1,4 +1,5 @@
 from browser_use.tools.service import Tools
+from login_tool import register_login_detection_tool
 
 EXCLUDE_LIST = [
     "search",
@@ -10,6 +11,7 @@ EXCLUDE_LIST = [
     "evaluate"
 ]
 def register_tools(tools: Tools):
+    register_login_detection_tool(tools)
     @tools.registry.action(
         'A fake tool for testing purposes',
         param_model=None,

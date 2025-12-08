@@ -82,17 +82,17 @@ regex_str = r"""
 
 context_delimiter_str = "\n"
 # Extensions blacklist to ignore
-# blacklisted_extensions = [
-#     # Images
-#     '.svg', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.bmp', '.tiff',
-#     # Documents/media
-#     '.pdf', '.zip', '.tar', '.gz', '.mp4', '.mp3', '.wav', '.avi', '.mov',
-#     # Static assets
-#     '.css', '.js', '.woff', '.woff2', '.ttf', '.eot', '.map',
-#     # Data
-#     '.json', '.xml', '.rss', '.atom', '.csv',
-# ]
-blacklisted_extensions = []
+blacklisted_extensions = [
+    # Images
+    '.svg', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.bmp', '.tiff',
+    # Documents/media
+    '.pdf', '.zip', '.tar', '.gz', '.mp4', '.mp3', '.wav', '.avi', '.mov',
+    # Static assets
+    '.css', '.js', '.woff', '.woff2', '.ttf', '.eot', '.map',
+    # Data
+    '.json', '.xml', '.rss', '.atom', '.csv',
+]
+# blacklisted_extensions = []
 
 
 def getContext(list_matches, content, include_delimiter=0, context_delimiter_str="\n"):
