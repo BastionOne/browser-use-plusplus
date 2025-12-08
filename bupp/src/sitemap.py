@@ -1,769 +1,491 @@
-from typing import Optional, List, Dict, Tuple, Set, Union, Any
-from common.httplib import HTTPMessage
+import json
+from collections import defaultdict
+from pydantic import BaseModel
+from enum import Enum
 import inspect
+from typing import Any, Dict, Iterator, List, Optional, Tuple, TypeAlias, Union, cast
+from urllib.parse import urlparse
 
-# TODO: this should be moved into HTTPMessage so we can use later down the line
+from common.httplib import HTTPMessage
+
+# ---------------------------------------------------------------------------
+# Utils
+# ---------------------------------------------------------------------------
+
+
 def concat_output(output_str: str, new_str: str) -> str:
     """Concatenate strings for output with simple base64 redaction.
-    - Any base64-looking substring longer than 16 chars is replaced with "<b64>...".
+    - Any base64-looking substring longer than 32 chars is replaced with "<b64>...".
     """
     if not new_str:
         return (output_str or "")
     try:
         import re
-        # Base64-looking sequences (A-Z, a-z, 0-9, +, /) with optional padding =, length >= 17
+
         pattern = r"(?<![A-Za-z0-9+/=])[A-Za-z0-9+/]{32,}={0,2}(?![A-Za-z0-9+/=])"
         redacted = re.sub(pattern, "<b64>...", new_str)
     except Exception:
         redacted = new_str
     return (output_str or "") + redacted
 
-class PageItem:
-    """Generic wrapper that carries a stable string id and a payload item.
 
-    Used to guarantee ordering and id assignment for both pages and http messages.
+# ---------------------------------------------------------------------------
+# Core IDs / Types
+# ---------------------------------------------------------------------------
+class PageItemId(BaseModel):
+    """A compound id for finding items on a page (page_id.item_id)."""
+
+    page_id: int
+    item_id: Optional[int]
+
+    @classmethod
+    def from_str(cls, compound_id: str) -> "PageItemId":
+        parts = compound_id.split(".")
+        return cls(page_id=int(parts[0]), item_id=int(parts[1]))
+
+    def __str__(self) -> str:
+        return f"{self.page_id}.{self.item_id}" if self.item_id is not None else f"{self.page_id}"
+
+    def __eq__(self, other: Any) -> bool:
+        # allow comparison to string form
+        return str(self) == other
+
+    def __hash__(self) -> int:
+        return hash(str(self))
+
+
+class PageItemType(str, Enum):
+    HTTP_MESSAGE = "http_message"
+    COMMENT = "comment"
+
+
+class PageItem:
+    """
+    Generic wrapper that carries a stable string id and a payload item.
+    Page-level numbering is handled by SiteMap; Page is a thin container.
     """
 
-    def __init__(self, item_id: str, payload: Any):
-        self.id: str = item_id
-        self.payload: Any = payload
+    def __init__(self, item_id: PageItemId, data: Any, item_type: PageItemType):
+        self.page_item_id: PageItemId = item_id
+        self.data: Any = data
+        self.type: PageItemType = item_type
 
-    async def to_json(self):
-        item = self.payload
+    async def to_json(self) -> Dict[str, Any]:
+        item = self.data
         if hasattr(item, "to_json"):
             result = item.to_json()
             if inspect.iscoroutine(result):
                 result = await result
-            return {"id": self.id, "item": result}
-        return {"id": self.id, "item": item}
+            return {"page_item_id": str(self.page_item_id), "type": self.type, "item": result}
+        return {"page_item_id": str(self.page_item_id), "type": self.type, "item": item}
+
+
+class HTTPMsgItem(PageItem):
+    """
+    HTTP message item that also carries an hm_id assigned and tracked by SiteMap.
+    """
+
+    def __init__(self, item_id: PageItemId, data: HTTPMessage, hm_id: str):
+        super().__init__(item_id, data, PageItemType.HTTP_MESSAGE)
+        self.hm_id: str = hm_id
+
+    async def to_json(self) -> Dict[str, Any]:
+        base = await super().to_json()
+        base["hm_id"] = self.hm_id
+        return base
+
+    def to_str(self, include_body: bool = True) -> str:
+        http_msg: HTTPMessage = self.data
+        method = getattr(http_msg, "method", None) or getattr(http_msg.request, "method", "")
+        url = getattr(http_msg, "url", None) or getattr(http_msg.request, "url", "")
+        result = f"- {method} {url}\n"
+
+        if include_body and getattr(http_msg, "request", None) is not None:
+            req = http_msg.request
+            if getattr(req, "post_data", None):
+                try:
+                    body_data = req.get_body()
+                    if isinstance(body_data, str):
+                        try:
+                            parsed_body = json.loads(body_data)
+                            if isinstance(parsed_body, dict):
+                                params = list(parsed_body.keys())
+                                result += f"  > body params: {', '.join(params)}\n"
+                                result += f"  > [request] bodies:\n    {parsed_body}\n"
+                            else:
+                                result += f"  > [request] bodies:\n    {body_data}\n"
+                        except json.JSONDecodeError:
+                            result += f"  > [request] bodies:\n    {body_data}\n"
+                    elif isinstance(body_data, dict):
+                        params = list(body_data.keys())
+                        result += f"  > body params: {', '.join(params)}\n"
+                        result += f"  > [request] bodies:\n    {body_data}\n"
+                    else:
+                        result += f"  > [request] bodies:\n    {body_data}\n"
+                except (TypeError, AttributeError):
+                    result += f"  > [request] bodies:\n    {req.post_data}\n"
+
+            result += f"  > id: {self.hm_id}\n"
+
+        if include_body and getattr(http_msg, "response", None) is not None:
+            try:
+                response_body = http_msg.response.get_body() if http_msg.response else None
+                result += f"  > response bodies:\n    {response_body}\n"
+            except Exception:
+                pass
+
+        return result
+
+
+PageItemCls = Union[HTTPMsgItem, PageItem]
+HttpMsgId: TypeAlias = str
+
+
+# ---------------------------------------------------------------------------
+# Page (thin container)
+# ---------------------------------------------------------------------------
+
 
 class Page:
-    """Represents a single logical page visit and its HTTP traffic.
-
-    Dual ID system (local to a Page vs. global across all pages):
-    - Page id (e.g., "1"): assigned by `PageObservations` when the page is added.
-    - Per-message PageItem id (e.g., "1.2"): within this page, each HTTP message
-      is wrapped in a `PageItem` and given a 1-based index nested under the page id.
-      These ids are strictly per-page and order-preserving.
-
-    Order preservation and grouping:
-    - `_groups` maps `(method, url)` → list of `HTTPMessage` instances so we can
-      aggregate duplicates for display.
-    - `_group_order` is used to maintain capture order in `http_msg_items` and `http_msgs`.
     """
+    Thin per-page container. No ID logic here beyond storing a PageItem by an already
+    assigned PageItemId. SiteMap controls ordering, IDs, and hm_id assignment.
+    """
+
     PAYLOAD_RES_SIZE = 1000
 
-    def __init__(
-        self, 
-        url: str, 
-        http_msgs: Optional[List[Union[HTTPMessage, PageItem]]] = None, 
-        item_id: Optional[str] = None
-    ):
-        # Single ID system using PageItem-style ids (e.g., "1", "1.2", "1.2.3")
-        self.id: str = item_id or ""
+    def __init__(self, url: str, page_id: int):
+        self.page_id = page_id
         self.url = url
-        # TODO: wut? defo need to merge these two
-        # Maintain the raw list for serialization and analysis
-        self.http_msgs: List[HTTPMessage] = []
-        # Parallel list of wrapped items that include stable, per-page ids
-        self.http_msg_items: List[PageItem] = []
+        self._page_items: Dict[PageItemId, PageItem] = {}
 
-        # Group messages by (method, url) so the pretty-printer can aggregate
-        # duplicates and summarize headers/bodies per unique request.
-        # `_group_order` captures the first time a unique (method, url) is seen
-        # so printing preserves the observed order of unique groups.
-        self._groups: Dict[Tuple[str, str], List[HTTPMessage]] = {}
-        self._group_order: List[Tuple[str, str]] = []
+    def add_page_item_with_id(self, item: PageItem) -> None:
+        if item.page_item_id.page_id != self.page_id:
+            raise ValueError("Item page_id does not match Page")
+        self._page_items[item.page_item_id] = item
 
-        if http_msgs:
-            for msg in http_msgs:
-                self.add_http_msg(msg)
+    def get_page_item(self, item_id: PageItemId) -> PageItemCls:
+        return self._page_items[item_id]
 
-    def add_http_msg(self, msg: Union[HTTPMessage, PageItem]):
-        # Normalize to HTTPMessage and PageItem wrapper
-        if isinstance(msg, PageItem):
-            raw_msg = msg.payload
-            if not isinstance(raw_msg, HTTPMessage):
-                # If payload came from JSON, reconstruct HTTPMessage
-                try:
-                    raw_msg = HTTPMessage.from_json(raw_msg)
-                except Exception:
-                    raw_msg = raw_msg
-            wrapper_id = msg.id or ""
-            wrapper = PageItem(wrapper_id, raw_msg)
-        else:
-            raw_msg = msg
-            # Assign nested id if page id known; otherwise temporary empty id
-            # to be recalculated later once this page obtains its id.
-            wrapper = PageItem("", raw_msg)
+    @property
+    def http_msg_items(self) -> List[HTTPMsgItem]:
+        return [cast(HTTPMsgItem, it) for it in self._page_items.values() if it.type == PageItemType.HTTP_MESSAGE]
 
-        self.http_msg_items.append(wrapper)
-        self.http_msgs.append(raw_msg)
-        key = (raw_msg.method, raw_msg.url)
-        if key not in self._groups:
-            self._groups[key] = []
-            self._group_order.append(key)
-        self._groups[key].append(raw_msg)
-        # Recalculate nested message ids (e.g., 1.1, 1.2) when page id is set
-        if self.id:
-            self._recalculate_http_msg_ids()
-
-    def _recalculate_http_msg_ids(self):
-        if not self.id:
-            return
-        # Flat 1-based index for requests under a page: "<page_id>.<msg_index>"
-        for i, item in enumerate(self.http_msg_items, start=1):
-            item.id = f"{self.id}.{i}"
-
-    def _truncate_body(self, body: str) -> str:
-        if not body:
-            return ""
-        if len(body) > self.PAYLOAD_RES_SIZE:
-            return body[:self.PAYLOAD_RES_SIZE] + "..."
-        return body
-
-    def _format_body(self, body_obj) -> str:
-        """Return compact string body from dict/bytes/str/other."""
-        if body_obj is None:
-            return ""
-        try:
-            # Dict-like
-            if isinstance(body_obj, dict):
-                import json
-                return json.dumps(body_obj, separators=(",", ":"))
-            # Bytes
-            if isinstance(body_obj, (bytes, bytearray)):
-                try:
-                    return body_obj.decode("utf-8", errors="replace")
-                except Exception:
-                    return str(body_obj)
-            # String
-            if isinstance(body_obj, str):
-                return body_obj
-            # Fallback
-            return str(body_obj)
-        except Exception:
-            return str(body_obj)
-
-    def _aggregate_headers(self, headers_list: List[Dict[str, str]]) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str, int]]]:
-        """Aggregate headers across a list of header dicts.
-        Returns a tuple of:
-          - shared headers across all messages: list of (key, latest_value)
-          - partial headers: list of (key, latest_value, count_present)
-        """
-        if not headers_list:
-            return [], []
-
-        total = len(headers_list)
-        # Track last value and count of presence
-        last_value: Dict[str, str] = {}
-        present_count: Dict[str, int] = {}
-
-        for hdrs in headers_list:
-            if not hdrs:
-                continue
-            for k, v in hdrs.items():
-                last_value[k] = v
-                present_count[k] = present_count.get(k,  0) + 1
-
-        shared: List[Tuple[str, str]] = []
-        partial: List[Tuple[str, str, int]] = []
-
-        for k, cnt in present_count.items():
-            if cnt == total:
-                shared.append((k, last_value.get(k, "")))
-            else:
-                partial.append((k, last_value.get(k, ""), cnt))
-
-        # Keep output stable by sorting keys
-        shared.sort(key=lambda x: x[0])
-        partial.sort(key=lambda x: x[0])
-        return shared, partial
-
-    def _format_headers_section(self, title: str, headers_list: List[Dict[str, str]]) -> str:
-        if not headers_list:
-            return ""
-        shared, partial = self._aggregate_headers(headers_list)
-        out = f"{title}\n"
-        for k, v in shared:
-            out += f"  {k}: {v}\n"
-        for k, v, c in partial:
-            out += f"  {k}: {v} ({c})\n"
-        return out
-
-    def _collect_interesting_headers(self, msgs: List[HTTPMessage]) -> str:
-        """Summarize interesting headers across all messages (req/res)."""
-        if not msgs:
-            return ""
-        interesting_keys = {
-            "authorization",
-            "cookie",
-            "set-cookie",
-            "content-type",
-            "location",
-            "x-powered-by",
-            "server",
-            "cache-control",
-            "pragma",
-            "expires",
-            "x-frame-options",
-            "content-security-policy",
-            "x-content-type-options",
-            "strict-transport-security",
-            "access-control-allow-origin",
-        }
-
-        req_last: Dict[str, str] = {}
-        req_count: Dict[str, int] = {}
-        res_last: Dict[str, str] = {}
-        res_count: Dict[str, int] = {}
-
-        for m in msgs:
-            # Request headers
-            rh = getattr(m.request, "headers", {}) or {}
-            for k, v in rh.items():
-                kl = k.lower()
-                if kl in interesting_keys:
-                    req_last[kl] = v
-                    req_count[kl] = req_count.get(kl, 0) + 1
-            # Response headers
-            if m.response:
-                rsh = getattr(m.response, "headers", {}) or {}
-                for k, v in rsh.items():
-                    kl = k.lower()
-                    if kl in interesting_keys:
-                        res_last[kl] = v
-                        res_count[kl] = res_count.get(kl, 0) + 1
-
-        if not req_last and not res_last:
-            return ""
-
-        out = "Interesting headers:\n"
-        if req_last:
-            out += "[Request]\n"
-            for k in sorted(req_last.keys()):
-                out += f"  {k}: {req_last[k]} ({req_count.get(k, 0)})\n"
-        if res_last:
-            out += "[Response]\n"
-            for k in sorted(res_last.keys()):
-                out += f"  {k}: {res_last[k]} ({res_count.get(k, 0)})\n"
-        return out
-
-    def __str__(self):
-        if not self.id:
-            raise ValueError("Page ID is not set")
-        
-        output = f"Page: {self.url}\n"
-
-        if not self.http_msgs:
-            return output.rstrip()
-
-        http_msgs_out = "HTTP Messages:\n"
-        # Iterate unique (method, url) groups in first-seen order, summarizing
-        # headers and deduplicating bodies to keep output compact and readable.
-        for i, key in enumerate(self._group_order):
-            method, url = key
-            msgs = self._groups.get(key, [])
-            total = len(msgs)
-            # Duplicates are extra messages with the same method+url
-            duplicates = max(0, total - 1)
-
-            group_header = f"{self.id}.{i+1} {method} {url} (msgs:{total}, dups:{duplicates})\n"
-            http_msgs_out = concat_output(http_msgs_out, group_header)
-
-            # Aggregate headers
-            req_headers_list: List[Dict[str, str]] = [getattr(m.request, "headers", {}) or {} for m in msgs]
-            res_headers_list: List[Dict[str, str]] = []
-            for m in msgs:
-                if m.response:
-                    res_headers_list.append(getattr(m.response, "headers", {}) or {})
-                else:
-                    res_headers_list.append({})
-
-            req_hdrs = self._format_headers_section("[REQ HEADERS]", req_headers_list)
-            res_hdrs = self._format_headers_section("[RES HEADERS]", res_headers_list)
-            http_msgs_out = concat_output(http_msgs_out, req_hdrs)
-            http_msgs_out = concat_output(http_msgs_out, res_hdrs)
-
-            # Unique request bodies
-            seen_req: Set[str] = set()
-            req_bodies_out = ""
-            for m in msgs:
-                try:
-                    req_body_obj = m.request.get_body()
-                except Exception:
-                    req_body_obj = None
-                req_body_str = self._format_body(req_body_obj)
-                if not req_body_str:
-                    continue
-                if req_body_str in seen_req:
-                    continue
-                seen_req.add(req_body_str)
-                req_bodies_out += self._truncate_body(req_body_str) + "\n"
-            if req_bodies_out:
-                http_msgs_out = concat_output(http_msgs_out, "[REQUEST BODIES]\n" + req_bodies_out)
-
-            # Unique response bodies
-            seen_res: Set[str] = set()
-            res_bodies_out = ""
-            for m in msgs:
-                if not m.response:
-                    continue
-                try:
-                    body_obj = m.response.get_body()
-                except Exception:
-                    body_obj = None
-                body_str = self._format_body(body_obj)
-                if not body_str:
-                    continue
-                if body_str in seen_res:
-                    continue
-                seen_res.add(body_str)
-                res_bodies_out += self._truncate_body(body_str) + "\n"
-            if res_bodies_out:
-                http_msgs_out = concat_output(http_msgs_out, "[RESPONSE BODIES]\n" + res_bodies_out)
-
-        # Append sections to output
-        output = concat_output(output, http_msgs_out)
-
-        # Interesting headers section
-        interesting = self._collect_interesting_headers(self.http_msgs)
-        if interesting:
-            output = concat_output(output, interesting)
-
-        return output.rstrip()
-
-    def get_page_item(self, index_1: int) -> Optional[HTTPMessage]:
-        """Return the HTTP request at the given 1-based index for this page."""
-        if index_1 <= 0 or index_1 > len(self.http_msgs):
-            return None
-        return self.http_msgs[index_1 - 1]
-
-    async def to_json(self):
-        # Emit only PageItem for http messages; page id is carried by the wrapper at higher level
+    async def to_json(self) -> Dict[str, Any]:
         return {
             "url": self.url,
-            "http_msgs": [await item.to_json() for item in self.http_msg_items],
+            "page_id": self.page_id,
+            "page_items": [await it.to_json() for it in self._page_items.values()],
         }
 
     @classmethod
-    def from_json(cls, data: dict):
-        url = data["url"]
-        raw_msgs = data.get("http_msgs", [])
+    def from_json(cls, data: Dict[str, Any]) -> "Page":
+        return cls(url=data["url"], page_id=data["page_id"])
 
-        # Determine if entries are wrapped PageItem or raw HTTPMessage json
-        normalized: List[Union[HTTPMessage, PageItem]] = []
-        for entry in raw_msgs:
-            if isinstance(entry, dict) and "id" in entry and "item" in entry:
-                # Wrapped item; reconstruct HTTPMessage payload
-                payload = entry.get("item")
-                if isinstance(payload, dict):
-                    http_msg = HTTPMessage.from_json(payload)
-                else:
-                    http_msg = payload
-                normalized.append(PageItem(entry["id"], http_msg))
-            else:
-                # Legacy raw HTTPMessage json - fail conversion
-                raise Exception("Using old legacy Page format")
 
-        return cls(url=url, http_msgs=normalized)
+# ---------------------------------------------------------------------------
+# SiteMap (source of truth for IDs and hm_ids)
+# ---------------------------------------------------------------------------
 
+# TODO: create a single method to resolve all ID types
 class SiteMap:
-    """Container for all observed pages and cross-page indexing.
-
-    Dual ID system (page-local vs. global):
-    - Page id ("1", "2", ...): assigned on insertion order as pages are added
-      to this collection.
-    - PageItem id ("<page>.<idx>"): per-page, order-preserving ids for each
-      HTTP message on a given page (e.g., "1.3").
-    - HTTPMessageID ("HM<N>"): global ids owned by this class, assigned in
-      first-seen order to unique `(METHOD, url.path)` pairs across all pages.
-
-    Ordering guarantees:
-    - Page order is the insertion order into this container.
-    - Within a page, message order is capture order; PageItem ids follow that
-      order.
-    - Global HTTPMessageID assignment follows first-seen order as we walk pages
-      in insertion order and messages in capture order.
-
-    Summary and resolution:
-    - `to_str_summary_view` groups pages by shared `(METHOD, path)` and prints
-      the associated global `HTTPMessageID` for each request.
-    - `get_http_item` resolves an `HTTPMessageID` to a representative instance
-      (the first seen), ensuring stable lookups.
     """
-    def __init__(self, pages: List[Page] = []):
-        self.pages: List[Page] = []                # Ordered list of all pages
-        self.pages_items: List[PageItem] = []      # Page wrappers with stable ids
-        self.curr_id = 1                           # Next page id to assign
+    Owns:
+    - page_id assignment
+    - per-page PageItemId assignment
+    - hm_id assignment and indexes:
+        * _hm_index: hm_id -> [PageItemId, ...]
+        * _http_key_to_id: (method, path) -> hm_id
+        * _page_grouped: page_id -> [hm_id, hm_id, ...] in encounter order
+    All mutations go through SiteMap so structures stay in sync.
+    """
 
-        # Global HTTP message index across all pages, keyed by (METHOD, url.path)
-        # Example id format: HM1, HM2, ...
-        self._http_key_to_id: Dict[Tuple[str, str], str] = {}
-        self._http_id_to_instances: Dict[str, List[HTTPMessage]] = {}
+    def __init__(self, pages: Optional[List[Page]] = None):
+        pages = pages or []
+        self._pages: Dict[int, Page] = {p.page_id: p for p in pages}
 
-        for page in pages:
-            self.add_page(page)
+        self._hm_index: Dict[HttpMsgId, List[PageItemId]] = defaultdict(list)
+        self._http_key_to_id: Dict[Tuple[str, str], HttpMsgId] = {}
+        self._page_grouped: Dict[int, List[HttpMsgId]] = defaultdict(list)
 
-        # Build index after initial population
-        self._rebuild_http_index()
+        self.http_view: HTTPView = HTTPView(self)
 
-    def add_page(self, page: Page):
-        # Check if page already exists, if it does return
-        for existing_page in self.pages:
-            if existing_page.url == page.url:
-                return
-        
-        if not getattr(page, "id", ""):
-            page.id = str(self.curr_id)
-        self.pages.append(page)
-        self.pages_items.append(PageItem(page.id, page))
-        self.curr_id += 1
-        page._recalculate_http_msg_ids()
-        # Keep HTTP message index updated as pages are added
-        self._rebuild_http_index()
+    # ---------------------------------------------------------------------------
+    # Page Management
+    # ---------------------------------------------------------------------------
 
-    def curr_page(self):
-        return self.pages[-1]
+    @property
+    def pages(self) -> List[Page]:
+        """Get all pages in the sitemap."""
+        return list(self._pages.values())
 
-    def get_page_item(self, compound_id: str):
-        parts = compound_id.split(".")
-        page_id_str = parts[0]
-        msg_index = int(parts[1])
-        page = next((p for p in self.pages if p.id == page_id_str), None)
+    def _new_page_id(self) -> int:
+        """Generate a new unique page ID."""
+        return (max(self._pages.keys()) + 1) if self._pages else 1
+
+    def add_page(self, url: str) -> Page:
+        """Add a new page to the sitemap."""
+        page = Page(url=url, page_id=self._new_page_id())
+        self._pages[page.page_id] = page
+        return page
+
+    def curr_page(self) -> Page:
+        """Get the most recently added page."""
+        if not self._pages:
+            raise ValueError("No pages in sitemap")
+        return max(self._pages.values(), key=lambda p: p.page_id)
+
+    def get_page(self, page_id: int) -> Page:
+        """Get a page by its ID."""
+        page = self._pages.get(page_id)
         if not page:
-            raise ValueError(f"Page with id {page_id_str} not found")
-        return page.get_page_item(msg_index)
+            raise ValueError(f"Page with id {page_id} not found")
+        return page
 
-    def http_msgs(self) -> List[Tuple[str, str]]:
-        """Return a list of (method, url) tuples for each http_msg in all pages."""
-        result = []
-        for page in self.pages:
-            for msg in page.http_msgs:
-                result.append(msg)
-        return result
+    # ---------------------------------------------------------------------------
+    # Page Item Management
+    # ---------------------------------------------------------------------------
 
-    # -------------------- HM (global HTTPMessageID) helpers --------------------
-    def iter_http_ids(self):
-        """Yield all HTTPMessageIDs (e.g., "HM1") known to this snapshot.
+    def get_page_item(self, item_id: PageItemId) -> PageItemCls:
+        """Get a page item by its ID."""
+        return self.get_page(item_id.page_id).get_page_item(item_id)
 
-        Order follows first-seen assignment during index build (page order,
-        then message order within each page).
-        """
-        # Preserve numeric ordering by extracting the integer suffix when possible
-        def _hm_sort_key(hm: str) -> int:
-            try:
-                return int(hm[2:]) if hm.startswith("HM") else 0
-            except Exception:
-                return 0
-        return iter(sorted(self._http_id_to_instances.keys(), key=_hm_sort_key))
+    def _next_item_id_for_page(self, page_id: int) -> PageItemId:
+        """Generate the next item ID for a given page."""
+        page = self.get_page(page_id)
+        return PageItemId(page_id=page_id, item_id=len(page._page_items) + 1)
 
-    def iter_http_id_mapping(self):
-        """Yield (http_id, (METHOD, path)) for each registered global id."""
-        from urllib.parse import urlparse
-        seen: Dict[str, Tuple[str, str]] = {}
-        for http_id, instances in self._http_id_to_instances.items():
-            if not instances:
-                continue
-            msg = instances[0]
-            method = (msg.method or "").upper()
-            parsed = urlparse(msg.url)
-            path = parsed.path or "/"
-            seen[http_id] = (method, path)
-        # Stable order by numeric HM suffix
-        def _hm_sort_key(hm: str) -> int:
-            try:
-                return int(hm[2:]) if hm.startswith("HM") else 0
-            except Exception:
-                return 0
-        for http_id in sorted(seen.keys(), key=_hm_sort_key):
-            yield http_id, seen[http_id]
+    def add_comment(self, comment: Any, page_id: Optional[int] = None) -> PageItem:
+        """Add a comment item to a page."""
+        page = self.get_page(page_id) if page_id is not None else self.curr_page()
+        item_id = self._next_item_id_for_page(page.page_id)
+        item = PageItem(item_id=item_id, data=comment, item_type=PageItemType.COMMENT)
+        page.add_page_item_with_id(item)
+        return item
 
-    def http_id_for(self, method: str, path: str) -> Optional[str]:
-        """Return the HTTPMessageID for a given (METHOD, path) if present."""
-        key = ((method or "").upper(), path or "/")
-        return self._http_key_to_id.get(key)
+    # ---------------------------------------------------------------------------
+    # HTTP Message Management
+    # ---------------------------------------------------------------------------
 
-    def _rebuild_http_index(self) -> None:
-        """Rebuild the global HTTP message index over `(METHOD, url.path)`.
+    def _mk_hm_id(self) -> str:
+        """Generate a new unique HTTP message ID."""
+        return f"HM{len(self._http_key_to_id) + 1}"
 
-        The index assigns stable ids in first-seen order across pages and
-        messages so references remain consistent between runs given the same
-        traversal order.
-        """
-        self._http_key_to_id = {}
-        self._http_id_to_instances = {}
+    @staticmethod
+    def _key_for_http_msg(msg: HTTPMessage) -> Tuple[str, str]:
+        """Extract method and path key from HTTP message for deduplication."""
+        method = (getattr(msg, "method", None) or getattr(msg.request, "method", "") or "").upper()
+        url = getattr(msg, "url", None) or getattr(msg.request, "url", "") or ""
+        path = (urlparse(url).path) or "/"
+        return (method, path)
 
-        next_id_num = 1
-        from urllib.parse import urlparse
-        for page in self.pages:
-            for msg in page.http_msgs:
-                method = (msg.method or "").upper()
-                parsed = urlparse(msg.url)
-                path = parsed.path or "/"
-                key = (method, path)
-                if key not in self._http_key_to_id:
-                    http_id = f"HM{next_id_num}"
-                    self._http_key_to_id[key] = http_id
-                    self._http_id_to_instances[http_id] = []
-                    next_id_num += 1
-                http_id = self._http_key_to_id[key]
-                self._http_id_to_instances[http_id].append(msg)
+    def _get_or_create_hm_id(self, msg: HTTPMessage) -> str:
+        """Get existing or create new HTTP message ID for deduplication."""
+        key = self._key_for_http_msg(msg)
+        hm_id = self._http_key_to_id.get(key)
+        if hm_id is None:
+            hm_id = self._mk_hm_id()
+            self._http_key_to_id[key] = hm_id
+        return hm_id
 
-    def get_http_item(self, http_message_id: str) -> Optional[HTTPMessage]:
-        """Resolve an `HTTPMessageID` to a representative message instance.
+    def _get_any_page_item(self, hm_id: str) -> PageItemCls:
+        """Get any page item for a given HTTP message ID."""
+        ids = self._hm_index.get(hm_id, [])
+        if not ids:
+            raise ValueError(f"HTTP message {hm_id} not found")
+        return self.get_page_item(ids[0])
 
-        The id corresponds to a unique `(METHOD, url.path)` pair across all
-        pages. The first-seen instance is returned to keep resolution stable.
-        """
-        instances = self._http_id_to_instances.get(http_message_id, [])
-        if not instances:
-            return None
-        return instances[0]
+    def get_any_http_msg_item(self, hm_id: str) -> HTTPMsgItem:
+        """Get any HTTP message item for a given HTTP message ID."""
+        return cast(HTTPMsgItem, self._get_any_page_item(hm_id))
 
-    def http_id_to_page_item_id(self, http_message_id: str) -> Optional[str]:
-        """Return the first matching page_item_id (e.g., "1.2") for a given HM id.
+    def add_http_message(self, http_msg: HTTPMessage, page_id: Optional[int] = None) -> HTTPMsgItem:
+        """Add an HTTP message to a page and update all indexes."""
+        page = self.get_page(page_id) if page_id is not None else self.curr_page()
+        item_id = self._next_item_id_for_page(page.page_id)
+        hm_id = self._get_or_create_hm_id(http_msg)
 
-        The mapping is determined by resolving the (METHOD, url.path) represented
-        by the HM id and then scanning pages in insertion order and HTTP messages
-        in capture order, returning the first matching `PageItem.id`.
-        """
-        # Reverse lookup: HM id -> (METHOD, path)
-        method_path: Optional[Tuple[str, str]] = None
-        for key, hm in self._http_key_to_id.items():
-            if hm == http_message_id:
-                method_path = key
-                break
-        if not method_path:
-            return None
+        item = HTTPMsgItem(item_id=item_id, data=http_msg, hm_id=hm_id)
+        page.add_page_item_with_id(item)
 
-        method, path = method_path
-        from urllib.parse import urlparse
-        # Scan pages and their HTTP message items to find the first matching item id
-        for page in self.pages:
-            for item in page.http_msg_items:
-                msg = item.payload
-                try:
-                    msg_method = (msg.method or "").upper()
-                    parsed = urlparse(msg.url)
-                    msg_path = parsed.path or "/"
-                except Exception:
-                    continue
-                if msg_method == method and msg_path == path:
-                    return item.id or None
-        return None
+        self._hm_index[hm_id].append(item_id)
+        self._page_grouped[page.page_id].append(hm_id)
+        return item
 
-    def http_id_to_page_item_id_map(self) -> Dict[str, str]:
-        """Build a mapping of HM id -> first matching page_item_id across all known HM ids."""
-        mapping: Dict[str, str] = {}
-        for key, hm in self._http_key_to_id.items():
-            pid = self.http_id_to_page_item_id(hm)
-            if pid:
-                mapping[hm] = pid
-        return mapping
+    # ---------------------------------------------------------------------------
+    # Serialization
+    # ---------------------------------------------------------------------------
 
-    def missing_from(self, other: "SiteMap") -> List[HTTPMessage]:
-        """Return HTTPMessage instances present in ``other`` but missing from ``self``.
-
-        Uniqueness and comparison are determined by the tuple (METHOD, url),
-        where METHOD is uppercased and url is compared as a full string.
-        The returned list preserves first-seen order across pages and their
-        messages in the ``other`` collection, and returns only one representative
-        instance per unique (METHOD, url) that is absent in ``self``.
-        """
-        # Build the set of (METHOD, url) keys present in self
-        self_keys: Set[Tuple[str, str]] = set()
-        for page in self.pages:
-            for msg in page.http_msgs:
-                try:
-                    method = (msg.method or "").upper()
-                    url = msg.url or ""
-                except Exception:
-                    continue
-                self_keys.add((method, url))
-
-        # Walk other in first-seen order and collect items not present in self
-        result: List[HTTPMessage] = []
-        seen_missing: Set[Tuple[str, str]] = set()
-        if other is not None:
-            for page in other.pages:
-                for msg in page.http_msgs:
-                    try:
-                        method = (msg.method or "").upper()
-                        url = msg.url or ""
-                    except Exception:
-                        continue
-                    key = (method, url)
-                    if key in self_keys:
-                        continue
-                    if key in seen_missing:
-                        continue
-                    seen_missing.add(key)
-                    result.append(msg)
-
-        return result
-
-    async def to_json(self):
-        # Emit only PageItem wrappers for pages
-        return [await item.to_json() for item in self.pages_items]
+    async def to_json(self) -> List[Dict[str, Any]]:
+        """Serialize the sitemap to JSON format."""
+        return [await page.to_json() for page in self._pages.values()]
 
     @classmethod
-    def from_json(cls, data: dict):
-        pages: List[Page] = []
+    def from_json(cls, data: List[Dict[str, Any]]) -> "SiteMap":
+        """Deserialize a sitemap from JSON format."""
+        pages = [Page.from_json(entry) for entry in data]
+        sm = cls(pages=pages)
+
         for entry in data:
-            if isinstance(entry, dict) and "id" in entry and "item" in entry:
-                # Wrapped PageItem
-                page_obj = Page.from_json(entry["item"])
-                page_obj.id = entry["id"]
-                pages.append(page_obj)
-            else:
-                # Legacy Page payload
-                pages.append(Page.from_json(entry))
-        return cls(pages=pages)
+            page_id = entry["page_id"]
+            page = sm.get_page(page_id)
+            for raw_item in entry.get("page_items", []):
+                item_type = raw_item["type"]
+                item_id = PageItemId.from_str(raw_item["page_item_id"])
 
-    def __str__(self):
-        # raise Exception("Method Deprecated")
-        out = ""
-        for _, page in enumerate(self.pages):
-            out += f"PAGE: {page.id}.\n{str(page)}\n"
-        return out
+                if item_type == PageItemType.HTTP_MESSAGE:
+                    hm_id = raw_item.get("hm_id")
+                    if hm_id is None:
+                        raise ValueError(f"Missing hm_id for HTTP message {raw_item.get('id')}")
+                    payload = raw_item.get("item")
+                    http_msg = HTTPMessage.from_json(payload)
+                    sm._http_key_to_id.setdefault(sm._key_for_http_msg(http_msg), hm_id)
+                    item = HTTPMsgItem(item_id=item_id, data=http_msg, hm_id=hm_id)
+                    page.add_page_item_with_id(item)
+                    sm._hm_index[hm_id].append(item_id)
+                    sm._page_grouped[page_id].append(hm_id)
+                else:
+                    page.add_page_item_with_id(
+                        PageItem(item_id=item_id, data=raw_item.get("item"), item_type=item_type)
+                    )
 
-    def get_req_count(self) -> int:
-        return sum(len(page.http_msgs) for page in self.pages)
+        return sm
 
-    def to_str_summary_view(self, low_priority_hm_ids: Optional[Set[str]] = None) -> str:
-        """
-        Generate a summary view of all pages grouped by their unique request
-        
-        Pages that share the same set of HTTP requests (method + URL path) are grouped together.
-        This helps identify common page structures and patterns across the observed pages.
-        The summary prints the global `HTTPMessageID` for each `(method, path)`.
-        
-        Returns:
-            str: A formatted string showing groups of pages with their shared request
-        """
-        if not self.pages:
+
+# ---------------------------------------------------------------------------
+# HTTPView (render-only; uses SiteMap’s maintained state)
+# ---------------------------------------------------------------------------
+
+
+class HTTPView:
+    """
+    Read-only view that renders HTTP traffic grouped across pages.
+    Relies entirely on SiteMap state. Does not track or assign anything.
+    """
+
+    def __init__(self, sitemap: SiteMap):
+        self._sitemap = sitemap
+
+    def get_http_msg_item(self, hm_id: HttpMsgId) -> HTTPMsgItem:
+        return self._sitemap.get_any_http_msg_item(hm_id)
+
+    def __iter__(self) -> Iterator[HTTPMessage]:
+        for hm_id in self._sitemap._hm_index:
+            yield self.get_http_msg_item(hm_id).data
+
+    def to_str(self, include_body: bool = True) -> str:
+        if not self._sitemap.pages:
             return ""
-        
-        # Build per-page request key sets using oesn.path)
-        page_labels: List[str] = []
-        page_to_keys: Dict[str, Set[Tuple[str, str]]] = {}
-        page_by_label: Dict[str, Any] = {}
-        
-        for page in self.pages:
-            label = f"{page.id}:{page.url}"
-            page_labels.append(label)
-            page_by_label[label] = page
-            keys: Set[Tuple[str, str]] = set()
-            for msg in page.http_msgs:
-                from urllib.parse import urlparse
-                parsed = urlparse(msg.url)
-                path = parsed.path or "/"
-                method = (msg.method or "").upper()
-                keys.add((method, path))
-            page_to_keys[label] = keys
 
-        # Map each request key -> set of pages that contain it
-        key_to_pages: Dict[Tuple[str, str], Set[str]] = {}
-        for label, keys in page_to_keys.items():
-            for key in keys:
-                if key not in key_to_pages:
-                    key_to_pages[key] = set()
-                key_to_pages[key].add(label)
+        page_labels: Dict[int, str] = {p.page_id: f"{p.page_id}:{p.url}" for p in self._sitemap.pages}
 
-        # Invert to groups: frozenset(pages) -> set of keys unique to exactly that group
-        group_to_keys: Dict[frozenset[str], Set[Tuple[str, str]]] = {}
-        for key, pages_set in key_to_pages.items():
-            group = frozenset(pages_set)
-            if group not in group_to_keys:
-                group_to_keys[group] = set()
-            group_to_keys[group].add(key)
+        hm_to_pages: Dict[str, set[int]] = defaultdict(set)
+        for page_id, hm_ids in self._sitemap._page_grouped.items():
+            for hm_id in hm_ids:
+                hm_to_pages[hm_id].add(page_id)
 
-        # Optionally filter out LOW-priority HM ids
-        low_set = low_priority_hm_ids or set()
-        filtered_group_to_keys: Dict[frozenset[str], List[Tuple[str, str]]] = {}
-        for group, keys in group_to_keys.items():
-            remaining: List[Tuple[str, str]] = []
-            for method, path in keys:
-                hm_id = self._http_key_to_id.get((method, path))
-                if hm_id and hm_id in low_set:
+        pageset_to_hms: Dict[frozenset[int], set[str]] = defaultdict(set)
+        for hm_id, pages_set in hm_to_pages.items():
+            if pages_set:
+                pageset_to_hms[frozenset(pages_set)].add(hm_id)
+
+        groups: List[Tuple[frozenset[str], List[str]]] = []
+        for pages_set, hm_ids in pageset_to_hms.items():
+            if not hm_ids:
+                continue
+            labels = sorted(page_labels[pid] for pid in pages_set if pid in page_labels)
+            if not labels:
+                continue
+            groups.append((frozenset(hm_ids), labels))
+
+        groups.sort(key=lambda item: (len(item[1]), item[1]))
+
+        def _sort_hm_ids(hm_ids: frozenset[str]) -> List[str]:
+            def key_fn(hm_id: str) -> Tuple[str, str]:
+                msg = self.get_http_msg_item(hm_id).data
+                url = getattr(msg, "url", None) or getattr(msg.request, "url", "") or ""
+                path = (urlparse(url).path) or "/"
+                method = (getattr(msg, "method", None) or getattr(msg.request, "method", "") or "").upper()
+                return (path, method)
+
+            return sorted(hm_ids, key=key_fn)
+
+        def _rep_item_for_group(hm_id: str, page_ids_in_group: set[int]) -> HTTPMsgItem:
+            item_ids = set(self._sitemap._hm_index.get(hm_id, []))
+            for pid in page_ids_in_group:
+                page = self._sitemap._pages.get(pid)
+                if not page:
                     continue
-                remaining.append((method, path))
-            if remaining:
-                filtered_group_to_keys[group] = sorted(remaining, key=lambda k: (k[1], k[0]))
+                for it in page.http_msg_items:
+                    if it.page_item_id in item_ids:
+                        return it
+            return self.get_http_msg_item(hm_id)
 
-        # Filter out empty groups and sort by ascending group size (number of pages)
-        groups: List[Tuple[frozenset[str], List[Tuple[str, str]]]] = [
-            (g, ks) for g, ks in filtered_group_to_keys.items() if len(ks) > 0
-        ]
-        groups.sort(key=lambda item: (len(item[0]), sorted(item[0])))
+        out: List[str] = []
+        for idx, (hm_set, page_list) in enumerate(groups, start=1):
+            out.append(f"Group {idx} • {len(page_list)} page(s)")
+            out.append("Pages: " + ", ".join(page_list))
 
-        # Build output string
-        output = ""
-        group_index = 1
-        for group_pages, reqs in groups:
-            sorted_pages = sorted(group_pages)
-            sorted_reqs = sorted(reqs, key=lambda k: (k[1], k[0]))
-            title = f"Group {group_index} • {len(sorted_pages)} page(s)"
+            group_page_ids: set[int] = {int(lbl.split(":", 1)[0]) for lbl in page_list}
 
-            # Build detailed request lines with param names under each request
-            lines: List[str] = []
-            for method, path in sorted_reqs:
-                lines.append(f"- {method} {path}")
-                # Print the global HTTPMessageID for this (method, path)
-                http_id = self._http_key_to_id.get((method, path))
-                if http_id:
-                    lines.append(f"  > id: {http_id}")
-                # Collect union of params across all pages in this group that have this method+path
-                q_names_set: Set[str] = set()
-                b_names_set: Set[str] = set()
-                for label in sorted_pages:
-                    page = page_by_label.get(label)
-                    if not page:
-                        continue
-                    for msg in page.http_msgs:
-                        from urllib.parse import urlparse
-                        parsed = urlparse(msg.url)
-                        if (msg.method or "").upper() == method and (parsed.path or "/") == path:
-                            # Extract query param names
-                            from urllib.parse import parse_qs
-                            if parsed.query:
-                                params = parse_qs(parsed.query, keep_blank_values=True)
-                                for param_name in params.keys():
-                                    q_names_set.add(param_name)
-                            
-                            # Extract post param names
-                            data = getattr(msg.request, "post_data", None)
-                            if data:
-                                if isinstance(data, dict):
-                                    keys_list = list(data.keys())
-                                    if keys_list == ["raw"]:
-                                        # Best-effort parse of key=value&key2=value2 from raw
-                                        raw = str(data.get("raw", ""))
-                                        if "&" in raw and "=" in raw:
-                                            for pair in raw.split("&"):
-                                                if "=" in pair:
-                                                    k, _ = pair.split("=", 1)
-                                                    if k:
-                                                        b_names_set.add(k)
-                                    else:
-                                        for k in keys_list:
-                                            if k != "raw":
-                                                b_names_set.add(k)
-                
-                if q_names_set:
-                    lines.append(f"  > query params: {', '.join(sorted(q_names_set))}")
-                if b_names_set:
-                    lines.append(f"  > body params: {', '.join(sorted(b_names_set))}")
+            for hm_id in _sort_hm_ids(hm_set):
+                msg_item = _rep_item_for_group(hm_id, group_page_ids)
 
-            # Add group to output
-            page_line = "Pages: " + ", ".join(sorted_pages)
-            output += f"{title}\n"
-            output += f"{page_line}\n"
-            for line in lines:
-                output += f"{line}\n"
-                        
-            output += "\n"
-            group_index += 1
+                block = msg_item.to_str(include_body=include_body).splitlines()
+                if not block:
+                    continue
 
-        return output.rstrip()
+                first = block[0].strip()
+                if first.startswith("- "):
+                    out.append(first)
+                else:
+                    out.append(f"- {first}")
+                # NOTE: we are printing this at the request level now
+                # out.append(f"  > id: {msg_item.hm_id}")
+                out.extend(block[1:])
+
+            out.append("")
+
+        while out and out[-1] == "":
+            out.pop()
+
+        return "\n".join(out)
+
+
+# ---------------------------------------------------------------------------
+# Utility Functions
+# ---------------------------------------------------------------------------
+
+
+def resolve_http_message_from_ids(
+    sitemap: Optional["SiteMap"], 
+    page_item_ids: Optional[List[PageItemId]]
+) -> Optional[HTTPMessage]:
+    """
+    Resolve a list of PageItemIds to an HTTPMessage.
+    
+    Takes the first PageItemId from the list and resolves it to an HTTPMessage
+    from the SiteMap. Returns None if the sitemap is None, page_item_ids is empty,
+    or the page item is not an HTTPMsgItem.
+    
+    Args:
+        sitemap: The SiteMap containing the page items
+        page_item_ids: List of PageItemIds to resolve (uses first one)
+        
+    Returns:
+        The HTTPMessage if found, None otherwise
+    """
+    if not sitemap or not page_item_ids:
+        return None
+    
+    if len(page_item_ids) == 0:
+        return None
+    
+    try:
+        page_item = sitemap.get_page_item(page_item_ids[0])
+        if isinstance(page_item, HTTPMsgItem):
+            return page_item.data
+    except (ValueError, KeyError):
+        pass
+    
+    return None
