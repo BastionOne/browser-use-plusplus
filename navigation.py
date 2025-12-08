@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
-from common.constants import DISCOVERY_MODEL_CONFIG
+from src.utils.constants import DISCOVERY_MODEL_CONFIG
 
 from browser_use.dom.views import DOMSelectorMap, DOMInteractedElement
 

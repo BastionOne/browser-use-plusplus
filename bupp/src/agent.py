@@ -9,7 +9,7 @@ import requests
 import opik
 from urllib.parse import urljoin
 
-from common.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
+from src.utils.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
 
 from bupp.src.dom import DOMState
 from bupp.src.clickable_detector import (
