@@ -5,7 +5,7 @@ from browser_use.llm.openai.chat import ChatOpenAI
 from browser_use.llm.messages import UserMessage
 from browser_use.tokens.service import TokenCost
 
-from common.constants import BROWSER_USE_MODEL, DISCOVERY_MODEL_CONFIG
+from src.utils.constants import BROWSER_USE_MODEL, DISCOVERY_MODEL_CONFIG
 from bupp.src.llm.llm_models import LLMHub
 
 from pathlib import Path

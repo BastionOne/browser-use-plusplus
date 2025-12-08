@@ -1,6 +1,6 @@
 import asyncio
 
-from common.constants import SNAPSHOTS_FOLDER, DISCOVERY_MODEL_CONFIG
+from src.utils.constants import SNAPSHOTS_FOLDER, DISCOVERY_MODEL_CONFIG
 
 from bupp.base import (
     BrowserContextManager,

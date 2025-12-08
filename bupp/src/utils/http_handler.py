@@ -13,7 +13,7 @@ from typing import (
 )
 from urllib.parse import urlparse
 
-from common.httplib import HTTPMessage, HTTPRequest, HTTPResponse
+from src.utils.httplib import HTTPMessage, HTTPRequest, HTTPResponse
 from playwright.sync_api import Request, Response
 
 from bupp.logger import get_logger_or_default, PROXY_LOGGER_NAME

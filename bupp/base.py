@@ -11,15 +11,15 @@ from bupp.src.prompts.sys_prompt import CUSTOM_SYSTEM_PROMPT
 from bupp.src.proxy import MitmProxyHTTPHandler
 from bupp.src.state import AgentSnapshotList
 from bupp.src.prompts.planv4 import PlanItem
-from common.constants import BROWSER_USE_MODEL
+from src.utils.constants import BROWSER_USE_MODEL
 
 from browser_use.agent.service import Agent as BrowserUseAgent
 from browser_use.browser import BrowserSession, BrowserProfile
 from browser_use import Browser as BrowserSession
 from browser_use.llm import ChatOpenAI
 
-from common.http_handler import HTTPHandler
-from common.constants import (
+from src.utils.http_handler import HTTPHandler
+from src.utils.constants import (
     DISCOVERY_MODEL_CONFIG,
     BROWSER_CDP_HOST,
     BROWSER_CDP_PORT,
@@ -27,7 +27,7 @@ from common.constants import (
     BROWSER_PROXY_PORT,
     AGENT_RESULTS_FOLDER
 )
-from common.browser_config_service import BrowserConfigService
+from src.utils.browser_config_service import BrowserConfigService
 from bupp.logger import get_or_init_log_factory
 
 # TODO: take browser management out of these functions

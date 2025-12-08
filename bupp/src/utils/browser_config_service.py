@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from common.lock import SQLiteLockManager
+from src.utils.lock import SQLiteLockManager
 
 
 BrowserInfra = Tuple[int, int, str]
