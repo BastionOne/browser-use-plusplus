@@ -9,7 +9,7 @@ import requests
 import opik
 from urllib.parse import urljoin
 
-from src.utils.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
+from bupp.src.utils.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
 
 from bupp.src.dom import DOMState
 from bupp.src.clickable_detector import (
@@ -29,7 +29,7 @@ from bupp.src.prompts.planv4 import (
     TASK_PROMPT_WITH_PLAN as TASK_PROMPT_WITH_PLAN
 )
 from bupp.src.llm.llm_models import LLMHub, ChatModelWithLogging
-from bupp.src.pages import Page, SiteMap
+from bupp.src.sitemap import Page, SiteMap
 from bupp.src.proxy import MitmProxyHTTPHandler
 from bupp.src.state import (
     AgentSnapshot as DiscoveryAgentState,
@@ -71,7 +71,6 @@ from bupp.src.utils import (
     extract_json,
     num_tokens_from_string,
 )
-from login_tool import LoginDetectionResult
 import logging
 
 class PageStatus(str, Enum):
@@ -580,13 +579,13 @@ class DiscoveryAgent(BrowserUseAgent):
 
         return browser_state
 
-    def _should_abort_for_login(self) -> bool:
-        detection: LoginDetectionResult | None = self.login_detection
-        if detection and detection.login_screen:
-            self._log(f"[LOGIN_PAGE] {detection.summary()} — stopping run")
-            self.state.stopped = True
-            return True
-        return False
+    # def _should_abort_for_login(self) -> bool:
+    #     detection: LoginDetectionResult | None = self.login_detection
+    #     if detection and detection.login_screen:
+    #         self._log(f"[LOGIN_PAGE] {detection.summary()} — stopping run")
+    #         self.state.stopped = True
+    #         return True
+    #     return False
 
     def _check_done(self, results: List[ActionResult]) -> bool:
         # New API: Done indicated via is_done flag

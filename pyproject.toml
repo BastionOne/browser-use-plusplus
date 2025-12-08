@@ -28,5 +28,5 @@
      "langchain_openai"
  ]
 
-[tool.setuptools]
-packages = ["bupp"]
+[tool.setuptools.packages.find]
+include = ["bupp", "bupp.*"]

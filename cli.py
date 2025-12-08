@@ -15,7 +15,7 @@ from bupp.sites.tests.scenario import Scenario, ScenarioRegistry
 from bupp.sites.tests.registry import TEST_REGISTRY
 from bupp.src.llm.llm_models import LLMHarness
 
-from src.utils.constants import SITES_FOLDER
+from bupp.src.utils.constants import SITES_FOLDER
 
 MAX_STEPS = 3
 NUM_BROWSERS = 1

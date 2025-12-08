@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from urllib.parse import urlparse
 from pydantic import BaseModel
 
-from src.utils.httplib import HTTPMessage
+from bupp.src.utils.httplib import HTTPMessage
 from bupp.logger import get_agent_loggers
 
 agent_log, _ = get_agent_loggers()

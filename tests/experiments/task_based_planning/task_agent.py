@@ -8,7 +8,7 @@ import time
 import requests
 from urllib.parse import urljoin
 
-from src.utils.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
+from bupp.src.utils.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
 
 from bupp.src.dom import DOMState
 from bupp.src.clickable_detector import (
@@ -28,7 +28,7 @@ from bupp.src.prompts.planv4 import (
     TASK_PROMPT_WITH_PLAN as TASK_PROMPT_WITH_PLAN
 )
 from bupp.src.llm.llm_models import LLMHub, ChatModelWithLogging
-from bupp.src.pages import Page, SiteMap
+from bupp.src.sitemap import Page, SiteMap
 from bupp.src.proxy import MitmProxyHTTPHandler
 from bupp.src.state import (
     AgentSnapshot as DiscoveryAgentState,

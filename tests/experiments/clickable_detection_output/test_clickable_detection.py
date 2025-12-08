@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 from typing import Set, List
 from pydantic import BaseModel
 
-from src.utils.constants import SNAPSHOTS_FOLDER, DISCOVERY_MODEL_CONFIG
+from bupp.src.utils.constants import SNAPSHOTS_FOLDER, DISCOVERY_MODEL_CONFIG
 
 from browser_use.tools.service import Tools
 from browser_use.browser.session import BrowserSession
