@@ -18,6 +18,11 @@ BROWSER_PROXY_PORT = 8081
 BROWSER_CDP_HOST = "127.0.0.1"
 BROWSER_CDP_PORT = 9900
 
+BROWSER_PROFILE_DIR = Path(
+    r"C:\Users\jpeng\AppData\Local\Google\Chrome\User Data\Profile 2"
+)
+
+
 # folders
 BUPP_FOLDER = Path(".bupp")
 SNAPSHOTS_FOLDER = BUPP_FOLDER / "snapshots"

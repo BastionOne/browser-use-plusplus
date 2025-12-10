@@ -237,12 +237,12 @@ Make sure to return an instance of the JSON, not the schema itself
         )
         
         # Log prompt template and args to files
-        log_prompt_to_files(
-            self.prompt_logdir,
-            self.prompt,  # raw template without variables
-            combined_args,
-            self.__class__.__name__
-        )
+        # log_prompt_to_files(
+        #     self.prompt_logdir,
+        #     self.prompt,  # raw template without variables
+        #     combined_args,
+        #     self.__class__.__name__
+        # )
         
         if log_this_prompt:
             log_this_prompt.info(f"{prompt_log_preamble}\n[{self.__class__.__name__}]: {prompt}")
@@ -296,18 +296,18 @@ Make sure to return an instance of the JSON, not the schema itself
 
         Falls back to running the sync invoke in a thread if the model has no ainvoke.
         """
-        prompt, combined_args = self._prepare_prompt(
+        prompt = self._prepare_prompt(
             templates=self.templates,
             **prompt_args,
         )
         
-        # Log prompt template and args to files
-        log_prompt_to_files(
-            self.prompt_logdir,
-            self.prompt,  # raw template without variables
-            combined_args,
-            self.__class__.__name__
-        )
+        # # Log prompt template and args to files
+        # log_prompt_to_files(
+        #     self.prompt_logdir,
+        #     self.prompt,  # raw template without variables
+        #     combined_args,
+        #     self.__class__.__name__
+        # )
         
         if prompt_logger:
             prompt_logger.info(f"{prompt_log_preamble}\n[{self.__class__.__name__}]: {prompt}")

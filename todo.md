@@ -88,3 +88,33 @@ Tmrw:
     └── Keep all your plans in one place
 
 - Should actually find a way to super impose one on the other
+
+Notes on comparing responses:
+- regex -> semantic figured out regex and text match input box
+- airbnb -> more compact representation in original
+- [NOTE]: does focusing on plan reasoning matter?
+> 
+
+Todo with sites:
+- multiple plans
+- change to request based create prompt
+- change models for:
+> create prompt
+> generating semantic dom
+- plan auto critique
+
+** -> next todo
+1. auto critique
+2. critique semantic dom vs normal
+3. critique 
+
+Tuesday:
+# Experiments:
+    - compare functional/API discovery based plan-creation
+    - not much difference between how we are processing plans
+    - next steps:
+    - ...?
+# Browser Infra:
+    - setup browser worker
+    - setup proxy solution with CDP
+    - rewrite cnc server to get rid of agent pool implementation and instead rewire to using async tasks + browser resources

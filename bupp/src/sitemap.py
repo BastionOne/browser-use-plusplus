@@ -6,7 +6,7 @@ import inspect
 from typing import Any, Dict, Iterator, List, Optional, Tuple, TypeAlias, Union, cast
 from urllib.parse import urlparse
 
-from common.httplib import HTTPMessage
+from bupp.src.utils.httplib import HTTPMessage
 
 # ---------------------------------------------------------------------------
 # Utils

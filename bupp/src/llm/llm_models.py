@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 from typing import Dict, Any, Callable, TypeVar, Optional, Mapping, List
 
@@ -16,7 +17,7 @@ COST_MAP = None
 def load_cost_map() -> Dict:
     global COST_MAP
     if not COST_MAP:
-        with open(Path(__file__).parent.parent / "model_api_prices.json", "r") as f:
+        with open(Path(__file__).parent.parent.parent / "model_api_prices.json", "r") as f:
             COST_MAP = json.load(f)
 
     return COST_MAP
@@ -123,6 +124,10 @@ class ChatModelWithName(BaseChatModel):
     def model_name(self) -> str:
         # for legacy support
         return self.model
+    
+    @model_name.setter
+    def model_name(self, value: str) -> None:
+        self.model = value
 
     def get_cost(self) -> float:
         return self._cost
