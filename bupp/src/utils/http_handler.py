@@ -55,6 +55,17 @@ BAN_LIST = [
     "/ppms.php",
 ]
 
+BLACKLISTED_EXTENSIONS = [
+    # Images
+    ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".bmp", ".tiff",
+    # Documents/media
+    ".pdf", ".zip", ".tar", ".gz", ".mp4", ".mp3", ".wav", ".avi", ".mov",
+    # Static assets
+    ".css", ".js", ".woff", ".woff2", ".ttf", ".eot", ".map",
+    # Data
+    ".json", ".xml", ".rss", ".atom", ".csv",
+]
+
 def is_uninteresting(url: str) -> bool:
     """Return True if *url* contains a substring from BAN_LIST."""
     return any(token in url for token in BAN_LIST)
@@ -71,14 +82,45 @@ class HTTPFilterConfig:
 
 
 # --------------------------------------------------------------------------------------
-# 3.  Main history manager
+# 3.  URL and attribute filters
 # --------------------------------------------------------------------------------------
 
-class HTTPFilter:
-    """
-    Filter a list of HTTPMessage objects (request/response) according to an `HTTPFilter`.
-    Only MIME-types explicitly listed in filter.include_mime_types will pass.
-    """
+class URLFilter:
+    """Filter HTTP messages based on URL-only signals (patterns and extensions)."""
+
+    def __init__(
+        self,
+        ban_list: Sequence[str] | None = None,
+        url_filters: Sequence[str] | None = None,
+        blacklisted_extensions: Sequence[str] | None = None,
+        *,
+        logger: logging.Logger | None = None,
+    ) -> None:
+        self._ban_list = ban_list or BAN_LIST
+        self._url_filters = url_filters or ("socket.io",)
+        self._blacklisted_extensions = tuple(blacklisted_extensions or BLACKLISTED_EXTENSIONS)
+        self._logger = logger or proxy_log
+
+    def _has_blacklisted_extension(self, url: str) -> bool:
+        path = urlparse(url).path.lower()
+        return any(path.endswith(ext) for ext in self._blacklisted_extensions)
+
+    def is_allowed(self, url: str) -> bool:
+        if any(token in url for token in self._ban_list):
+            self._logger.info("Reject %s – disallowed URL pattern", url)
+            return False
+        if any(pat in url for pat in self._url_filters):
+            self._logger.info("Reject %s – disallowed URL substring", url)
+            return False
+        if self._has_blacklisted_extension(url):
+            self._logger.info("Reject %s – extension blacklisted", url)
+            return False
+        return True
+
+
+class HTTPAttributeFilter:
+    """Filter HTTP messages based on response attributes (headers/status/size)."""
+
     STATUS_TESTS: Dict[str, Callable[[int], bool]] = {
         "2xx": lambda s: 200 <= s < 300,
         "3xx": lambda s: 300 <= s < 400,
@@ -86,24 +128,12 @@ class HTTPFilter:
         "5xx": lambda s: 500 <= s < 600,
     }
 
-    # URL substrings that are always ignored (in addition to BAN_LIST)
-    URL_FILTERS: Sequence[str] = ("socket.io",)
+    def __init__(self, cfg: HTTPFilterConfig, *, logger: logging.Logger | None = None) -> None:
+        self.cfg = cfg
+        self._logger = logger or proxy_log
 
-    def __init__(
-        self, 
-        http_filter_config: HTTPFilterConfig | None = None, 
-        *, 
-        logger: logging.Logger | None = None
-    ) -> None:
-        self.cfg = http_filter_config or HTTPFilterConfig()
-
-    # ---------------- content detection (header-based only)
     def detect_content(self, response: "HTTPResponse") -> str:
-        """Return a symbolic MIME key based solely on the Content-Type header.
-
-        The returned key aligns with `include_mime_types` from HTTPFilterConfig:
-        html | script | json | xml | flash | other_text
-        """
+        """Return a symbolic MIME key based solely on the Content-Type header."""
         ct = response.get_content_type() if response else ""
         if not ct:
             return "other_text"
@@ -129,37 +159,6 @@ class HTTPFilter:
             return "other_text"
         return "other_text"
 
-    async def _passes_all_filters(self, msg: "HTTPMessage") -> bool:
-        """Evaluate every gate in order and short-circuit on the first failure."""
-        url = msg.request.url
-
-        if msg.response is None:
-            proxy_log.info("Reject %s – no response", msg.request.url)
-            return False
-
-        if is_uninteresting(url) or any(pat in url for pat in self.URL_FILTERS):
-            proxy_log.info("Reject %s – disallowed URL", url)
-            return False
-
-        # Detect using Content-Type header only
-        header_ct = msg.response.get_content_type()
-        category = self.detect_content(msg.response)
-        proxy_log.info("CONTENT TYPE: %s | DETECTED: %s", header_ct, category)
-
-        if not self._mime_allowed(category):
-            proxy_log.info("Reject %s – MIME %s", url, category)
-            return False
-        if not self._status_allowed(msg.response.status):
-            proxy_log.info("Reject %s – status %s not allowed", url, msg.response.status)
-            return False
-
-        if self.cfg.max_payload_size is not None and msg.response.get_response_size() > self.cfg.max_payload_size:
-            proxy_log.info("Reject %s – payload too large", url)
-            return False
-
-        return True
-
-    # ---------------- predicate helpers
     def _mime_allowed(self, category: str) -> bool:
         return category in self.cfg.include_mime_types
 
@@ -170,6 +169,60 @@ class HTTPFilter:
                 return True
         return False
 
+    def is_allowed(self, msg: "HTTPMessage") -> bool:
+        if msg.response is None:
+            self._logger.info("Reject %s – no response", msg.request.url)
+            return False
+
+        header_ct = msg.response.get_content_type()
+        category = self.detect_content(msg.response)
+        self._logger.info("CONTENT TYPE: %s | DETECTED: %s", header_ct, category)
+
+        if not self._mime_allowed(category):
+            self._logger.info("Reject %s – MIME %s", msg.request.url, category)
+            return False
+        if not self._status_allowed(msg.response.status):
+            self._logger.info("Reject %s – status %s not allowed", msg.request.url, msg.response.status)
+            return False
+
+        if self.cfg.max_payload_size is not None and msg.response.get_response_size() > self.cfg.max_payload_size:
+            self._logger.info("Reject %s – payload too large", msg.request.url)
+            return False
+
+        return True
+
+
+# --------------------------------------------------------------------------------------
+# 4.  Main history manager
+# --------------------------------------------------------------------------------------
+
+class HTTPFilter:
+    """
+    Filter a list of HTTPMessage objects (request/response) according to an `HTTPFilter`.
+    Only MIME-types explicitly listed in filter.include_mime_types will pass.
+    """
+    def __init__(
+        self, 
+        http_filter_config: HTTPFilterConfig | None = None, 
+        *, 
+        logger: logging.Logger | None = None,
+        url_filter: URLFilter | None = None,
+        attribute_filter: HTTPAttributeFilter | None = None,
+    ) -> None:
+        self.cfg = http_filter_config or HTTPFilterConfig()
+        self._logger = logger or proxy_log
+        self.url_filter = url_filter or URLFilter(logger=self._logger)
+        self.attribute_filter = attribute_filter or HTTPAttributeFilter(self.cfg, logger=self._logger)
+
+    async def passes_all_filters(self, msg: "HTTPMessage") -> bool:
+        """Evaluate every gate in order and short-circuit on the first failure."""
+        url = msg.request.url
+
+        if not self.url_filter.is_allowed(url):
+            return False
+
+        return self.attribute_filter.is_allowed(msg)
+
 
 DEFAULT_INCLUDE_MIME = ["html", "script", "xml", "flash", "other_text"]
 DEFAULT_INCLUDE_STATUS = ["2xx", "3xx", "4xx", "5xx"]
@@ -179,7 +232,7 @@ DEFAULT_PER_REQUEST_TIMEOUT = 2.0     # seconds to wait for *each* unmatched req
 DEFAULT_SETTLE_TIMEOUT      = 1.0     # seconds of network "silence" after the *last* response
 POLL_INTERVAL               = 0.5    # how often we poll internal state
 
-# TODO: major error here in response/request matching, unable to pair res/req with absolute confidence
+# Request/response correlation using CDP's requestId for accurate pairing
 class HTTPHandler:
     def __init__(
         self,
@@ -192,6 +245,9 @@ class HTTPHandler:
         self._step_messages: List[HTTPMessage] = []
         self._request_queue: List[HTTPRequest] = []
         self._req_start: Dict[HTTPRequest, float] = {}
+
+        # CDP requestId-based correlation (solves concurrent identical request problem)
+        self._request_id_map: Dict[str, HTTPRequest] = {}
 
         self._ban_substrings: List[str] = banlist or BAN_LIST
         self._ban_list: Set[str] = set()
@@ -224,33 +280,72 @@ class HTTPHandler:
         return validated_scopes
 
     def reset_queue(self):
-        """Empty the request queue."""
+        """Empty the request queue and correlation map."""
         self._request_queue = []
         self._req_start = {}
+        self._request_id_map = {}
 
-    async def handle_request(self, http_request: HTTPRequest):
+    async def handle_request(self, http_request: HTTPRequest, request_id: Optional[str] = None):
+        """
+        Handle incoming HTTP request.
+
+        Args:
+            http_request: The HTTP request object
+            request_id: Optional CDP requestId for accurate request/response correlation
+        """
         try:
             url = http_request.url
 
             self._request_queue.append(http_request)
             self._req_start[http_request] = asyncio.get_running_loop().time()
+
+            # Store requestId mapping if provided (CDP-based correlation)
+            if request_id:
+                self._request_id_map[request_id] = http_request
         except Exception as e:
             proxy_log.error("Error handling request: %s", e)
 
-    async def handle_response(self, http_response: HTTPResponse, http_request: HTTPRequest):
+    async def handle_response(self, http_response: HTTPResponse, http_request: HTTPRequest, request_id: Optional[str] = None):
+        """
+        Handle incoming HTTP response.
+
+        Args:
+            http_response: The HTTP response object
+            http_request: The HTTP request object (may be reconstructed)
+            request_id: Optional CDP requestId for accurate request/response correlation
+        """
         try:
-            matching_request = next(
-                (req for req in self._request_queue
-                 if req.url == http_request.url and req.method == http_request.method),
-                None
-            )
+            matching_request = None
+
+            # Try CDP requestId-based matching first (most accurate)
+            if request_id and request_id in self._request_id_map:
+                matching_request = self._request_id_map.pop(request_id)
+                proxy_log.debug("Matched response via requestId: %s", request_id[:8])
+            else:
+                # Fall back to URL+method matching (for mitmproxy compatibility)
+                matching_request = next(
+                    (req for req in self._request_queue
+                     if req.url == http_request.url and req.method == http_request.method),
+                    None
+                )
+                if matching_request:
+                    proxy_log.debug("Matched response via URL+method: %s", http_request.url)
+
             if matching_request:
-                self._request_queue.remove(matching_request)
+                if matching_request in self._request_queue:
+                    self._request_queue.remove(matching_request)
                 self._req_start.pop(matching_request, None)
 
-            self._step_messages.append(
-                HTTPMessage(request=http_request, response=http_response)
-            )
+                # Use the original matching_request for the message (it has the correct data)
+                self._step_messages.append(
+                    HTTPMessage(request=matching_request, response=http_response)
+                )
+            else:
+                # No match found, still store it (might be a response without prior request)
+                proxy_log.warning("No matching request found for response: %s", http_request.url)
+                self._step_messages.append(
+                    HTTPMessage(request=http_request, response=http_response)
+                )
         except Exception as e:
             proxy_log.error("Error handling response: %s", e)
 
@@ -300,7 +395,7 @@ class HTTPHandler:
         if (
             self._is_in_scope(msg.request.url)
             and not self._is_banned(msg.request.url)
-            and await self._http_filter._passes_all_filters(msg)
+            and await self._http_filter.passes_all_filters(msg)
         ):
             return True
         return False

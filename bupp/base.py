@@ -1,25 +1,19 @@
 from pathlib import Path
 from typing import List, Dict, Optional, Any, Tuple, Callable, Coroutine
 import json
-import logging
 import httpx
 
 from playwright.async_api import async_playwright, BrowserContext, ProxySettings
 
 from bupp.src.agent import DiscoveryAgent
-
-from bupp.src.prompts.sys_prompt import CUSTOM_SYSTEM_PROMPT
-from bupp.src.proxy.mitmproxy import MitmProxyHTTPHandler
+from bupp.src.proxy.cdpproxy import CDPHTTPProxy
 from bupp.src.state import AgentSnapshotList
-from bupp.src.prompts.planv4 import PlanItem
-from bupp.src.utils.constants import BROWSER_USE_MODEL
 from bupp.src.utils.constants import BROWSER_PROFILE_DIR
 
 from browser_use.agent.service import Agent as BrowserUseAgent
 from browser_use.browser import BrowserSession, BrowserProfile
 from browser_use import Browser as BrowserSession
 from browser_use.llm import ChatOpenAI
-
 
 from bupp.src.utils.http_handler import HTTPHandler
 from bupp.src.utils.constants import (
@@ -34,7 +28,7 @@ from bupp.src.utils.browser_config_service import BrowserConfigService
 from bupp.logger import get_or_init_log_factory
 
 # TODO: take browser management out of these functions
-BrowserData = Tuple[BrowserSession, Optional[MitmProxyHTTPHandler], BrowserContext]
+BrowserData = Tuple[BrowserSession, Optional[CDPHTTPProxy], BrowserContext]
 BrowserSetupFunc = Callable[[BrowserData], Coroutine[Any, Any, None]]
 
 class BrowserContextManager:
@@ -74,7 +68,7 @@ class BrowserContextManager:
             profile_root=BROWSER_PROFILE_DIR
         )
 
-    async def _connect_to_server_browser(self, i: int) -> Tuple[BrowserSession, Optional[MitmProxyHTTPHandler], BrowserContext]:
+    async def _connect_to_server_browser(self, i: int) -> Tuple[BrowserSession, Optional[CDPHTTPProxy], BrowserContext]:
         """Connect to a browser through the CDP proxy server."""
         # Phase 1: Create a session
         async with httpx.AsyncClient() as client:
@@ -125,7 +119,7 @@ class BrowserContextManager:
         # TODO: this actually returns a Browser object not BrowserContext
         return browser_session, proxy_handler, browser
 
-    async def _connect_to_local_browser(self, i: int, browser_port: int, cdp_port: int, browser_profile: str) -> Tuple[BrowserSession, Optional[MitmProxyHTTPHandler], BrowserContext]:
+    async def _connect_to_local_browser(self, i: int, browser_port: int, cdp_port: int, browser_profile: str) -> Tuple[BrowserSession, Optional[CDPHTTPProxy], BrowserContext]:
         """Connect to a local browser instance."""
         self.browser_ports.append(browser_port)
         self.cdp_ports.append(cdp_port)
@@ -144,7 +138,7 @@ class BrowserContextManager:
             headless=self.headless,
             executable_path=executable_path,
             args=[f"--remote-debugging-port={cdp_port}", f"--remote-debugging-address={BROWSER_CDP_HOST}"],
-            proxy=proxy_config,
+            # proxy=proxy_config,
         )
         self.browsers.append(browser)
         print(f"Browser {i+1} started")
@@ -159,16 +153,12 @@ class BrowserContextManager:
         self.browser_sessions.append(browser_session)
         print(f"Browser session {i+1} started")
 
-        # Start proxy handler (mitmproxy) only if use_proxy is True
+        # Start proxy handler (CDPHTTPProxy) only if use_proxy is True
         proxy_handler = None
         if self.use_proxy:
-            http_handler = HTTPHandler(scopes=self.scopes)
-            proxy_handler = MitmProxyHTTPHandler(
-                handler=http_handler,
-                listen_host=BROWSER_PROXY_HOST,
-                listen_port=browser_port,
-                ssl_insecure=True,
-                http2=True,
+            proxy_handler = CDPHTTPProxy(
+                scopes=self.scopes,
+                browser_session=browser_session,
             )
             await proxy_handler.connect()
         self.proxy_handlers.append(proxy_handler)
@@ -272,7 +262,7 @@ async def start_discovery_agent(
         base_dir=AGENT_RESULTS_FOLDER, 
     )
     agent_log, full_log = server_log_factory.get_discovery_agent_loggers(
-        streaming=streaming
+        streaming=streaming 
     )
     log_dir = server_log_factory.get_log_dir()
     browser_session, proxy_handler, _ = browser_data
