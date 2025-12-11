@@ -30,7 +30,7 @@ from bupp.src.prompts.planv4 import (
 )
 from bupp.src.llm.llm_models import LLMHub, ChatModelWithLogging
 from bupp.src.sitemap import Page, SiteMap
-from bupp.src.proxy.mitmproxy import MitmProxyHTTPHandler
+from bupp.src.proxy.cdpproxy import CDPHTTPProxy
 from bupp.src.state import (
     AgentSnapshot as DiscoveryAgentState,
     AgentSnapshotList,
@@ -53,7 +53,7 @@ from browser_use.llm.messages import SystemMessage
 from browser_use.agent.service import Agent as BrowserUseAgent
 from browser_use import Browser
 from browser_use.agent.views import AgentState
-from browser_use.browser.views import BrowserStateSummary, BrowserStateHistory
+from browser_use.browser.views import BrowserStateSummary
 from browser_use.agent.views import (
     ActionResult,
     AgentHistoryList,
@@ -106,7 +106,7 @@ class DiscoveryAgent(BrowserUseAgent):
         save_snapshots: bool = True,
         challenge_client: Optional[Any] = None,
         server_client: Optional[Any] = None,
-        proxy_handler: Optional[MitmProxyHTTPHandler] = None,
+        proxy_handler: Optional[CDPHTTPProxy] = None,
         take_screenshots: bool = True,
         auth_cookies: Optional[List[Dict[str, Any]]] = None,
         clickable_detector_type: ClickableDetectorType | str = ClickableDetectorType.STATIC,
@@ -773,7 +773,7 @@ class DiscoveryAgent(BrowserUseAgent):
         browser_session: "Browser",
         max_steps: Optional[int] = None,
         max_page_steps: Optional[int] = None,
-        proxy_handler: Optional["MitmProxyHTTPHandler"] = None,
+        proxy_handler: Optional["CDPHTTPProxy"] = None,
         agent_log: Optional["logging.Logger"] = None,
         full_log: Optional["logging.Logger"] = None,
         save_snapshots: bool = True,

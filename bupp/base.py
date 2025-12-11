@@ -38,7 +38,6 @@ class BrowserContextManager:
         self,
         scopes: Optional[List[str]] = None,
         headless: bool = False,
-        use_proxy: bool = True,
         n: int = 1,
         config_service: BrowserConfigService | None = None,
         browser_exe: Optional[str] = None,
@@ -47,7 +46,6 @@ class BrowserContextManager:
     ):
         self.scopes = scopes
         self.headless = headless
-        self.use_proxy = use_proxy
         self.browser_exe = browser_exe
         self.use_server = use_server
         self.server_base_url = server_base_url
@@ -113,7 +111,11 @@ class BrowserContextManager:
 
         # For server-based connections, we don't manage proxy handlers locally
         # The server handles all proxy configuration
-        proxy_handler = None
+        proxy_handler = CDPHTTPProxy(
+            scopes=self.scopes,
+            browser_session=browser_session,
+        )
+        await proxy_handler.connect()
         self.proxy_handlers.append(proxy_handler)
         
         # TODO: this actually returns a Browser object not BrowserContext
@@ -124,12 +126,7 @@ class BrowserContextManager:
         self.browser_ports.append(browser_port)
         self.cdp_ports.append(cdp_port)
         self.browser_profiles.append(browser_profile)
-        
-        # Configure proxy settings only if use_proxy is True
-        proxy_config: ProxySettings | None = None
-        if self.use_proxy:
-            proxy_config = {"server": f"http://{BROWSER_PROXY_HOST}:{browser_port}"}
-        
+                
         # Use provided browser_exe or default
         executable_path = self.browser_exe or r"C:\Users\jpeng\AppData\Local\ms-playwright\chromium-1161\chrome-win\chrome.exe"
         
@@ -138,7 +135,6 @@ class BrowserContextManager:
             headless=self.headless,
             executable_path=executable_path,
             args=[f"--remote-debugging-port={cdp_port}", f"--remote-debugging-address={BROWSER_CDP_HOST}"],
-            # proxy=proxy_config,
         )
         self.browsers.append(browser)
         print(f"Browser {i+1} started")
@@ -153,14 +149,11 @@ class BrowserContextManager:
         self.browser_sessions.append(browser_session)
         print(f"Browser session {i+1} started")
 
-        # Start proxy handler (CDPHTTPProxy) only if use_proxy is True
-        proxy_handler = None
-        if self.use_proxy:
-            proxy_handler = CDPHTTPProxy(
-                scopes=self.scopes,
-                browser_session=browser_session,
-            )
-            await proxy_handler.connect()
+        proxy_handler = CDPHTTPProxy(
+            scopes=self.scopes,
+            browser_session=browser_session,
+        )
+        await proxy_handler.connect()
         self.proxy_handlers.append(proxy_handler)
         
         return browser_session, proxy_handler, browser
