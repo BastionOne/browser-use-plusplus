@@ -1,4 +1,0 @@
-[submodule "browser-use"]
-	path = browser-use
-	url = git@github.com:BastionOne/browser-use.git
-	branch = main

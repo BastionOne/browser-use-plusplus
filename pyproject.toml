@@ -25,7 +25,8 @@
      "jsbeautifier",
      "opik",
      "langchain_core",
-     "langchain_openai"
+     "langchain_openai",
+     "browser-use @ git+https://github.com/BastionOne/browser-use.git"
  ]
 
 [tool.setuptools.packages.find]
