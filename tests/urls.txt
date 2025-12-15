@@ -1,2 +1,4 @@
 https://www.ca.kayak.com
-https://www.wikipedia.org/
+https://www.wikipedia.org
+https://app.aikido.dev/settings/integrations/repositories
+https://github.com

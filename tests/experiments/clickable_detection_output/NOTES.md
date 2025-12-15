@@ -25,11 +25,12 @@ For example (https://www.ca.kayak.com/?ispredir=true)
                     [1210]<div />
                         [1211]<div />
                             [1212]<div />
-
 Only the Top-level parent is clickable here
+
 Tmrw: 
 -> do this for every new page
 -> dont on update, update the DOM and this representation so we keep it in-sync
+https://claude.ai/chat/2b85a7bd-a1e6-459d-8c0d-12f8bbc95446
 [NAV]
 ├── [MENU_TOGGLE] Open main navigation
 ├── [HOME_LINK] Go to the kayak homepage

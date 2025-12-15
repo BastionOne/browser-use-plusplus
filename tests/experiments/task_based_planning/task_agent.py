@@ -29,7 +29,7 @@ from bupp.src.prompts.planv4 import (
 )
 from bupp.src.llm.llm_models import LLMHub, ChatModelWithLogging
 from bupp.src.sitemap import Page, SiteMap
-from bupp.src.proxy import MitmProxyHTTPHandler
+from bupp.src.proxy.mitmproxy import MitmProxyHTTPHandler
 from bupp.src.state import (
     AgentSnapshot as DiscoveryAgentState,
     AgentSnapshotList,

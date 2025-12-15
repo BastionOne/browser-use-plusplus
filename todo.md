@@ -106,7 +106,7 @@ Todo with sites:
 ** -> next todo
 1. auto critique
 2. critique semantic dom vs normal
-3. critique 
+3. use diff models to generate the 
 
 Tuesday:
 # Experiments:
@@ -118,3 +118,24 @@ Tuesday:
     - setup browser worker
     - setup proxy solution with CDP
     - rewrite cnc server to get rid of agent pool implementation and instead rewire to using async tasks + browser resources
+
+Overall goal
+- want to build an intake pipeline for pentests that can include human effort in pentesting
+
+Thursday:
+- build fast web spider component
+--> can we mt the page nav linking?
+- read 
+
+Friday:
+- sign up for business
+- setup terraform lambda inside worker/ in choopy
+
+- benchmark how many browsers we can run simultaneously on hostinger
+    - spin up some just for shopify
+
+Saturday:
+- build the webpage
+
+Sunday:
+- ??

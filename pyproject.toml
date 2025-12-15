@@ -31,3 +31,6 @@
 
 [tool.setuptools.packages.find]
 include = ["bupp", "bupp.*"]
+
+[tool.setuptools.package-data]
+bupp = ["model_api_prices.json", "src/custom_prompt.md"]

@@ -173,8 +173,8 @@ async def _run_single_scenario(
 async def _execute_agent(
     config_path: Path,
     start_url: str | None = None,
+    remote: bool = False,
     headless: bool = False,
-    capture_request: bool = False,
 ) -> None:
     # Load configuration from JSON file
     with open(config_path, 'r') as f:
@@ -189,7 +189,7 @@ async def _execute_agent(
     async with BrowserContextManager(
         scopes=config["start_urls"],
         headless=headless,
-        use_proxy=capture_request,
+        use_server=remote,
         n=NUM_BROWSERS,
     ) as browser_data_list:
         browser_data = browser_data_list[0]
@@ -264,17 +264,18 @@ def cli(ctx):
     help="Launch the browser in headless mode.",
 )
 @click.option(
-    "--capture-request",
-    is_flag=True,
-    help="Proxy traffic to capture requests (sets BrowserContextManager.use_proxy).",
+    "--remote",
+    default=True,
+    show_default=True,
+    help="Use a remote browser instead of a local browser.",
 )
-def run(config_path: Path, headless: bool = False, capture_request: bool = False):
+def run(config_path: Path, headless: bool = False, remote: bool = True):
     """Execute the discovery agent directly against a start URL."""
     _run_cli_coro(
         _execute_agent(
             config_path=config_path,
             headless=headless,
-            capture_request=capture_request,
+            remote=remote
         ),
         "run failed",
     )

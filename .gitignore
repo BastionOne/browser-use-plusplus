@@ -212,4 +212,7 @@ traces/
 .navigation_agent
 .bupp/agent_results/
 .bupp
-tests/experiments/clickable_detection_output/websites
+
+browser-use/
+
+tests/experiments
