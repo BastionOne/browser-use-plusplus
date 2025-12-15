@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
-from bupp.src.prompts.planv4 import PlanItem
+from bupp.src.planning.prompts import PlanItem
 
 from browser_use.tools.service import Tools
 from browser_use.agent.views import AgentState, AgentHistoryList, AgentOutput, ActionModel

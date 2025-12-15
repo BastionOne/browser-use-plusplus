@@ -4,10 +4,9 @@ from pathlib import Path
 from enum import Enum
 import json
 import asyncio
-import time
 import requests
-import opik
 from urllib.parse import urljoin
+import importlib.resources
 
 from bupp.src.utils.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
 
@@ -19,17 +18,15 @@ from bupp.src.clickable_detector import (
     StaticClickableDetector,
 )
 from bupp.src.dom_serializer import DOMTreeSerializer
-from bupp.src.prompts.planv4 import (
+from bupp.src.planning.prompts import (
+    SPIDER_PLAN_GROUP,
     PlanItem,
-    CreatePlanNested,
-    UpdatePlanNestedV3 as UpdatePlanNested,
-    CheckNestedPlanCompletion,
-    CheckSinglePlanComplete,
     # TASK_PROMPT_WITH_PLAN_NO_THINKING as TASK_PROMPT_WITH_PLAN
     TASK_PROMPT_WITH_PLAN as TASK_PROMPT_WITH_PLAN
 )
+from bupp.src.planning.plan_manager import PlanManager, PlanContext
 from bupp.src.llm.llm_models import LLMHub, ChatModelWithLogging
-from bupp.src.sitemap import Page, SiteMap
+from bupp.src.sitemap import SiteMap
 from bupp.src.proxy.cdpproxy import CDPHTTPProxy
 from bupp.src.state import (
     AgentSnapshot as DiscoveryAgentState,
@@ -112,8 +109,7 @@ class DiscoveryAgent(BrowserUseAgent):
         clickable_detector_type: ClickableDetectorType | str = ClickableDetectorType.STATIC,
      ):
         tools = ToolsWithHistory(agent=self)
-        with open(Path(__file__).parent / "custom_prompt.md", "r") as f:
-            override_system_message = f.read()
+        override_system_message = importlib.resources.files("bupp.src").joinpath("custom_prompt.md").read_text(encoding="utf-8")
 
         # Call parent Agent constructor
         super().__init__(
@@ -170,7 +166,6 @@ class DiscoveryAgent(BrowserUseAgent):
         self.page_step = 1
 
         self.pages: SiteMap = SiteMap()
-        self.plan: Optional[PlanItem] = None
         self.curr_dom_tree: Optional[EnhancedDOMTreeNode] = None
         self.curr_url: str = ""
         self.curr_dom_str: str = ""
@@ -179,13 +174,19 @@ class DiscoveryAgent(BrowserUseAgent):
         # control states
         self.is_done = False
 
-        # planning state
-        self.completed_plans: List[PlanItem] = []
-
         # override default loggers if provided
         # checking if passed in loggers are not None
         self.agent_log = agent_log
         self.full_log = full_log
+
+        # planning state - now managed by PlanManager
+        self.plan_manager = PlanManager(
+            llm_hub=self.llm_hub,
+            plan_group=SPIDER_PLAN_GROUP,
+            task_guidance=task_guidance,
+            logger=self.agent_log,
+            prompt_logger=self.full_log,
+        )
 
         # dom state
         self.dom_state = DOMState()
@@ -291,6 +292,13 @@ class DiscoveryAgent(BrowserUseAgent):
         # Return the LLM representation
         return serialized_state.llm_representation(include_attributes=include_attributes)
 
+    async def _get_dom_str(self, browser_state: BrowserStateSummary) -> str:
+        """Helper method to get DOM string representation from browser state."""
+        if self.clickable_detector_type != ClickableDetectorType.STATIC:
+            return await self._serialize_dom_with_detector(browser_state)
+        else:
+            return browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
+
     async def pre_execution(self, *useless_args):
         if self.is_transition_step:
             self.curr_url = self.url_queue.pop()
@@ -303,7 +311,7 @@ class DiscoveryAgent(BrowserUseAgent):
             )
             await asyncio.sleep(5)
 
-            self.pages.add_page(Page(url=self.curr_url))
+            self.pages.add_page(url=self.curr_url)
             browser_state = await self._get_browser_state(
                 include_screenshot=False,
                 include_recent_events=False,
@@ -323,15 +331,17 @@ class DiscoveryAgent(BrowserUseAgent):
             
             self.full_log.info(f"[PRE_EXECUTION_DOM]: {self.curr_dom_str}")
             if not self.initial_plan:
-                await self._create_new_plan()
+                ctx = PlanContext(curr_dom_str=self.curr_dom_str)
+                task_prompt = await self.plan_manager.create_plan(ctx)
+                self.replace_task(task_prompt)
             else:
-                self.plan = self.initial_plan
-                self._update_plan_and_task(self.initial_plan)
+                task_prompt = self.plan_manager.set_plan(self.initial_plan)
+                self.replace_task(task_prompt)
                 self.initial_plan = None
                 # skip plan creation step
                 self.is_transition_step = False
 
-            self._log(f"[INITIAL_PLAN]:\n{str(self.plan)}")
+            self._log(f"[INITIAL_PLAN]:\n{str(self.plan_manager.plan)}")
         else:
             self._log(f"[NORMAL_STEP] No page transition")
 
@@ -349,10 +359,10 @@ class DiscoveryAgent(BrowserUseAgent):
         )
         new_page = await self._curr_page_check(new_browser_state)
         if new_page:
-            self._log(f"[ACCIDENTAL_TRANSITION] Rewinding page transition and exiting step()")
-            await self._check_single_plan_complete(model_output.next_goal)
-            
-            # self.logger.info(f"[plan]{self.plan}")
+            self._log(f"[ACCIDENTAL_TRANSITION] Rewinding page transition")
+            if model_output.next_goal:
+                await self.plan_manager.check_single_completion(model_output.next_goal)
+                self.replace_task(self.plan_manager.task_prompt)
             return
             
         parsed_links = parse_links_from_str(self.curr_dom_tree.to_str())
@@ -361,18 +371,19 @@ class DiscoveryAgent(BrowserUseAgent):
             self.agent_log.info(f"Adding link to queue: {urljoin(base_url, link)}")
             self.url_queue.add(urljoin(base_url, link))
 
-        await self._check_plan_complete(
-            model_output.current_state.next_goal,
-            new_browser_state,
+        # Build context for plan operations
+        new_dom_str = await self._get_dom_str(new_browser_state)
+        ctx = PlanContext(
+            curr_dom_str=new_dom_str,
+            prev_dom_str=self.curr_dom_str,
+            curr_goal=model_output.current_state.next_goal,
+            agent_history_summary=self.plan_manager.get_history_summary(self.history),
         )
-        self._log(f"[UPDATE_STATE_AND_PLAN ] Updating agent state and checking plan completeness")
-        await self._update_plan(new_browser_state)
 
-        # Use custom serializer if non-static detector is configured
-        if self.clickable_detector_type != ClickableDetectorType.STATIC:
-            new_dom_str = await self._serialize_dom_with_detector(new_browser_state)
-        else:
-            new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
+        await self.plan_manager.check_completion(ctx)
+        task_prompt = await self.plan_manager.update_plan(ctx)
+        self.replace_task(task_prompt)
+
         self.curr_dom_str = new_dom_str
         if self.screen_shot_service and new_browser_state.screenshot:
             await self.screen_shot_service.store_screenshot(new_browser_state.screenshot, self.curr_step)
@@ -382,6 +393,11 @@ class DiscoveryAgent(BrowserUseAgent):
         if not hasattr(self, "agent_log"):
             return super().logger
         return self.agent_log
+
+    @property
+    def plan(self) -> Optional[PlanItem]:
+        """Backward compatibility property to access plan from PlanManager."""
+        return self.plan_manager.plan
 
     async def _curr_page_check(self, browser_state: BrowserStateSummary) -> bool:
         """Checks check if we accidentally went to a new page before officially transitioning and go back if so"""
@@ -404,139 +420,6 @@ class DiscoveryAgent(BrowserUseAgent):
         #     f"[NEW_PAGE] Forced browsing to go to {self.curr_url}, you should ignore the result of executing the next action"
         # )
 
-    async def _create_new_plan(self):
-        new_plan = await CreatePlanNested().ainvoke(
-            model=self.llm_hub.get("create_plan"),
-            prompt_args={
-                "curr_page_contents": self.curr_dom_str,
-            },
-            prompt_logger=self.full_log
-        )
-        self._update_plan_and_task(new_plan)
-
-        # needed so that the next eval step doesnt fail
-        # self.agent_context.update_event(
-        #     self.curr_step, 
-        #     f"[NEW_PAGE] Forced browsing to go to {self.curr_url}, you should ignore the result of executing the next action"
-        # )
-
-    async def _check_plan_complete(
-        self, 
-        curr_goal: str, 
-        new_browser_state: BrowserStateSummary,
-    ):
-        """
-        Checks if the plan is complete by comparing the new DOM tree to the plan
-        """
-        if not self.plan:
-            raise ValueError("Plan is not initialized")
-
-        prev_dom_str = self.curr_dom_str
-        # Use custom serializer if non-static detector is configured
-        if self.clickable_detector_type != ClickableDetectorType.STATIC:
-            new_dom_str = await self._serialize_dom_with_detector(new_browser_state)
-        else:
-            new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
-        dom_diff = get_dom_diff_str(prev_dom_str, new_dom_str)
-        completed = await CheckNestedPlanCompletion().ainvoke(
-            model=self.llm_hub.get("check_plan_completion"),
-            prompt_args={
-                "plan": self.plan,
-                "curr_dom": new_dom_str,
-                "dom_diff": dom_diff,
-                "curr_goal": curr_goal,
-            },
-            prompt_logger=self.full_log,
-        )
-        for compl in completed.plan_indices:
-            node = self.plan.get(compl)
-            if node is not None:                
-                node.completed = True
-                self.logger.info(f"[COMPLETEPLAN_ITEM]: {node.description}")
-
-                self.completed_plans.append(node)
-            else:
-                self.logger.info(f"PLAN_ITEM_NOT_COMPLETED")
-
-        self._update_plan_and_task(self.plan)
-    
-    async def _check_single_plan_complete(self, curr_goal: str | None):
-        """Check off a single plan item"""
-        if not self.plan:
-            raise ValueError("Plan is not initialized")
-        if not curr_goal:
-            raise ValueError("Current goal is not initialized")
-
-        completed = await CheckSinglePlanComplete().ainvoke(
-            model=self.llm_hub.get("check_single_plan_complete"),
-            prompt_args={
-                "plan": self.plan,
-                "curr_goal": curr_goal,
-            },
-        )
-        for compl in completed.plan_indices:
-            node = self.plan.get(compl)
-            if node is not None:
-                node.completed = True
-                self.logger.info(f"[COMPLETE_PLAN_ITEM]: {node.description}")
-            else:
-                self.logger.info(f"PLAN_ITEM_NOT_COMPLETED")
-
-        self._update_plan_and_task(self.plan)
-
-    async def _update_plan(self, new_browser_state: BrowserStateSummary):
-        """
-        Updates the plan based on changes to the DOM tree 
-        """
-        if not self.plan:
-            raise ValueError("Plan is not initialized")
-
-        LAST_N_HISTORY = 5
-        
-        prev_dom_str = self.curr_dom_str
-        # Use custom serializer if non-static detector is configured
-        if self.clickable_detector_type != ClickableDetectorType.STATIC:
-            new_dom_str = await self._serialize_dom_with_detector(new_browser_state)
-        else:
-            new_dom_str = new_browser_state.dom_state.llm_representation(include_attributes=INCLUDE_ATTRIBUTES)
-        dom_diff = get_dom_diff_str(prev_dom_str, new_dom_str)
-        agent_history = ""
-        for i, h in enumerate(self.history.history[-LAST_N_HISTORY:], start=1):
-            if h.model_output:
-                if i == len(self.history.history):
-                    agent_history += f"[LASTACTION] {i}. {h.model_output.next_goal or '<NO GOAL>'}\n"
-                else:
-                    agent_history += f"{i}. {h.model_output.next_goal or '<NO GOAL>'}\n"            
-        
-        res = await UpdatePlanNested().ainvoke(
-            model=self.llm_hub.get("update_plan"),
-            prompt_args={
-                "agent_history": agent_history,
-                "curr_dom": new_dom_str,
-                "dom_diff": dom_diff,
-                "plan": self.plan
-            },
-            # prompt_logger=self.full_log,
-        )
-        self.logger.info(f"[UPDATEPLAN] RAW: {res}")
-        # very stoopid
-        if len(res.plan_items) > 0:
-            for item in res.plan_items:
-                self._log(f"[UPDATEPLAN] Adding: {item}")
-        else:
-            self._log(f"[UPDATEPLAN] No plan items to add")
-
-        # add items to plan
-        new_plan = res.apply(self.plan)
-        self._update_plan_and_task(new_plan)
-
-    def _update_plan_and_task(self, plan: PlanItem):
-        self.plan = plan
-        self.task = TASK_PROMPT_WITH_PLAN.format(plan=str(self.plan))
-        if self.task_guidance:
-            self.task += f"\nHere are some additional guidance for completing the plans. It is *very important* to follow these instructions."
-            self.task += f"\n{self.task_guidance}"
-        self.replace_task(self.task)
 
     async def _get_browser_state(
         self,
@@ -601,26 +484,26 @@ class DiscoveryAgent(BrowserUseAgent):
             msgs = await self.proxy_handler.flush()
             for msg in msgs:
                 self._log(f"Adding HTTP message to current page: {msg.url}")
-                self.pages.curr_page().add_http_msg(msg)
-            try:
-                if self.challenge_client:
-                    await self.challenge_client.update_status(
-                        msgs, 
-                        self.curr_url, 
-                        self.curr_step, 
-                        self.page_step,
-                    )
-                if self.server_client:
-                    self.logger.info(f"Uploading page data")
-                    page_skip = await self.server_client.update_page_data(
-                        self.curr_step,
-                        self.max_steps,
-                        self.page_step, 
-                        self.max_page_steps,
-                        self.pages
-                    )
-            except Exception as e:
-                self.agent_log.error("HTTP message update failed")
+                self.pages.add_http_message(msg)
+            # try:
+            #     if self.challenge_client:
+            #         await self.challenge_client.update_status(
+            #             msgs, 
+            #             self.curr_url, 
+            #             self.curr_step, 
+            #             self.page_step,
+            #         )
+            #     if self.server_client:
+            #         self.logger.info(f"Uploading page data")
+            #         page_skip = await self.server_client.update_page_data(
+            #             self.curr_step,
+            #             self.max_steps,
+            #             self.page_step, 
+            #             self.max_page_steps,
+            #             self.pages
+            #         )
+            # except Exception as e:
+            #     self.agent_log.error("HTTP message update failed")
 
         return page_skip
 
@@ -678,7 +561,7 @@ class DiscoveryAgent(BrowserUseAgent):
         # update state for next step
         self.curr_step += 1
         self.page_step += 1
-        self.completed_plans = []
+        self.plan_manager.clear_completed()
         
         # set this to False by default so we wont keep transitioning to the same page
         self.is_transition_step = False
@@ -724,7 +607,8 @@ class DiscoveryAgent(BrowserUseAgent):
                     serialized_snapshots = self.agent_snapshots.model_dump()
                     json.dump(serialized_snapshots, f)
             
-            if self.pages.get_req_count() > 0:
+            has_http_messages = any(True for _ in self.pages.http_view)
+            if has_http_messages:
                 with open(self.agent_dir / "pages.json", "w") as f:
                     serialized_pages = await self.pages.to_json()
                     json.dump(serialized_pages, f)
@@ -741,7 +625,8 @@ class DiscoveryAgent(BrowserUseAgent):
         auth_cookies = [dict[Any, Any](cookie) for cookie in raw_auth_cookies] if raw_auth_cookies else None
         bu_agent_state = BrowserUseAgentState.from_agent(self)
 
-        if not self.plan:
+        plan_copy, completed_copies = self.plan_manager.snapshot_state()
+        if not plan_copy:
             raise ValueError("Plan is required for a snapshot")
 
         return DiscoveryAgentState(
@@ -754,14 +639,12 @@ class DiscoveryAgent(BrowserUseAgent):
             url_queue=list(self.url_queue),
             sys_prompt=self.sys_prompt or "",
             task=self.task or "",
-            plan=self.plan.model_copy(deep=True),
+            plan=plan_copy,
             curr_dom_str=self.curr_dom_str or "",
             bu_agent_state=bu_agent_state,
             take_screenshot=getattr(self, "take_screenshot", False),
             auth_cookies=auth_cookies,
-            completed_plans=[
-                plan.model_copy(deep=True) for plan in self.completed_plans
-            ],
+            completed_plans=completed_copies,
             snapshot_dir=self.agent_dir,
         )
 
@@ -811,7 +694,8 @@ class DiscoveryAgent(BrowserUseAgent):
         
         # agent.task = state.task
         # agent.replace_task(state.task)
-        agent._update_plan_and_task(state.plan)
+        task_prompt = agent.plan_manager.set_plan(state.plan)
+        agent.replace_task(task_prompt)
 
         # this is prev dom will be used to diff against new dom
         agent.curr_dom_str = state.curr_dom_str

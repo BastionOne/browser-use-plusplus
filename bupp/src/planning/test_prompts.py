@@ -39,14 +39,14 @@ def sync_llm_hub(function: str, num: int = 1):
             except Exception as e:
                 print(f"Request failed: {e}")
     
-    # Print responses
+    # Print responsest
     for i, response in enumerate(responses):
         print(f"Response {i + 1}:")
         print(response.content)
         print("-" * 50)
     
     # Print total cost for this function
-    total_cost = model.get_cost()
+    total_cost = model.get_cos()
     print(f"Total cost for {function}: ${total_cost:.4f}")
     
 

@@ -2,6 +2,7 @@ import asyncio
 import json
 from pathlib import Path
 from typing import Dict, Any, Callable, TypeVar, Optional, Mapping, List
+import importlib.resources
 
 from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.language_models.chat_models import BaseChatModel as LangChainModel
@@ -17,8 +18,8 @@ COST_MAP = None
 def load_cost_map() -> Dict:
     global COST_MAP
     if not COST_MAP:
-        with open(Path(__file__).parent.parent.parent / "model_api_prices.json", "r") as f:
-            COST_MAP = json.load(f)
+        cost_map_text = importlib.resources.files("bupp").joinpath("model_api_prices.json").read_text(encoding="utf-8")
+        COST_MAP = json.loads(cost_map_text)
 
     return COST_MAP
 

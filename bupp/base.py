@@ -69,7 +69,18 @@ class BrowserContextManager:
     async def _connect_to_server_browser(self, i: int) -> Tuple[BrowserSession, Optional[CDPHTTPProxy], BrowserContext]:
         """Connect to a browser through the CDP proxy server."""
         # Phase 1: Create a session
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Check server health first
+            try:
+                health_response = await client.get(f"{self.server_base_url}/health")
+                health_response.raise_for_status()
+            except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError) as e:
+                print(f"Error: Cannot connect to server at {self.server_base_url}. Server may not be running.")
+                print(f"Health check failed: {e}")
+                raise SystemExit(1)
+            
+            print("Acquiring browser session from remote server ...")
+
             response = await client.post(f"{self.server_base_url}/session")
             response.raise_for_status()
             
