@@ -265,6 +265,7 @@ async def start_discovery_agent(
     initial_plan: str | None = None,
     auth_cookies: dict | None = None,
     streaming: bool = False,
+    agent_dir: Path | None = None,
 ):
     """Initialize DiscoveryAgent from a JSON configuration file."""
     server_log_factory = get_or_init_log_factory(
@@ -273,9 +274,9 @@ async def start_discovery_agent(
     agent_log, full_log = server_log_factory.get_discovery_agent_loggers(
         streaming=streaming 
     )
-    log_dir = server_log_factory.get_log_dir()
+    log_dir = agent_dir or server_log_factory.get_log_dir()
     browser_session, proxy_handler, _ = browser_data
-
+    
     try:
         # DiscoveryAgent for single-shot execution
         agent = DiscoveryAgent(

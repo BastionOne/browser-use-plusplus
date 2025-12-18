@@ -72,6 +72,11 @@ Guidelines for writing the plan:
 - List higher-leverage interactions earlier
 - If there are repeated elements on a page select a representative sample to include rather than all of them
 
+{% if task_guidance %}
+The following guidance should be treated with the highest priority, and if any conflicts with the previous guidelines, then the previous guidelines should be overridden in favor of the ones specified here:
+{{task_guidance}}
+{% endif %}
+
 Return JSON that conforms to the Plan schema.
 """
     response_format = InitialPlan
@@ -280,6 +285,11 @@ Guidelines for writing the plan:
 - List higher-leverage interactions earlier
 - No need to look at all repeated elements on a page, just a few should suffice
 
+{% if task_guidance %}
+The following guidance should be treated with the highest priority, and if any conflicts with the previous guidelines, then the previous guidelines should be overridden in favor of the ones specified here:
+{{task_guidance}}
+{% endif %}
+
 Now return your response as a list of plan items that will get added to the plan. 
 This list should be empty if the plan does not need to be updated
 """
@@ -475,10 +485,14 @@ Here is the goal that resulted in a transition to the current webpage:
 Now try to determine which *new* plan items have been completed by the agent and if there are any, use the tree indexing notation [a.b.c..] to refer to the completed plan items
 """
     response_format = CompletedNestedPlanItem
-
     def _verify_or_raise(self, res: CompletedNestedPlanItem, **prompt_args):
         """Validate that plan_indices values are in correct format (digits separated by dots)."""
-        for index in res.plan_indices:
+        for i, index in enumerate(res.plan_indices):
+            # Strip brackets if present (e.g., [1.2.3] -> 1.2.3)
+            if index.startswith('[') and index.endswith(']'):
+                res.plan_indices[i] = index[1:-1]
+                index = res.plan_indices[i]
+            
             if not re.match(r"^(\d+(?:\.\d+)*)$", index):
                 raise ValueError(f"Invalid plan_indices format: '{index}'. Expected format: digits separated by dots (e.g., '1', '1.2', '1.2.3')")
         return True
@@ -497,7 +511,12 @@ Now try to determine which *new* plan items have been completed by the agent and
 
     def _verify_or_raise(self, res: CompletedNestedPlanItem, **prompt_args):
         """Validate that plan_indices values are in correct format (digits separated by dots)."""
-        for index in res.plan_indices:
+        for i, index in enumerate(res.plan_indices):
+            # Strip brackets if present (e.g., [1.2.3] -> 1.2.3)
+            if index.startswith('[') and index.endswith(']'):
+                res.plan_indices[i] = index[1:-1]
+                index = res.plan_indices[i]
+            
             if not re.match(r"^(\d+(?:\.\d+)*)$", index):
                 raise ValueError(f"Invalid plan_indices format: '{index}'. Expected format: digits separated by dots (e.g., '1', '1.2', '1.2.3')")
         return True

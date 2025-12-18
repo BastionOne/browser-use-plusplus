@@ -94,7 +94,19 @@ class HTTPMsgItem(PageItem):
         base["hm_id"] = self.hm_id
         return base
 
-    def to_str(self, include_body: bool = True) -> str:
+    def _truncate(self, content: str, max_len: int | None) -> str:
+        """Truncate content and append indicator if exceeded."""
+        if max_len is None or len(content) <= max_len:
+            return content
+        truncated_chars = len(content) - max_len
+        return f"{content[:max_len]}... [truncated {truncated_chars} chars]"
+
+    def to_str(
+        self,
+        include_body: bool = True,
+        max_request_body: int | None = None,
+        max_response_body: int | None = None,
+    ) -> str:
         http_msg: HTTPMessage = self.data
         method = getattr(http_msg, "method", None) or getattr(http_msg.request, "method", "")
         url = getattr(http_msg, "url", None) or getattr(http_msg.request, "url", "")
@@ -111,31 +123,36 @@ class HTTPMsgItem(PageItem):
                             if isinstance(parsed_body, dict):
                                 params = list(parsed_body.keys())
                                 result += f"  > body params: {', '.join(params)}\n"
-                                result += f"  > [request] bodies:\n    {parsed_body}\n"
+                                body_str = str(parsed_body)
+                                result += f"  > [request] bodies:\n    {self._truncate(body_str, max_request_body)}\n"
                             else:
-                                result += f"  > [request] bodies:\n    {body_data}\n"
+                                result += f"  > [request] bodies:\n    {self._truncate(body_data, max_request_body)}\n"
                         except json.JSONDecodeError:
-                            result += f"  > [request] bodies:\n    {body_data}\n"
+                            result += f"  > [request] bodies:\n    {self._truncate(body_data, max_request_body)}\n"
                     elif isinstance(body_data, dict):
                         params = list(body_data.keys())
                         result += f"  > body params: {', '.join(params)}\n"
-                        result += f"  > [request] bodies:\n    {body_data}\n"
+                        body_str = str(body_data)
+                        result += f"  > [request] bodies:\n    {self._truncate(body_str, max_request_body)}\n"
                     else:
-                        result += f"  > [request] bodies:\n    {body_data}\n"
+                        body_str = str(body_data)
+                        result += f"  > [request] bodies:\n    {self._truncate(body_str, max_request_body)}\n"
                 except (TypeError, AttributeError):
-                    result += f"  > [request] bodies:\n    {req.post_data}\n"
+                    body_str = str(req.post_data)
+                    result += f"  > [request] bodies:\n    {self._truncate(body_str, max_request_body)}\n"
 
             result += f"  > id: {self.hm_id}\n"
 
         if include_body and getattr(http_msg, "response", None) is not None:
             try:
                 response_body = http_msg.response.get_body() if http_msg.response else None
-                result += f"  > response bodies:\n    {response_body}\n"
+                if response_body is not None:
+                    body_str = str(response_body)
+                    result += f"  > response bodies:\n    {self._truncate(body_str, max_response_body)}\n"
             except Exception:
                 pass
 
         return result
-
 
 PageItemCls = Union[HTTPMsgItem, PageItem]
 HttpMsgId: TypeAlias = str
@@ -170,7 +187,6 @@ class Page:
     @property
     def http_msg_items(self) -> List[HTTPMsgItem]:
         return [cast(HTTPMsgItem, it) for it in self._page_items.values() if it.type == PageItemType.HTTP_MESSAGE]
-
     async def to_json(self) -> Dict[str, Any]:
         return {
             "url": self.url,
@@ -208,7 +224,7 @@ class SiteMap:
         self._http_key_to_id: Dict[Tuple[str, str], HttpMsgId] = {}
         self._page_grouped: Dict[int, List[HttpMsgId]] = defaultdict(list)
 
-        self.http_view: HTTPView = HTTPView(self)
+        # self.http_view: HTTPView = HTTPView(self)
 
     # ---------------------------------------------------------------------------
     # Page Management
@@ -350,106 +366,6 @@ class SiteMap:
                     )
 
         return sm
-
-
-# ---------------------------------------------------------------------------
-# HTTPView (render-only; uses SiteMap’s maintained state)
-# ---------------------------------------------------------------------------
-
-
-class HTTPView:
-    """
-    Read-only view that renders HTTP traffic grouped across pages.
-    Relies entirely on SiteMap state. Does not track or assign anything.
-    """
-
-    def __init__(self, sitemap: SiteMap):
-        self._sitemap = sitemap
-
-    def get_http_msg_item(self, hm_id: HttpMsgId) -> HTTPMsgItem:
-        return self._sitemap.get_any_http_msg_item(hm_id)
-
-    def __iter__(self) -> Iterator[HTTPMessage]:
-        for hm_id in self._sitemap._hm_index:
-            yield self.get_http_msg_item(hm_id).data
-
-    def to_str(self, include_body: bool = True) -> str:
-        if not self._sitemap.pages:
-            return ""
-
-        page_labels: Dict[int, str] = {p.page_id: f"{p.page_id}:{p.url}" for p in self._sitemap.pages}
-
-        hm_to_pages: Dict[str, set[int]] = defaultdict(set)
-        for page_id, hm_ids in self._sitemap._page_grouped.items():
-            for hm_id in hm_ids:
-                hm_to_pages[hm_id].add(page_id)
-
-        pageset_to_hms: Dict[frozenset[int], set[str]] = defaultdict(set)
-        for hm_id, pages_set in hm_to_pages.items():
-            if pages_set:
-                pageset_to_hms[frozenset(pages_set)].add(hm_id)
-
-        groups: List[Tuple[frozenset[str], List[str]]] = []
-        for pages_set, hm_ids in pageset_to_hms.items():
-            if not hm_ids:
-                continue
-            labels = sorted(page_labels[pid] for pid in pages_set if pid in page_labels)
-            if not labels:
-                continue
-            groups.append((frozenset(hm_ids), labels))
-
-        groups.sort(key=lambda item: (len(item[1]), item[1]))
-
-        def _sort_hm_ids(hm_ids: frozenset[str]) -> List[str]:
-            def key_fn(hm_id: str) -> Tuple[str, str]:
-                msg = self.get_http_msg_item(hm_id).data
-                url = getattr(msg, "url", None) or getattr(msg.request, "url", "") or ""
-                path = (urlparse(url).path) or "/"
-                method = (getattr(msg, "method", None) or getattr(msg.request, "method", "") or "").upper()
-                return (path, method)
-
-            return sorted(hm_ids, key=key_fn)
-
-        def _rep_item_for_group(hm_id: str, page_ids_in_group: set[int]) -> HTTPMsgItem:
-            item_ids = set(self._sitemap._hm_index.get(hm_id, []))
-            for pid in page_ids_in_group:
-                page = self._sitemap._pages.get(pid)
-                if not page:
-                    continue
-                for it in page.http_msg_items:
-                    if it.page_item_id in item_ids:
-                        return it
-            return self.get_http_msg_item(hm_id)
-
-        out: List[str] = []
-        for idx, (hm_set, page_list) in enumerate(groups, start=1):
-            out.append(f"Group {idx} • {len(page_list)} page(s)")
-            out.append("Pages: " + ", ".join(page_list))
-
-            group_page_ids: set[int] = {int(lbl.split(":", 1)[0]) for lbl in page_list}
-
-            for hm_id in _sort_hm_ids(hm_set):
-                msg_item = _rep_item_for_group(hm_id, group_page_ids)
-
-                block = msg_item.to_str(include_body=include_body).splitlines()
-                if not block:
-                    continue
-
-                first = block[0].strip()
-                if first.startswith("- "):
-                    out.append(first)
-                else:
-                    out.append(f"- {first}")
-                # NOTE: we are printing this at the request level now
-                # out.append(f"  > id: {msg_item.hm_id}")
-                out.extend(block[1:])
-
-            out.append("")
-
-        while out and out[-1] == "":
-            out.pop()
-
-        return "\n".join(out)
 
 
 # ---------------------------------------------------------------------------

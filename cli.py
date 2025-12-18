@@ -162,7 +162,7 @@ async def _run_single_scenario(
     try:
         start_url = f"http://{host}:{port}"
         print(f"Running discovery agent on {scenario.slug}")
-        await _execute_agent(
+        await execute_agent(
             config_path=SINGLE_COMPONENT_CONFIG_PATH,
             start_url=start_url,
             headless=headless,
@@ -170,11 +170,12 @@ async def _run_single_scenario(
     finally:
         await server.stop()
 
-async def _execute_agent(
+async def execute_agent(
     config_path: Path,
     start_url: str | None = None,
     remote: bool = False,
     headless: bool = False,
+    task_guidance: str | None = None,
 ) -> None:
     # Load configuration from JSON file
     with open(config_path, 'r') as f:
@@ -195,7 +196,8 @@ async def _execute_agent(
         browser_data = browser_data_list[0]
         await start_discovery_agent(
             browser_data=browser_data,
-            **config
+            **config,
+            task_guidance=task_guidance,
         )
 
 
@@ -265,14 +267,14 @@ def cli(ctx):
 )
 @click.option(
     "--remote",
-    default=True,
+    is_flag=True,
     show_default=True,
-    help="Use a remote browser instead of a local browser.",
+    help="Use a local browser instead of a remote browser.",
 )
-def run(config_path: Path, headless: bool = False, remote: bool = True):
+def run(config_path: Path, headless: bool = False, remote: bool = False):
     """Execute the discovery agent directly against a start URL."""
     _run_cli_coro(
-        _execute_agent(
+        execute_agent(
             config_path=config_path,
             headless=headless,
             remote=remote

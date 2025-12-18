@@ -72,12 +72,6 @@ class PlanManager:
             return ""
         
         prompt = TASK_PROMPT_WITH_PLAN.format(plan=str(self.plan))
-        if self.task_guidance:
-            prompt += (
-                "\nHere are some additional guidance for completing the plans. "
-                "It is *very important* to follow these instructions."
-                f"\n{self.task_guidance}"
-            )
         return prompt
 
     def set_plan(self, plan: PlanItem) -> str:
@@ -102,6 +96,7 @@ class PlanManager:
             model=self.llm_hub.get("create_plan"),
             prompt_args={
                 "curr_page_contents": ctx.curr_dom_str,
+                "task_guidance": self.task_guidance,
             },
             prompt_logger=self.prompt_logger,
         )
@@ -186,6 +181,7 @@ class PlanManager:
                 "curr_dom": ctx.curr_dom_str,
                 "dom_diff": dom_diff,
                 "plan": self.plan,
+                "task_guidance": self.task_guidance,
             },
         )
 
