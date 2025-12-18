@@ -94,7 +94,21 @@ class HTTPView:
         out: List[str] = []
         for idx, (hm_set, page_list) in enumerate(groups, start=1):
             out.append(f"Group {idx} • {len(page_list)} page(s)")
-            out.append("Pages: " + ", ".join(page_list))
+            
+            # Apply host rewrite to page URLs if specified
+            if self._host_rewrite:
+                rewritten_pages = []
+                for page_label in page_list:
+                    if ":" in page_label:
+                        page_id, url = page_label.split(":", 1)
+                        parsed_url = urlparse(url)
+                        rewritten_url = parsed_url._replace(netloc=self._host_rewrite).geturl()
+                        rewritten_pages.append(f"{page_id}:{rewritten_url}")
+                    else:
+                        rewritten_pages.append(page_label)
+                out.append("Pages: " + ", ".join(rewritten_pages))
+            else:
+                out.append("Pages: " + ", ".join(page_list))
 
             group_page_ids: set[int] = {int(lbl.split(":", 1)[0]) for lbl in page_list}
 
