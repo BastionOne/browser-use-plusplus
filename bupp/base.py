@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Any, Tuple, Callable, Coroutine
 import json
 import httpx
+from urllib.parse import urlparse
 
 from playwright.async_api import async_playwright, BrowserContext, ProxySettings
 
@@ -123,7 +124,11 @@ class BrowserContextManager:
         # For server-based connections, we don't manage proxy handlers locally
         # The server handles all proxy configuration
         proxy_handler = CDPHTTPProxy(
-            scopes=self.scopes,
+            scopes=[
+                # only take the hostname part of the scope
+                urlparse(scope).netloc if '://' in scope 
+                else scope.split('/')[0] for scope in self.scopes
+            ],
             browser_session=browser_session,
         )
         await proxy_handler.connect()

@@ -384,14 +384,16 @@ class HTTPHandler:
                 continue
                 
             # Check path is a subpath
-            if parsed_url.path.startswith(parsed_scope.path):
-                return True
+            # if parsed_url.path.startswith(parsed_scope.path):
+            #     return True
+            return True
         
         proxy_log.info(f"MSG NOT IN SCOPE: {url}")
         return False
 
     async def _validate_msg(self, msg: HTTPMessage) -> bool:
         """Validate URL against scope/ban/mime/status/size."""
+        proxy_log.info(f"SCOPE: {self._scopes} | VALIDATING MSG: {msg.request.url}")
         if (
             self._is_in_scope(msg.request.url)
             and not self._is_banned(msg.request.url)

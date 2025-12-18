@@ -2,6 +2,6 @@
     "start_urls": [
         "https://jobs.ashbyhq.com/cluely/9ed623a7-fc2d-4afc-ab88-a01af977cb9f/application"
     ],
-    "max_steps": 10,
+    "max_steps": 2,
     "max_pages": 1
 }

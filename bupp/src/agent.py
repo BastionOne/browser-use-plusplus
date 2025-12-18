@@ -607,11 +607,11 @@ class DiscoveryAgent(BrowserUseAgent):
                     serialized_snapshots = self.agent_snapshots.model_dump()
                     json.dump(serialized_snapshots, f)
             
-            has_http_messages = any(True for _ in self.pages.http_view)
-            if has_http_messages:
-                with open(self.agent_dir / "pages.json", "w") as f:
-                    serialized_pages = await self.pages.to_json()
-                    json.dump(serialized_pages, f)
+            # has_http_messages = any(True for _ in self.pages.http_view)
+            # if has_http_messages:
+            with open(self.agent_dir / "pages.json", "w") as f:
+                serialized_pages = await self.pages.to_json()
+                json.dump(serialized_pages, f)
 
     async def run_agent(self) -> AgentHistoryList[AgentStructuredOutput]:
         return await bu_run(self, self.agent_step)
