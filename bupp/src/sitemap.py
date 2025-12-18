@@ -106,10 +106,19 @@ class HTTPMsgItem(PageItem):
         include_body: bool = True,
         max_request_body: int | None = None,
         max_response_body: int | None = None,
+        host_rewrite: str | None = None,
     ) -> str:
         http_msg: HTTPMessage = self.data
         method = getattr(http_msg, "method", None) or getattr(http_msg.request, "method", "")
         url = getattr(http_msg, "url", None) or getattr(http_msg.request, "url", "")
+        
+        source_netloc = None
+        if host_rewrite and url:
+            from urllib.parse import urlparse
+            source_netloc = urlparse(url).netloc
+            if source_netloc:
+                url = url.replace(source_netloc, host_rewrite)
+
         result = f"- {method} {url}\n"
 
         if include_body and getattr(http_msg, "request", None) is not None:
@@ -124,21 +133,34 @@ class HTTPMsgItem(PageItem):
                                 params = list(parsed_body.keys())
                                 result += f"  > body params: {', '.join(params)}\n"
                                 body_str = str(parsed_body)
+                                # Apply rewrite to body string
+                                if host_rewrite and source_netloc:
+                                    body_str = body_str.replace(source_netloc, host_rewrite)
                                 result += f"  > [request] bodies:\n    {self._truncate(body_str, max_request_body)}\n"
                             else:
+                                if host_rewrite and source_netloc:
+                                    body_data = body_data.replace(source_netloc, host_rewrite)
                                 result += f"  > [request] bodies:\n    {self._truncate(body_data, max_request_body)}\n"
                         except json.JSONDecodeError:
+                            if host_rewrite and source_netloc:
+                                body_data = body_data.replace(source_netloc, host_rewrite)
                             result += f"  > [request] bodies:\n    {self._truncate(body_data, max_request_body)}\n"
                     elif isinstance(body_data, dict):
                         params = list(body_data.keys())
                         result += f"  > body params: {', '.join(params)}\n"
                         body_str = str(body_data)
+                        if host_rewrite and source_netloc:
+                            body_str = body_str.replace(source_netloc, host_rewrite)
                         result += f"  > [request] bodies:\n    {self._truncate(body_str, max_request_body)}\n"
                     else:
                         body_str = str(body_data)
+                        if host_rewrite and source_netloc:
+                            body_str = body_str.replace(source_netloc, host_rewrite)
                         result += f"  > [request] bodies:\n    {self._truncate(body_str, max_request_body)}\n"
                 except (TypeError, AttributeError):
                     body_str = str(req.post_data)
+                    if host_rewrite and source_netloc:
+                        body_str = body_str.replace(source_netloc, host_rewrite)
                     result += f"  > [request] bodies:\n    {self._truncate(body_str, max_request_body)}\n"
 
             result += f"  > id: {self.hm_id}\n"
@@ -148,6 +170,9 @@ class HTTPMsgItem(PageItem):
                 response_body = http_msg.response.get_body() if http_msg.response else None
                 if response_body is not None:
                     body_str = str(response_body)
+                    # Apply rewrite to response body (Honeypot domain -> Target domain)
+                    if host_rewrite and source_netloc:
+                        body_str = body_str.replace(source_netloc, host_rewrite)
                     result += f"  > response bodies:\n    {self._truncate(body_str, max_response_body)}\n"
             except Exception:
                 pass
