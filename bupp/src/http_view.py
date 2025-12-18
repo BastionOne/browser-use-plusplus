@@ -16,13 +16,13 @@ class HTTPView:
         sitemap: SiteMap,
         max_request_length: int = 500,
         max_response_length: int = 500,
-        rewrite_host: str | None = None
+        host_rewrite: str | None = None
     ):
         """Initialize view with sitemap reference and body truncation limits."""
         self._max_request_length = max_request_length
         self._max_response_length = max_response_length
         self._sitemap = sitemap
-        self._rewrite_host = rewrite_host
+        self._host_rewrite = host_rewrite
 
     def get_http_msg_item(self, hm_id: HttpMsgId) -> HTTPMsgItem:
         """Delegate lookup to sitemap's get_any_http_msg_item."""
@@ -105,7 +105,7 @@ class HTTPView:
                     include_body=include_body, 
                     max_request_body=self._max_request_length, 
                     max_response_body=self._max_response_length,
-                    rewrite_host=self._rewrite_host
+                    host_rewrite=self._host_rewrite
                 ).splitlines()
                 if not block:
                     continue
