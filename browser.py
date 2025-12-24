@@ -26,7 +26,6 @@ async def main():
     try:
         async with BrowserContextManager(
             headless=False,
-            use_proxy=False,
             n=1
         ) as browserdata_list:
             print("Browser opened successfully!")

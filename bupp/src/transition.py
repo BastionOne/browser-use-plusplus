@@ -257,10 +257,10 @@ class URLQueue:
             for item in iterable:
                 self.add(item)
 
-    def prune(self, model: BaseChatModel):
+    async def prune(self, model: BaseChatModel):
         visited_urls = "\n".join(self._visited)
         urls_in_queue = "\n".join([f"{index}. {url}" for index, url in enumerate[Any](self._curr_urls.keys())])
-        res = PruneURLs().invoke(
+        res = await PruneURLs().ainvoke(
             model=model,
             prompt_args={
                 "visited_urls": visited_urls,

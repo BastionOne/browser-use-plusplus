@@ -156,16 +156,17 @@ class ChatModelWithName(BaseChatModel):
             self.log_fn(invoke_cost, self.function_name)
 
     def invoke(self, prompt: str) -> Any:
-        model = ChatOpenAI(model=self.model_name)
-        if not isinstance(prompt, str):
-            raise ValueError(f"Message must be a string, got {type(prompt)}")
+        # model = ChatOpenAI(model=self.model_name)
+        # if not isinstance(prompt, str):
+        #     raise ValueError(f"Message must be a string, got {type(prompt)}")
 
-        log_messages(self.chat_logdir, str_to_messages(prompt), self.model)
+        # log_messages(self.chat_logdir, str_to_messages(prompt), self.model)
 
-        # kind of dumb but the calling code has serial dependencies on sync calls
-        res = asyncio.run(model.ainvoke(prompt))
-        self.log_cost(res)
-        return res
+        # # kind of dumb but the calling code has serial dependencies on sync calls
+        # res = asyncio.run(model.ainvoke(prompt))
+        # self.log_cost(res)
+        # return res
+        raise Exception("sync calls no longer supported")
 
     async def ainvoke(self, messages: Any, output_format: Any | None = None) -> Any: # type: ignore
         model = ChatOpenAI(model=self.model_name) 
