@@ -19,6 +19,7 @@ from browser_use.llm import ChatOpenAI
 from bupp.src.utils.http_handler import HTTPHandler
 from bupp.src.utils.constants import (
     DISCOVERY_MODEL_CONFIG,
+    DISCOVERY_MODEL_CONFIG_MINI,
     BROWSER_CDP_HOST,
     BROWSER_CDP_PORT,
     BROWSER_PROXY_HOST,
@@ -282,7 +283,7 @@ async def start_discovery_agent(
         agent = DiscoveryAgent(
             browser=browser_session,
             start_urls=start_urls,
-            llm_config=DISCOVERY_MODEL_CONFIG["model_config"],
+            llm_config=DISCOVERY_MODEL_CONFIG_MINI["model_config"],
             # agent_sys_prompt=CUSTOM_SYSTEM_PROMPT,
             task_guidance=task_guidance,
             max_steps=max_steps,

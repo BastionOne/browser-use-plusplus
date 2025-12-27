@@ -253,6 +253,13 @@ def openai_41():
         "gpt-4.1"
     )
 
+def openai_4o_mini():
+    from langchain_openai import ChatOpenAI
+    return ChatModelWithName(
+        ChatOpenAI(model="gpt-4o-mini"),
+        "gpt-4o-mini"
+    )
+
 def openai_5():
     from langchain_openai import ChatOpenAI
     return ChatModelWithName(
@@ -323,6 +330,7 @@ LLM_MODELS = {
     # "deepseeks_r1": together_deepseek_r1,
     "gpt-4o": openai_4o,
     "gpt-4.1": openai_41,
+    "gpt-4o-mini": openai_4o_mini,
     "gemini-2.5-flash": gemini_25_flash,
     "gemini-2.5-pro": gemini_25_pro,
     # "default": cohere_command_a,

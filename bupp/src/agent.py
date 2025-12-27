@@ -8,7 +8,7 @@ import requests
 from urllib.parse import urljoin
 import importlib.resources
 
-from bupp.src.utils.constants import BROWSER_USE_MODEL, TEMPLATE_FILE, CHECK_URL_TIMEOUT
+from bupp.src.utils.constants import TEMPLATE_FILE, CHECK_URL_TIMEOUT
 
 from bupp.src.dom import DOMState
 from bupp.src.clickable_detector import (
@@ -117,7 +117,7 @@ class DiscoveryAgent(BrowserUseAgent):
             system_prompt=override_system_message,
             task=init_task or PLACEHOLDER_TASK,
             llm=ChatModelWithLogging(
-                model=BROWSER_USE_MODEL, 
+                model=llm_config["browser_use"], 
                 chat_logdir=agent_dir / "llm" / "browser_use"
             ),
             controller=tools,

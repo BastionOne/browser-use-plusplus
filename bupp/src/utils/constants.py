@@ -22,7 +22,6 @@ BROWSER_PROFILE_DIR = Path(
     r"C:\Users\jpeng\AppData\Local\Google\Chrome\User Data\Profile 2"
 )
 
-
 # folders
 BUPP_FOLDER = Path(".bupp")
 SNAPSHOTS_FOLDER = BUPP_FOLDER / "snapshots"
@@ -42,5 +41,19 @@ DISCOVERY_MODEL_CONFIG = {
         # Navigation
         "find_persisted_components": "gpt-4.1",
         "aggregate_persisted_components": "gpt-4.1"
+    }
+}
+
+DISCOVERY_MODEL_CONFIG_MINI = {
+    "model_config": {
+        "browser_use": "gpt-4o-mini",
+        "update_plan": "gpt-4o-mini",
+        "create_plan": "o3-mini",
+        "check_plan_completion": "gpt-4o-mini",
+        "check_single_plan_complete": "gpt-4o-mini",
+        "prune_urls": "gpt-4o-mini",
+        # Navigation
+        "find_persisted_components": "gpt-4o-mini",
+        "aggregate_persisted_components": "gpt-4o-mini"
     }
 }
