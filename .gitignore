@@ -190,7 +190,6 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
-
 # Configuration files with sensitive data
 config.ini
 secrets.json
@@ -216,3 +215,5 @@ traces/
 browser-use/
 
 tests/experiments
+.claude-worktrees/
+

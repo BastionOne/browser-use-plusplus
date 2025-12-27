@@ -19,7 +19,7 @@ BROWSER_CDP_HOST = "127.0.0.1"
 BROWSER_CDP_PORT = 9900
 
 BROWSER_PROFILE_DIR = Path(
-    r"C:\Users\jpeng\AppData\Local\Google\Chrome\User Data\Profile 2"
+    os.path.expanduser("~/.config/google-chrome/Default")
 )
 
 # folders
@@ -55,5 +55,19 @@ DISCOVERY_MODEL_CONFIG_MINI = {
         # Navigation
         "find_persisted_components": "gpt-4o-mini",
         "aggregate_persisted_components": "gpt-4o-mini"
+    }
+}
+
+MODEL_CONFIG_ANTHROPIC = {
+    "model_config": {
+        "browser_use": "opus-4.5",
+        "update_plan": "opus-4.5",
+        "create_plan": "opus-4.5",
+        "check_plan_completion": "opus-4.5",
+        "check_single_plan_complete": "opus-4.5",
+        "prune_urls": "opus-4.5",
+        # Navigation
+        "find_persisted_components": "opus-4.5",
+        "aggregate_persisted_components": "opus-4.5"
     }
 }

@@ -187,6 +187,9 @@ async def execute_agent(
             raise ValueError("start_urls and start_url cannot both be provided")
         config["start_urls"] = [start_url]
     
+    # Auto-detect user role files in the same directory as config
+    auth_cookies_from_files = _load_user_roles(config_path.parent)
+    
     async with BrowserContextManager(
         scopes=config["start_urls"],
         headless=headless,
@@ -194,6 +197,10 @@ async def execute_agent(
         n=NUM_BROWSERS,
     ) as browser_data_list:
         browser_data = browser_data_list[0]
+        # Add auth_cookies to config if provided
+        if auth_cookies_from_files:
+            config["auth_cookies"] = auth_cookies_from_files
+            
         await start_discovery_agent(
             browser_data=browser_data,
             **config,
@@ -240,6 +247,58 @@ def list_scenarios(test_group: str, scenario_numbers: List[int]) -> None:
             print()
 
 
+def _load_user_roles(config_dir: Path) -> dict | None:
+    """
+    Load cookies from *user_roles.json files in the config directory.
+    Returns the combined cookies dictionary or None if no files found.
+    """
+    import glob
+    
+    # Find all *user_roles.json files in the config directory
+    pattern = str(config_dir / "*user_roles.json")
+    user_role_files = glob.glob(pattern)
+    
+    if not user_role_files:
+        return None
+    
+    combined_cookies = {}
+    
+    for file_path in sorted(user_role_files):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                role_data = json.load(f)
+            
+            # Extract cookies from the JSON structure
+            cookies = None
+            if isinstance(role_data, dict):
+                cookies = role_data.get('cookies', role_data.get('auth_cookies'))
+            
+            if cookies:
+                file_name = Path(file_path).name
+                print(f"✓ Loaded cookies from: {file_name}")
+                
+                # Merge cookies (later files override earlier ones for same keys)
+                if isinstance(cookies, dict):
+                    combined_cookies.update(cookies)
+                elif isinstance(cookies, list):
+                    # Handle list of cookie objects
+                    for cookie in cookies:
+                        if isinstance(cookie, dict) and 'name' in cookie:
+                            combined_cookies[cookie['name']] = cookie
+            else:
+                print(f"Warning: No cookies found in '{Path(file_path).name}'")
+                
+        except json.JSONDecodeError as e:
+            print(f"Error: Invalid JSON in user role file '{Path(file_path).name}': {e}")
+        except Exception as e:
+            print(f"Error reading user role file '{Path(file_path).name}': {e}")
+    
+    if combined_cookies:
+        return combined_cookies
+    
+    return None
+
+
 def _run_cli_coro(coro: Awaitable[None], failure_message: str) -> None:
     try:
         asyncio.run(coro)
@@ -261,7 +320,7 @@ def cli(ctx):
 @click.argument("config_path", type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--headless/--no-headless",
-    default=False,
+    default=True,
     show_default=True,
     help="Launch the browser in headless mode.",
 )
@@ -271,8 +330,7 @@ def cli(ctx):
     show_default=True,
     help="Use a local browser instead of a remote browser.",
 )
-def run(config_path: Path, headless: bool = False, remote: bool = False):
-    """Execute the discovery agent directly against a start URL."""
+def run(config_path: Path, headless: bool, remote: bool):
     _run_cli_coro(
         execute_agent(
             config_path=config_path,

@@ -125,7 +125,7 @@ class ChatModelWithName(BaseChatModel):
     def model_name(self) -> str:
         # for legacy support
         return self.model
-    
+
     @model_name.setter
     def model_name(self, value: str) -> None:
         self.model = value
@@ -156,20 +156,10 @@ class ChatModelWithName(BaseChatModel):
             self.log_fn(invoke_cost, self.function_name)
 
     def invoke(self, prompt: str) -> Any:
-        # model = ChatOpenAI(model=self.model_name)
-        # if not isinstance(prompt, str):
-        #     raise ValueError(f"Message must be a string, got {type(prompt)}")
-
-        # log_messages(self.chat_logdir, str_to_messages(prompt), self.model)
-
-        # # kind of dumb but the calling code has serial dependencies on sync calls
-        # res = asyncio.run(model.ainvoke(prompt))
-        # self.log_cost(res)
-        # return res
         raise Exception("sync calls no longer supported")
 
     async def ainvoke(self, messages: Any, output_format: Any | None = None) -> Any: # type: ignore
-        model = ChatOpenAI(model=self.model_name) 
+        model = ChatOpenAI(model=self.model_name)
         if isinstance(messages, str):
             messages = [UserMessage(content=messages)]
         elif isinstance(messages, list):
@@ -180,12 +170,6 @@ class ChatModelWithName(BaseChatModel):
         serialized_messages = messages
         log_messages(self.chat_logdir, serialized_messages, self.model)
 
-        # Support the Protocol's signature while remaining permissive for existing call sites
-        # if output_format is not None:
-        #     model = self._model.with_structured_output(output_format)
-        #     res = await model.ainvoke(serialized_messages)
-        # else:
-        # print("SERIALIZED MESSAGES: ", serialized_messages)
         res = await model.ainvoke(serialized_messages)
 
         if hasattr(res, "usage_metadata"):
@@ -202,6 +186,110 @@ class ChatModelWithName(BaseChatModel):
         if not isinstance(msg, BaseMessage) and not isinstance(msg, dict):
             return HumanMessage(content=getattr(msg, "content"))
         return msg
+
+
+class AnthropicOAuthChatModel(BaseChatModel):
+    """Chat model using Anthropic OAuth tokens from anthropic_llm_client."""
+
+    def __init__(self, model_name: str, max_tokens: int = 8192):
+        # Import the OAuth client from project root
+        import sys
+        project_root = Path(__file__).parent.parent.parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
+        from anthropic_llm_client import AnthropicOAuthClient
+
+        self._client = AnthropicOAuthClient(model=model_name, max_tokens=max_tokens)
+        self.model = model_name
+        self.log_fn: Optional[Callable[[float, str], None]] = None
+        self.function_name: str = ""
+        self._cost_map = load_cost_map()
+        self._cost = 0.0
+        self._chat_logdir: Optional[Path] = None
+
+    _verified_api_keys: bool = False
+
+    @property
+    def chat_logdir(self) -> Path | None:
+        return self._chat_logdir
+
+    @property
+    def provider(self) -> str:
+        return "anthropic"
+
+    @property
+    def name(self) -> str:
+        return self.model
+
+    @property
+    def model_name(self) -> str:
+        return self.model
+
+    @model_name.setter
+    def model_name(self, value: str) -> None:
+        self.model = value
+        self._client.model = value
+
+    def get_cost(self) -> float:
+        return self._cost
+
+    def set_log_fn(
+        self,
+        log_fn: Callable[[float, str], None],
+        function_name: str,
+        chat_logdir: Optional[Path] = None,
+    ) -> None:
+        self.log_fn = log_fn
+        self.function_name = function_name
+        self._chat_logdir = chat_logdir
+
+    def log_cost(self, input_tokens: int, output_tokens: int) -> None:
+        if self.model_name not in self._cost_map:
+            return
+        invoke_cost = 0.0
+        invoke_cost += self._cost_map[self.model_name].get("input_cost_per_token", 0) * input_tokens
+        invoke_cost += self._cost_map[self.model_name].get("output_cost_per_token", 0) * output_tokens
+        self._cost += invoke_cost
+
+        if self.log_fn:
+            self.log_fn(invoke_cost, self.function_name)
+
+    def invoke(self, prompt: str) -> Any:
+        raise Exception("sync calls no longer supported")
+
+    async def ainvoke(self, messages: Any, output_format: Any | None = None) -> Any:
+        # Convert messages to the format expected by AnthropicOAuthClient
+        if isinstance(messages, str):
+            api_messages = [{"role": "user", "content": messages}]
+        elif isinstance(messages, list):
+            api_messages = []
+            for msg in messages:
+                if isinstance(msg, str):
+                    api_messages.append({"role": "user", "content": msg})
+                elif isinstance(msg, BaseMessage):
+                    role = "assistant" if msg.type == "ai" else "user"
+                    api_messages.append({"role": role, "content": msg.content})
+                elif isinstance(msg, dict):
+                    api_messages.append(msg)
+                else:
+                    api_messages.append({"role": "user", "content": str(getattr(msg, "content", msg))})
+        else:
+            raise ValueError(f"Invalid messages type: {type(messages)}")
+
+        log_messages(self.chat_logdir, messages if isinstance(messages, list) else [messages], self.model)
+
+        # Call the API synchronously wrapped in executor for async compatibility
+        import asyncio
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: self._client.message(api_messages, stream=False)
+        )
+
+        # Return in a format similar to LangChain response
+        from langchain_core.messages import AIMessage
+        return AIMessage(content=response)
+
 
 # Lazy-init models
 def gemini_25_flash():
@@ -311,6 +399,10 @@ def openai_o3():
         "o3"
     )
 
+def anthropic_opus_45():
+    """Anthropic Claude Opus 4.5 using OAuth tokens."""
+    return AnthropicOAuthChatModel(model_name="claude-opus-4-5-20251101", max_tokens=8192)
+
 # def anthropic_claude_3_5_sonnet():
 #     from langchain_anthropic import ChatAnthropic
 #     return ChatModelWithName(
@@ -341,6 +433,7 @@ LLM_MODELS = {
     # "claude-sonnet-4-20250514": claude_4_sonnet,
     "gpt-5": openai_5,
     "gpt-5.1": openai_51,
+    "opus-4.5": anthropic_opus_45,
 }
 
 # incredibly dumb hack to appease the type checker
@@ -377,13 +470,13 @@ class LLMHub:
     def __init__(
         self,
         function_map: Dict[str, str],
-        providers: Mapping[str, Callable[[], ChatModelWithName] | ChatModelWithName] = LLM_MODELS,
+        providers: Mapping[str, Callable[[], ChatModelWithName | AnthropicOAuthChatModel] | ChatModelWithName | AnthropicOAuthChatModel] = LLM_MODELS,
         chat_logdir: str | Path | None = None,
     ) -> None:
         self._providers = providers  # lazily convert these to actually initialized models
         self._function_map = function_map
         self._total_costs = {function_name: 0.0 for function_name in function_map.keys()}
-        self._function_models: dict[str, ChatModelWithName] = {}
+        self._function_models: dict[str, ChatModelWithName | AnthropicOAuthChatModel] = {}
 
         # Optional chat log directory
         self._chat_logdir: Path | None = Path(chat_logdir).expanduser().resolve() if chat_logdir else None
@@ -401,7 +494,7 @@ class LLMHub:
         if name not in self._providers:
             raise KeyError(f"model {name!r} not found")
 
-    def get(self, function_name: str) -> ChatModelWithName:
+    def get(self, function_name: str) -> ChatModelWithName | AnthropicOAuthChatModel:
         """Return a wrapper for a specific provider by function name."""
         model_name = self._function_map.get(function_name)
 
@@ -418,18 +511,20 @@ class LLMHub:
     def get_costs(self) -> dict[str, float]:
         return self._total_costs
 
-    def _build_model_instance(self, model_name: str, function_name: str) -> ChatModelWithName:
+    def _build_model_instance(self, model_name: str, function_name: str) -> ChatModelWithName | AnthropicOAuthChatModel:
         provider = self._providers[model_name]
 
         if callable(provider):
             chat_model = provider()
         elif isinstance(provider, ChatModelWithName):
             chat_model = ChatModelWithName(provider._model, provider.model_name)
+        elif isinstance(provider, AnthropicOAuthChatModel):
+            chat_model = AnthropicOAuthChatModel(provider.model_name)
         else:
             raise TypeError(f"Unsupported provider type for {model_name!r}: {type(provider)}")
 
-        if not isinstance(chat_model, ChatModelWithName):
-            raise TypeError(f"Provider {model_name!r} did not return ChatModelWithName, got {type(chat_model)}")
+        if not isinstance(chat_model, (ChatModelWithName, AnthropicOAuthChatModel)):
+            raise TypeError(f"Provider {model_name!r} did not return ChatModelWithName or AnthropicOAuthChatModel, got {type(chat_model)}")
 
         chat_dir = self._chat_logdirs.get(function_name) if self._chat_logdir else None
         chat_model.set_log_fn(self.log_cost, function_name, chat_dir)
