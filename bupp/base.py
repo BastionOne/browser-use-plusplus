@@ -143,15 +143,17 @@ class BrowserContextManager:
         self.cdp_ports.append(cdp_port)
         self.browser_profiles.append(browser_profile)
                 
-        # Use provided browser_exe or default
-        executable_path = self.browser_exe or r"C:\Users\jpeng\AppData\Local\ms-playwright\chromium-1161\chrome-win\chrome.exe"
-        
-        browser = await self.pw.chromium.launch_persistent_context(
-            user_data_dir=browser_profile,
-            headless=self.headless,
-            executable_path=executable_path,
-            args=[f"--remote-debugging-port={cdp_port}", f"--remote-debugging-address={BROWSER_CDP_HOST}"],
-        )
+        # Build launch options
+        launch_options = {
+            "user_data_dir": browser_profile,
+            "headless": self.headless,
+            "args": [f"--remote-debugging-port={cdp_port}", f"--remote-debugging-address={BROWSER_CDP_HOST}"],
+        }
+        # Only pass executable_path if explicitly provided
+        if self.browser_exe:
+            launch_options["executable_path"] = self.browser_exe
+
+        browser = await self.pw.chromium.launch_persistent_context(**launch_options)
         self.browsers.append(browser)
         print(f"Browser {i+1} started")
         
