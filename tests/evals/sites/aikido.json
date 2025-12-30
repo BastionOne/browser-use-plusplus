@@ -1,0 +1,9 @@
+{
+    "start_urls": [
+        "https://app.aikido.dev/settings/integrations/repositories"
+    ],
+    "max_steps": 4,
+    "max_pages": 1,
+    "llm_config_name": "llm_config_name",
+    "headless": false
+}

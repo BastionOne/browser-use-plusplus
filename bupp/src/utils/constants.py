@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -18,15 +19,32 @@ BROWSER_PROXY_PORT = 8081
 BROWSER_CDP_HOST = "127.0.0.1"
 BROWSER_CDP_PORT = 9900
 
-BROWSER_PROFILE_DIR = Path(
-    os.path.expanduser("~/.config/google-chrome/Default")
-)
+
+def _get_chrome_profile_dir() -> Path:
+    """Get the Chrome user data directory based on the current platform."""
+    if sys.platform == "win32":
+        # Windows: %LOCALAPPDATA%\Google\Chrome\User Data
+        # local_app_data = os.environ.get("LOCALAPPDATA", "")
+        # if local_app_data:
+        #     return Path(local_app_data) / "Google" / "Chrome" / "User Data"
+        # # Fallback to project-local if LOCALAPPDATA not set
+        return Path(".browser_profiles")
+    elif sys.platform == "darwin":
+        # macOS: ~/Library/Application Support/Google/Chrome
+        return Path.home() / "Library" / "Application Support" / "Google" / "Chrome"
+    else:
+        # Linux: ~/.config/google-chrome
+        return Path.home() / ".config" / "google-chrome"
+
+
+BROWSER_PROFILE_DIR = _get_chrome_profile_dir()
 
 # folders
 BUPP_FOLDER = Path(".bupp")
 SNAPSHOTS_FOLDER = BUPP_FOLDER / "snapshots"
 PLANS_FOLDER = BUPP_FOLDER / "plans"
 SITES_FOLDER = BUPP_FOLDER / "sites"
+USER_ROLES_FOLDER = SITES_FOLDER / "user_roles"
 AGENT_RESULTS_FOLDER = BUPP_FOLDER / "agent_results"
 
 BROWSER_USE_MODEL = "gpt-4.1"

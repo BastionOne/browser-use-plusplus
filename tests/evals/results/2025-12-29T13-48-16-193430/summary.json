@@ -1,0 +1,25 @@
+{
+  "timestamp": "2025-12-29T13:48:16.193430",
+  "config": {
+    "max_steps": 30,
+    "max_pages": 3,
+    "llm_config_name": "default",
+    "headless": true
+  },
+  "overall": {
+    "avg_recall": 0.0,
+    "total_expected": 81,
+    "total_matched": 0,
+    "num_sites": 1
+  },
+  "sites": [
+    {
+      "name": "aikido",
+      "recall": 0.0,
+      "matched": 0,
+      "expected": 81,
+      "missed": 81,
+      "error": null
+    }
+  ]
+}

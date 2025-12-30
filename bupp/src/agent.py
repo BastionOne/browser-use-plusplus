@@ -358,6 +358,8 @@ class DiscoveryAgent(BrowserUseAgent):
             include_recent_events=False,
         )
         new_page = await self._curr_page_check(new_browser_state)
+        # NOTE: crucially for evals, the requests that are sent on pageload *are* tracked in self.pages
+        # this ensures consistency with how we collected the evals, since we dont filter out requests during manual page nav
         if new_page:
             self._log(f"[ACCIDENTAL_TRANSITION] Rewinding page transition")
             if model_output.next_goal:

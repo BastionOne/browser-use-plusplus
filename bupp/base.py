@@ -29,6 +29,54 @@ from bupp.src.utils.constants import (
 from bupp.src.utils.browser_config_service import BrowserConfigService
 from bupp.logger import get_or_init_log_factory
 
+
+def convert_firefox_cookies_to_cdp(cookie_data: dict | list) -> dict:
+    """
+    Convert Firefox cookie export format to CDP/Playwright storage_state format.
+    
+    Firefox format uses:
+      - expirationDate -> expires
+      - sameSite: "strict"/"lax"/"no_restriction" -> "Strict"/"Lax"/"None"
+    
+    Args:
+        cookie_data: Either a dict with "cookies" key, or a list of cookies directly
+        
+    Returns:
+        CDP-compatible storage_state dict with "cookies" and "origins" keys
+    """
+    # Handle both formats: {"cookies": [...]} or just [...]
+    if isinstance(cookie_data, dict):
+        cookies = cookie_data.get("cookies", [])
+    else:
+        cookies = cookie_data
+    
+    same_site_map = {
+        "strict": "Strict",
+        "lax": "Lax",
+        "no_restriction": "None",
+    }
+    
+    cdp_cookies = []
+    for c in cookies:
+        cdp_cookie = {
+            "name": c["name"],
+            "value": c["value"],
+            "domain": c["domain"],
+            "path": c.get("path", "/"),
+            "expires": c.get("expirationDate", -1),  # -1 = session cookie
+            "secure": c.get("secure", False),
+            "httpOnly": c.get("httpOnly", False),
+        }
+        
+        # Convert sameSite value if present
+        if c.get("sameSite"):
+            sam_site_lower = str(c["sameSite"]).lower()
+            cdp_cookie["sameSite"] = same_site_map.get(sam_site_lower, "Lax")
+        
+        cdp_cookies.append(cdp_cookie)
+    
+    return {"cookies": cdp_cookies, "origins": []}
+
 # TODO: take browser management out of these functions
 BrowserData = Tuple[BrowserSession, Optional[CDPHTTPProxy], BrowserContext]
 BrowserSetupFunc = Callable[[BrowserData], Coroutine[Any, Any, None]]
@@ -45,12 +93,20 @@ class BrowserContextManager:
         browser_exe: Optional[str] = None,
         use_server: bool = False,
         server_base_url: str = "http://localhost:8080",
+        cookies_file: Optional[Path] = None,
     ):
         self.scopes = scopes
         self.headless = headless
         self.browser_exe = browser_exe
         self.use_server = use_server
         self.server_base_url = server_base_url
+        self.cookies_file = cookies_file
+        self.storage_state: Optional[dict] = None
+        
+        # Load and convert cookies if file provided
+        if cookies_file and cookies_file.exists():
+            cookie_data = json.loads(cookies_file.read_text())
+            self.storage_state = convert_firefox_cookies_to_cdp(cookie_data)
         
         if n > 1:
             raise ValueError("BrowserContextManager currently only supports a single browser instance")
@@ -112,11 +168,13 @@ class BrowserContextManager:
         print(f"Browser {i+1} connected via server! Browser version: {browser.version}")
         
         # Create BrowserSession using the WebSocket URL
+        browser_profile = BrowserProfile(
+            keep_alive=True,
+            storage_state=self.storage_state,
+        )
         browser_session = BrowserSession(
             cdp_url=ws_url,
-            browser_profile=BrowserProfile(
-                keep_alive=True,
-            ),
+            browser_profile=browser_profile,
         )
         await browser_session.start()
         self.browser_sessions.append(browser_session)
@@ -158,11 +216,13 @@ class BrowserContextManager:
         self.browsers.append(browser)
         print(f"Browser {i+1} started")
         
+        browser_profile = BrowserProfile(
+            keep_alive=True,
+            storage_state=self.storage_state,
+        )
         browser_session = BrowserSession(
             cdp_url=f"http://{BROWSER_CDP_HOST}:{cdp_port}/",
-            browser_profile=BrowserProfile(
-                keep_alive=True,
-            ),
+            browser_profile=browser_profile,
         )
         await browser_session.start()
         self.browser_sessions.append(browser_session)
@@ -260,48 +320,108 @@ class BrowserContextManager:
             self.config_service.release_lock()
 
 async def start_discovery_agent(
-    browser_data: BrowserData,
-    start_urls: list[str] | None = None,
+    start_urls: list[str],
+    *,
+    # BrowserContextManager parameters
+    scopes: list[str] | None = None,
+    headless: bool = False,
+    use_server: bool = False,
+    server_base_url: str = "http://localhost:8080",
+    cookies_file: Path | None = None,
+    browser_exe: str | None = None,
+    # DiscoveryAgent parameters
+    llm_config: Dict[str, str] | None = None,
     task_guidance: str | None = None,
     max_steps: int | None = 10,
     max_pages: int = 1,
     initial_plan: str | None = None,
     auth_cookies: dict | None = None,
+    save_snapshots: bool = True,
     streaming: bool = False,
     agent_dir: Path | None = None,
+    no_console: bool = False,
 ):
-    """Initialize DiscoveryAgent from a JSON configuration file."""
+    """
+    Initialize and run DiscoveryAgent with automatic browser lifecycle management.
+
+    This function wraps BrowserContextManager to provide a simpler interface
+    for running the discovery agent without manually managing browser resources.
+
+    Args:
+        start_urls: List of URLs to start discovery from.
+        scopes: URL scopes for the browser context. Defaults to start_urls if not provided.
+        headless: Run browser in headless mode.
+        use_server: Use remote browser server instead of local browser.
+        server_base_url: Base URL for remote browser server.
+        cookies_file: Path to cookies file for authentication.
+        browser_exe: Path to browser executable (optional).
+        llm_config: LLM configuration dictionary. Defaults to DISCOVERY_MODEL_CONFIG_MINI.
+        task_guidance: Guidance text for the discovery task.
+        max_steps: Maximum number of agent steps.
+        max_pages: Maximum number of pages to visit.
+        initial_plan: Initial plan for the agent.
+        auth_cookies: Authentication cookies dictionary.
+        save_snapshots: Whether to save agent snapshots during execution.
+        streaming: Enable streaming log output.
+        agent_dir: Directory for agent output files.
+        no_console: Disable console logging output.
+
+    Returns:
+        The agent's discovered SiteMap (pages).
+    """
+    from bupp.src.sitemap import SiteMap
+
+    # Use start_urls as scopes if not explicitly provided
+    effective_scopes = scopes if scopes is not None else start_urls
+
+    # Use default LLM config if not provided
+    effective_llm_config = llm_config or DISCOVERY_MODEL_CONFIG_MINI["model_config"]
+
     server_log_factory = get_or_init_log_factory(
-        base_dir=AGENT_RESULTS_FOLDER, 
+        base_dir=AGENT_RESULTS_FOLDER,
+        no_console=no_console,
     )
     agent_log, full_log = server_log_factory.get_discovery_agent_loggers(
-        streaming=streaming 
+        streaming=streaming,
     )
     log_dir = agent_dir or server_log_factory.get_log_dir()
-    browser_session, proxy_handler, _ = browser_data
-    
-    try:
-        # DiscoveryAgent for single-shot execution
-        agent = DiscoveryAgent(
-            browser=browser_session,
-            start_urls=start_urls,
-            llm_config=DISCOVERY_MODEL_CONFIG_MINI["model_config"],
-            # agent_sys_prompt=CUSTOM_SYSTEM_PROMPT,
-            task_guidance=task_guidance,
-            max_steps=max_steps,
-            max_pages=max_pages,
-            initial_plan=initial_plan,
-            proxy_handler=proxy_handler,
-            agent_log=agent_log,
-            full_log=full_log,
-            auth_cookies=auth_cookies,
-            agent_dir=log_dir,
-        )
-        await agent.run_agent()
 
-    except Exception as e:  
-        import traceback
-        traceback.print_exc()
+    async with BrowserContextManager(
+        scopes=effective_scopes,
+        headless=headless,
+        use_server=use_server,
+        server_base_url=server_base_url,
+        cookies_file=cookies_file,
+        browser_exe=browser_exe,
+        n=1,
+    ) as browser_data_list:
+        browser_data = browser_data_list[0]
+        browser_session, proxy_handler, _ = browser_data
+
+        try:
+            # DiscoveryAgent for single-shot execution
+            agent = DiscoveryAgent(
+                browser=browser_session,
+                start_urls=start_urls,
+                llm_config=effective_llm_config,
+                task_guidance=task_guidance,
+                max_steps=max_steps,
+                max_pages=max_pages,
+                initial_plan=initial_plan,
+                proxy_handler=proxy_handler,
+                agent_log=agent_log,
+                full_log=full_log,
+                auth_cookies=auth_cookies,
+                agent_dir=log_dir,
+                save_snapshots=save_snapshots,
+            )
+            await agent.run_agent()
+            return agent.pages
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return SiteMap()
 
 async def start_discovery_agent_from_session(
     browser_data: BrowserData,

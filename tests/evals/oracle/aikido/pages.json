@@ -1,0 +1,17 @@
+[
+    {
+        "scopes": [
+            "https://app.aikido.dev"
+        ],
+        "hars": [
+            {
+                "url": "https://app.aikido.dev/settings/integrations/repositories",
+                "har_file": "settings.har"
+            },
+            {
+                "url": "https://app.aikido.dev/queue",
+                "har_file": "queue.har"
+            }
+        ]
+    }
+]

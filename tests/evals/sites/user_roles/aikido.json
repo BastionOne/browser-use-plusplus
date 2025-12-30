@@ -1,0 +1,18 @@
+{
+    "role": "user",
+    "cookies": [
+        {
+            "domain": "app.aikido.dev",
+            "expirationDate": 1767104645.095847,
+            "hostOnly": true,
+            "httpOnly": true,
+            "name": "auth",
+            "path": "/",
+            "sameSite": null,
+            "secure": true,
+            "session": false,
+            "storeId": null,
+            "value": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhaWtpZG8uZGV2IiwiYXVkIjoidXNlcnMuYWlraWRvIiwiaWF0IjoxNzY3MDMyNjQ1LCJuYmYiOjE3NjcwMzI2MzUsImV4cCI6MTc2NzEwNDY0NSwidXNlcl9pZCI6NDIwNTV9.ed3DL_X-TD_tip8HSSrPBnBRiaGZ9r6ytFZj3OCiUmo"
+        }
+    ]
+}

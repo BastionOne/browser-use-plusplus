@@ -1,0 +1,25 @@
+{
+  "timestamp": "2025-12-29T15:42:03.004202",
+  "config": {
+    "max_steps": 30,
+    "max_pages": 3,
+    "llm_config_name": "default",
+    "headless": false
+  },
+  "overall": {
+    "avg_recall": 0.0,
+    "total_expected": 0,
+    "total_matched": 0,
+    "num_sites": 1
+  },
+  "sites": [
+    {
+      "name": "aikido",
+      "recall": 0.0,
+      "matched": 0,
+      "expected": 0,
+      "missed": 0,
+      "error": "name 'sys' is not defined"
+    }
+  ]
+}

@@ -1,7 +1,53 @@
 import asyncio
 import signal
 import sys
+
+from pathlib import Path
+
+from playwright.async_api import async_playwright
 from bupp.base import BrowserContextManager
+
+async def start_playwright_browser():
+    """Start a basic Playwright browser and keep it open until the user hits Ctrl+C"""
+    print("Starting Playwright browser... Press Ctrl+C to exit.")
+    
+    # Set up signal handler for graceful shutdown
+    shutdown_event = asyncio.Event()
+    
+    def signal_handler():
+        print("\nShutdown signal received. Closing browser...")
+        shutdown_event.set()
+    
+    # Register signal handlers
+    if sys.platform != "win32":
+        loop = asyncio.get_event_loop()
+        loop.add_signal_handler(signal.SIGINT, signal_handler)
+        loop.add_signal_handler(signal.SIGTERM, signal_handler)
+    else:
+        # Windows doesn't support add_signal_handler, use different approach
+        signal.signal(signal.SIGINT, lambda s, f: signal_handler())
+    
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=False)
+            context = await browser.new_context()
+            page = await context.new_page()
+            
+            print("Playwright browser opened successfully!")
+            print("Browser is running... Press Ctrl+C to close.")
+            
+            # Wait for shutdown signal
+            try:
+                await shutdown_event.wait()
+            except KeyboardInterrupt:
+                print("\nKeyboard interrupt received. Closing browser...")
+            
+            await browser.close()
+    
+    except Exception as e:
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
 
 async def main():
     """Open a browser and keep it open until the user hits Ctrl+C"""
@@ -26,7 +72,8 @@ async def main():
     try:
         async with BrowserContextManager(
             headless=False,
-            n=1
+            n=1,
+            cookies_file=Path(".bupp/sites/user_roles/aikido.json")
         ) as browserdata_list:
             print("Browser opened successfully!")
             print("Browser is running... Press Ctrl+C to close.")

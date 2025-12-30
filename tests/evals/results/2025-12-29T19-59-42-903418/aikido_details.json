@@ -1,0 +1,334 @@
+{
+  "site_name": "aikido",
+  "recall": 0.3950617283950617,
+  "matched_count": 32,
+  "expected_count": 81,
+  "missed_endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/auth/logout"
+    },
+    {
+      "method": "GET",
+      "path": "/api/autofix/settings/listenvvariables"
+    },
+    {
+      "method": "POST",
+      "path": "/api/autofix/settings/setenvvariables"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookmarks/adduserbookmark"
+    },
+    {
+      "method": "GET",
+      "path": "/api/domains/countnucleidomains"
+    },
+    {
+      "method": "GET",
+      "path": "/api/group/user/getnotificationemail"
+    },
+    {
+      "method": "GET",
+      "path": "/api/insights/issues/ignored"
+    },
+    {
+      "method": "GET",
+      "path": "/api/insights/timesaved"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/integrations/issue_trackers/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/integrations/issue_trackers/tasks/defaultdescription"
+    },
+    {
+      "method": "GET",
+      "path": "/api/issues/7955681/activity"
+    },
+    {
+      "method": "GET",
+      "path": "/api/issues/7955681/detailgroupedissues"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/issues/actions/adjustseverity"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/issues/actions/snooze"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/issues/actions/unignore"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/issues/actions/unsnooze"
+    },
+    {
+      "method": "GET",
+      "path": "/api/issues/architectureeffect"
+    },
+    {
+      "method": "GET",
+      "path": "/api/issues/countbyseverity"
+    },
+    {
+      "method": "GET",
+      "path": "/api/issues/countsinglebyseverity"
+    },
+    {
+      "method": "GET",
+      "path": "/api/issues/listgroupedissues"
+    },
+    {
+      "method": "GET",
+      "path": "/api/issues/listignorecountsforoptions"
+    },
+    {
+      "method": "GET",
+      "path": "/api/issues/queuemeta"
+    },
+    {
+      "method": "POST",
+      "path": "/api/issues/rule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/issues/stats/closedissuesstats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/issues/stats/newissuesstats"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notes/issue/15572/delete"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notes/issue/7955681"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/getcurrentemailnotificationssettings"
+    },
+    {
+      "method": "GET",
+      "path": "/api/repo/getscaninfo"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scm_integrations/organization"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scm_integrations/private_package_registry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scm_integrations/repos/707632"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scm_integrations/repos/707632/architecture"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scm_integrations/repos/707632/architecture"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scm_integrations/repos/707632/open_single_issue_count"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scm_integrations/repos/707632/teams"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/scm_integrations/repos/activate"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scm_integrations/repos/configuration"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scm_integrations/repos/configuration"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/scm_integrations/repos/deactivate"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats/issues/open/evolution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/linkedusers"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/getwalletinfo"
+    },
+    {
+      "method": "GET",
+      "path": "/login"
+    },
+    {
+      "method": "GET",
+      "path": "/my-profile"
+    },
+    {
+      "method": "GET",
+      "path": "/onboarding"
+    },
+    {
+      "method": "GET",
+      "path": "/queue"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/trends/open-issues"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/integrations/repositories"
+    }
+  ],
+  "matched_endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/accounts/getscanfrequency"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/intercom/identityverificationtoken"
+    },
+    {
+      "method": "GET",
+      "path": "/api/bookmarks/listuserbookmarks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cloud_integration/list"
+    },
+    {
+      "method": "GET",
+      "path": "/api/containers/count"
+    },
+    {
+      "method": "GET",
+      "path": "/api/domains/count"
+    },
+    {
+      "method": "GET",
+      "path": "/api/group/details"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hs/company"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hs/contact"
+    },
+    {
+      "method": "GET",
+      "path": "/api/integrations/continuous_integration/azure-devops/checks/installationstatus"
+    },
+    {
+      "method": "GET",
+      "path": "/api/integrations/continuous_integration/bitbucket/checks/installationstatus"
+    },
+    {
+      "method": "GET",
+      "path": "/api/integrations/continuous_integration/github/checks/installationstatus"
+    },
+    {
+      "method": "GET",
+      "path": "/api/integrations/continuous_integration/gitlab/checks/installationstatus"
+    },
+    {
+      "method": "GET",
+      "path": "/api/integrations/issue_trackers/list"
+    },
+    {
+      "method": "GET",
+      "path": "/api/integrations/issue_trackers/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/integrations/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/issues/countbyrepository"
+    },
+    {
+      "method": "GET",
+      "path": "/api/issues/countbystatus"
+    },
+    {
+      "method": "GET",
+      "path": "/api/messages/audit-reports/requests"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/configurationissues"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/pusher/authenticate"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/pusher/authenticate/user"
+    },
+    {
+      "method": "GET",
+      "path": "/api/runtime/services/count"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scm_integrations/repos/import"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scm_integrations/repos/listintegrationrepos"
+    },
+    {
+      "method": "GET",
+      "path": "/api/side-scanning/instance-groups/getinstancegroupcount"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teams"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/details"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/hasaccesstogroup"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/isauthenticated"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/list"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/listallaccessiblegroups"
+    }
+  ]
+}

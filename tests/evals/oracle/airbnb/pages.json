@@ -1,0 +1,13 @@
+[
+    {
+        "scopes": [
+            "https://www.airbnb.ca"
+        ],
+        "hars": [
+            {
+                "url": "https://www.airbnb.ca",
+                "har_file": "home.har"
+            }
+        ]
+    }
+]

@@ -326,13 +326,20 @@ class _ServerLogFactory:
 
     - tier 1 represents a logical application container for the logs ie. single run of server
     - tier 2 [static] represents log processes where only a single log file is created ie. server logs
-    - tier 3 [dynamic] represents log processes where multiple log files may be created ie. mutliple agents running in pool 
+    - tier 3 [dynamic] represents log processes where multiple log files may be created ie. mutliple agents running in pool
     """
-    def __init__(self, base_dir: str, *, log_level: Optional[LogLevel] = None) -> None:
+    def __init__(
+        self,
+        base_dir: str,
+        *,
+        log_level: Optional[LogLevel] = None,
+        no_console: bool = False,
+    ) -> None:
         self._base_dir = Path(base_dir)
         self._server_logger: Optional[logging.Logger] = None
         self._parent_logdir: Optional[Path] = None
         self._level: int = _resolve_log_level(log_level)
+        self._no_console: bool = no_console
 
         self.setup_static_loggers()
 
@@ -382,18 +389,21 @@ class _ServerLogFactory:
 
     # static loggers
     def _create_static_logger(
-        self, 
-        logger_name: str, 
-        log_filepath: Path, 
-        no_console: bool = False
+        self,
+        logger_name: str,
+        log_filepath: Path,
+        no_console: bool | None = None,
     ) -> logging.Logger:
         """Create a static logger with console and file handlers."""
+        # Use instance-level no_console if not explicitly provided
+        effective_no_console = no_console if no_console is not None else self._no_console
+
         logger = logging.getLogger(logger_name)
         logger.setLevel(self._level if hasattr(self, "_level") else logging.INFO)
         logger.propagate = False
 
         # Avoid duplicate handlers if called multiple times
-        if not no_console and not any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
+        if not effective_no_console and not any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
             logger.addHandler(get_console_handler())
 
         if not any(isinstance(h, logging.FileHandler) and getattr(h, "baseFilename", None) == str(log_filepath) for h in logger.handlers):
@@ -454,41 +464,64 @@ class _ServerLogFactory:
         # self.get_exploit_agent_loggers()
 
     # dynamic loggers
-    def get_discovery_agent_loggers(self, *, no_console: bool = False, streaming: bool = False) -> Tuple[logging.Logger, logging.Logger]:
+    def get_discovery_agent_loggers(
+        self,
+        *,
+        no_console: bool | None = None,
+        streaming: bool = False,
+    ) -> Tuple[logging.Logger, logging.Logger]:
         """
         Return loggers for a new discovery agent.
         Does not attach handlers; the worker thread should call setup_agent_logger
         with these values.
         """
+        # Use instance-level no_console if not explicitly provided
+        effective_no_console = no_console if no_console is not None else self._no_console
+
         e_dir = self._get_parent_logdir()
         discovery_dir = e_dir / "discovery_agents"
-        
+
         name = self._next_numeric_name(discovery_dir)
 
         _setup_agent_logger(
-            log_dir="", 
-            parent_dir=discovery_dir, 
-            name=name, 
+            log_dir="",
+            parent_dir=discovery_dir,
+            name=name,
             level=self._level,
-            create_run_subdir=False, 
-            add_thread_filter=False, 
-            no_console=no_console, 
-            streaming=streaming
+            create_run_subdir=False,
+            add_thread_filter=False,
+            no_console=effective_no_console,
+            streaming=streaming,
         )
         return logging.getLogger(name), logging.getLogger(FULL_REQUESTS_LOGGER_NAME)
     
-    def get_exploit_agent_loggers(self, *, no_console: bool = False, streaming: bool = False) -> Tuple[logging.Logger, logging.Logger]:
+    def get_exploit_agent_loggers(
+        self,
+        *,
+        no_console: bool | None = None,
+        streaming: bool = False,
+    ) -> Tuple[logging.Logger, logging.Logger]:
         """
         Return loggers for a new exploit agent.
         Does not attach handlers; the worker thread should call setup_agent_logger.
         """
+        # Use instance-level no_console if not explicitly provided
+        effective_no_console = no_console if no_console is not None else self._no_console
+
         e_dir = self._get_parent_logdir()
         exploit_dir = e_dir / "exploit_agents"
 
         name = self._next_numeric_name(exploit_dir)
 
         _setup_agent_logger(
-            log_dir="", parent_dir=exploit_dir, name=name, level=self._level, create_run_subdir=False, add_thread_filter=False, no_console=no_console
+            log_dir="",
+            parent_dir=exploit_dir,
+            name=name,
+            level=self._level,
+            create_run_subdir=False,
+            add_thread_filter=False,
+            no_console=effective_no_console,
+            streaming=streaming,
         )
         return logging.getLogger(name), logging.getLogger(FULL_REQUESTS_LOGGER_NAME)
 
@@ -514,15 +547,22 @@ def get_logger_or_default(logger_name: str) -> logging.Logger:
 _SERVER_LOG_FACTORY_SINGLETON: Optional[_ServerLogFactory] = None
 
 def get_or_init_log_factory(
-    base_dir: Optional[str] = None, 
-    *, 
+    base_dir: Optional[str] = None,
+    *,
     log_level: Optional[LogLevel] = None,
-    new: bool = False
+    no_console: bool = False,
+    new: bool = False,
 ) -> _ServerLogFactory:
     """
     Return a singleton ServerLogFactory. If base_dir is provided on first call,
     it sets the base directory; otherwise defaults to ".server_logs/engagements".
-    Subsequent calls ignore base_dir and log_level.
+    Subsequent calls ignore base_dir, log_level, and no_console.
+
+    Args:
+        base_dir: Base directory for log files.
+        log_level: Log level for all loggers.
+        no_console: If True, disable all console logging output.
+        new: If True, force creation of a new factory instance.
 
     Usage (always use like so):
     log_factory = get_or_init_log_factory(base_dir=SERVER_LOG_DIR, log_level="info")
@@ -532,5 +572,7 @@ def get_or_init_log_factory(
     if _SERVER_LOG_FACTORY_SINGLETON is None or new:
         root = base_dir or ".server_logs/engagements"
         Path(root).mkdir(parents=True, exist_ok=True)
-        _SERVER_LOG_FACTORY_SINGLETON = _ServerLogFactory(root, log_level=log_level)
+        _SERVER_LOG_FACTORY_SINGLETON = _ServerLogFactory(
+            root, log_level=log_level, no_console=no_console
+        )
     return _SERVER_LOG_FACTORY_SINGLETON

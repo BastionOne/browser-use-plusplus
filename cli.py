@@ -7,18 +7,14 @@ from typing import Awaitable, List
 import click
 import uvicorn
 
-from bupp.base import (
-    BrowserContextManager,
-    start_discovery_agent,
-)
+from bupp.base import start_discovery_agent
 from bupp.sites.tests.scenario import Scenario, ScenarioRegistry
 from bupp.sites.tests.registry import TEST_REGISTRY
 from bupp.src.llm.llm_models import LLMHarness
 
-from bupp.src.utils.constants import SITES_FOLDER
+from bupp.src.utils.constants import SITES_FOLDER, USER_ROLES_FOLDER
 
 MAX_STEPS = 3
-NUM_BROWSERS = 1
 MAX_PAGES = 1
 SINGLE_COMPONENT_CONFIG_PATH = SITES_FOLDER / "single_component" / "single_component.json"
 
@@ -180,32 +176,25 @@ async def execute_agent(
     # Load configuration from JSON file
     with open(config_path, 'r') as f:
         config = json.load(f)
-    
+
     start_urls = config.get('start_urls', [])
     if start_url:
         if start_urls:
             raise ValueError("start_urls and start_url cannot both be provided")
-        config["start_urls"] = [start_url]
-    
-    # Auto-detect user role files in the same directory as config
-    auth_cookies_from_files = _load_user_roles(config_path.parent)
-    
-    async with BrowserContextManager(
-        scopes=config["start_urls"],
+        start_urls = [start_url]
+
+    # Auto-detect user role file matching the config name in sites/user_roles/
+    auth_cookies = _load_user_roles(config_path) or config.get("auth_cookies")
+
+    await start_discovery_agent(
+        start_urls=start_urls,
         headless=headless,
         use_server=remote,
-        n=NUM_BROWSERS,
-    ) as browser_data_list:
-        browser_data = browser_data_list[0]
-        # Add auth_cookies to config if provided
-        if auth_cookies_from_files:
-            config["auth_cookies"] = auth_cookies_from_files
-            
-        await start_discovery_agent(
-            browser_data=browser_data,
-            **config,
-            task_guidance=task_guidance,
-        )
+        task_guidance=task_guidance,
+        max_steps=config.get("max_steps"),
+        max_pages=config.get("max_pages", MAX_PAGES),
+        auth_cookies=auth_cookies,
+    )
 
 
 async def serve_fixture(
@@ -247,54 +236,51 @@ def list_scenarios(test_group: str, scenario_numbers: List[int]) -> None:
             print()
 
 
-def _load_user_roles(config_dir: Path) -> dict | None:
+def _load_user_roles(config_path: Path) -> dict | None:
     """
-    Load cookies from *user_roles.json files in the config directory.
-    Returns the combined cookies dictionary or None if no files found.
+    Load cookies from user_roles file matching the config file name.
+    Looks in SITES_FOLDER/user_roles/ for a file with the same name as the config.
+    
+    Args:
+        config_path: Path to the config file (e.g., .bupp/sites/single_component/aikido.json)
+        
+    Returns:
+        The cookies dictionary or None if no matching file found.
     """
-    import glob
+    # Build path to user roles file: sites/user_roles/<config_name>.json
+    user_roles_path = USER_ROLES_FOLDER / config_path.name
     
-    # Find all *user_roles.json files in the config directory
-    pattern = str(config_dir / "*user_roles.json")
-    user_role_files = glob.glob(pattern)
-    
-    if not user_role_files:
+    if not user_roles_path.exists():
         return None
     
-    combined_cookies = {}
-    
-    for file_path in sorted(user_role_files):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                role_data = json.load(f)
+    try:
+        with open(user_roles_path, "r", encoding="utf-8") as f:
+            role_data = json.load(f)
+        
+        # Extract cookies from the JSON structure
+        cookies = None
+        if isinstance(role_data, dict):
+            cookies = role_data.get("cookies", role_data.get("auth_cookies"))
+        
+        if cookies:
+            print(f"✓ Loaded user roles from: {user_roles_path}")
             
-            # Extract cookies from the JSON structure
-            cookies = None
-            if isinstance(role_data, dict):
-                cookies = role_data.get('cookies', role_data.get('auth_cookies'))
+            # Convert to dictionary format if it's a list
+            if isinstance(cookies, list):
+                cookies_dict = {}
+                for cookie in cookies:
+                    if isinstance(cookie, dict) and "name" in cookie:
+                        cookies_dict[cookie["name"]] = cookie
+                return cookies_dict
+            elif isinstance(cookies, dict):
+                return cookies
+        else:
+            print(f"Warning: No cookies found in '{user_roles_path}'")
             
-            if cookies:
-                file_name = Path(file_path).name
-                print(f"✓ Loaded cookies from: {file_name}")
-                
-                # Merge cookies (later files override earlier ones for same keys)
-                if isinstance(cookies, dict):
-                    combined_cookies.update(cookies)
-                elif isinstance(cookies, list):
-                    # Handle list of cookie objects
-                    for cookie in cookies:
-                        if isinstance(cookie, dict) and 'name' in cookie:
-                            combined_cookies[cookie['name']] = cookie
-            else:
-                print(f"Warning: No cookies found in '{Path(file_path).name}'")
-                
-        except json.JSONDecodeError as e:
-            print(f"Error: Invalid JSON in user role file '{Path(file_path).name}': {e}")
-        except Exception as e:
-            print(f"Error reading user role file '{Path(file_path).name}': {e}")
-    
-    if combined_cookies:
-        return combined_cookies
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON in user roles file '{user_roles_path}': {e}")
+    except Exception as e:
+        print(f"Error reading user roles file '{user_roles_path}': {e}")
     
     return None
 
