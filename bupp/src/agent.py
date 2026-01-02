@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 from pathlib import Path
 from enum import Enum
 import json
@@ -25,7 +25,7 @@ from bupp.src.planning.prompts import (
     TASK_PROMPT_WITH_PLAN as TASK_PROMPT_WITH_PLAN
 )
 from bupp.src.planning.plan_manager import PlanManager, PlanContext
-from bupp.src.llm.llm_models import LLMHub, ChatModelWithLogging
+from bupp.src.llm.llm_models import LLMHub, ChatModelWithLogging, AnthropicOAuthChatModel
 from bupp.src.sitemap import SiteMap
 from bupp.src.proxy.cdpproxy import CDPHTTPProxy
 from bupp.src.state import (
@@ -107,19 +107,28 @@ class DiscoveryAgent(BrowserUseAgent):
         take_screenshots: bool = True,
         auth_cookies: Optional[List[Dict[str, Any]]] = None,
         clickable_detector_type: ClickableDetectorType | str = ClickableDetectorType.STATIC,
+        on_pages_updated: Optional[Callable[["SiteMap"], Any]] = None,
      ):
         tools = ToolsWithHistory(agent=self)
         override_system_message = importlib.resources.files("bupp.src").joinpath("custom_prompt.md").read_text(encoding="utf-8")
+
+        # Select LLM based on model name - use Anthropic OAuth for Claude models
+        browser_use_model = llm_config["browser_use"]
+        if "claude" in browser_use_model.lower():
+            browser_use_llm = AnthropicOAuthChatModel(model_name=browser_use_model)
+            browser_use_llm._chat_logdir = agent_dir / "llm" / "browser_use" if agent_dir else None
+        else:
+            browser_use_llm = ChatModelWithLogging(
+                model=browser_use_model,
+                chat_logdir=agent_dir / "llm" / "browser_use"
+            )
 
         # Call parent Agent constructor
         super().__init__(
             browser=browser,
             system_prompt=override_system_message,
             task=init_task or PLACEHOLDER_TASK,
-            llm=ChatModelWithLogging(
-                model=llm_config["browser_use"], 
-                chat_logdir=agent_dir / "llm" / "browser_use"
-            ),
+            llm=browser_use_llm,
             controller=tools,
             use_vision=False,
             save_conversation_path=None,
@@ -152,6 +161,7 @@ class DiscoveryAgent(BrowserUseAgent):
         self.is_transition_step = True
         self.initial_plan = initial_plan
         self.task_guidance = task_guidance
+        self.on_pages_updated = on_pages_updated
 
         self.save_snapshots = save_snapshots
         # System prompt and schema for actions
@@ -560,6 +570,11 @@ class DiscoveryAgent(BrowserUseAgent):
             self.agent_snapshots.add_snapshot(self.curr_step, snapshot)
 
         server_page_skip = await self._update_server()
+
+        # Call on_pages_updated hook if provided
+        if self.on_pages_updated:
+            self.on_pages_updated(self.pages)
+
         # update state for next step
         self.curr_step += 1
         self.page_step += 1

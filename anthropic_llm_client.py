@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Anthropic LLM Client using OAuth Tokens
 
@@ -27,8 +27,10 @@ from typing import Generator
 
 import requests
 
-# Configuration
-OAUTH_PATH = Path.home() / ".pi" / "agent" / "oauth.json"
+# Configuration - OAuth credentials path (Claude Code format)
+OAUTH_PATH = Path.home() / ".claude" / ".credentials.json"
+OAUTH_FORMAT = "claude_code"
+
 API_BASE_URL = "https://api.anthropic.com/v1"
 DEFAULT_MODEL = "claude-sonnet-4-20250514"
 DEFAULT_MAX_TOKENS = 4096
@@ -56,7 +58,21 @@ class AnthropicOAuthClient:
 
         try:
             storage = json.loads(OAUTH_PATH.read_text())
-            return storage.get("anthropic")
+
+            if OAUTH_FORMAT == "claude_code":
+                # Claude Code format: claudeAiOauth.{accessToken, refreshToken, expiresAt}
+                claude_oauth = storage.get("claudeAiOauth")
+                if not claude_oauth:
+                    return None
+                return {
+                    "type": "oauth",
+                    "access": claude_oauth.get("accessToken"),
+                    "refresh": claude_oauth.get("refreshToken"),
+                    "expires": claude_oauth.get("expiresAt", 0),
+                }
+            else:
+                # Legacy format: anthropic.{access, refresh, expires}
+                return storage.get("anthropic")
         except (json.JSONDecodeError, IOError):
             return None
 
@@ -67,7 +83,17 @@ class AnthropicOAuthClient:
         except (json.JSONDecodeError, IOError):
             storage = {}
 
-        storage["anthropic"] = credentials
+        if OAUTH_FORMAT == "claude_code":
+            # Claude Code format: claudeAiOauth.{accessToken, refreshToken, expiresAt}
+            if "claudeAiOauth" not in storage:
+                storage["claudeAiOauth"] = {}
+            storage["claudeAiOauth"]["accessToken"] = credentials.get("access")
+            storage["claudeAiOauth"]["refreshToken"] = credentials.get("refresh")
+            storage["claudeAiOauth"]["expiresAt"] = credentials.get("expires", 0)
+        else:
+            # Legacy format
+            storage["anthropic"] = credentials
+
         OAUTH_PATH.write_text(json.dumps(storage, indent=2))
 
     def _refresh_token(self, refresh_token: str) -> dict:

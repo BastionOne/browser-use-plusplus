@@ -1,5 +1,8 @@
 from pathlib import Path
-from typing import List, Dict, Optional, Any, Tuple, Callable, Coroutine
+from typing import TYPE_CHECKING, List, Dict, Optional, Any, Tuple, Callable, Coroutine
+
+if TYPE_CHECKING:
+    from bupp.src.sitemap import SiteMap
 import json
 import httpx
 from urllib.parse import urlparse
@@ -340,6 +343,9 @@ async def start_discovery_agent(
     streaming: bool = False,
     agent_dir: Path | None = None,
     no_console: bool = False,
+    on_pages_updated: Callable[["SiteMap"], Any] | None = None,
+    agent_log: Any = None,
+    full_log: Any = None,
 ):
     """
     Initialize and run DiscoveryAgent with automatic browser lifecycle management.
@@ -365,6 +371,9 @@ async def start_discovery_agent(
         streaming: Enable streaming log output.
         agent_dir: Directory for agent output files.
         no_console: Disable console logging output.
+        on_pages_updated: Optional callback invoked after each step with the SiteMap.
+        agent_log: Optional logger for agent-level logging.
+        full_log: Optional logger for full/detailed logging.
 
     Returns:
         The agent's discovered SiteMap (pages).
@@ -381,9 +390,11 @@ async def start_discovery_agent(
         base_dir=AGENT_RESULTS_FOLDER,
         no_console=no_console,
     )
-    agent_log, full_log = server_log_factory.get_discovery_agent_loggers(
-        streaming=streaming,
-    )
+    # Use passed loggers if provided, otherwise create new ones
+    if agent_log is None or full_log is None:
+        agent_log, full_log = server_log_factory.get_discovery_agent_loggers(
+            streaming=streaming,
+        )
     log_dir = agent_dir or server_log_factory.get_log_dir()
 
     async with BrowserContextManager(
@@ -414,6 +425,7 @@ async def start_discovery_agent(
                 auth_cookies=auth_cookies,
                 agent_dir=log_dir,
                 save_snapshots=save_snapshots,
+                on_pages_updated=on_pages_updated,
             )
             await agent.run_agent()
             return agent.pages

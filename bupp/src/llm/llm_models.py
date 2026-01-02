@@ -10,6 +10,7 @@ from langchain_core.language_models.chat_models import BaseChatModel as LangChai
 from browser_use.llm.base import BaseChatModel
 from browser_use.llm.openai.chat import ChatOpenAI
 from browser_use.llm.messages import UserMessage
+from browser_use.llm.views import ChatInvokeCompletion, ChatInvokeUsage
 
 COST_MAP = None
 
@@ -257,8 +258,16 @@ class AnthropicOAuthChatModel(BaseChatModel):
     def invoke(self, prompt: str) -> Any:
         raise Exception("sync calls no longer supported")
 
-    async def ainvoke(self, messages: Any, output_format: Any | None = None) -> Any:
+    async def ainvoke(self, messages: Any, output_format: Any | None = None) -> ChatInvokeCompletion:
+        # Import browser_use message types for proper handling
+        from browser_use.llm.messages import (
+            UserMessage as BUUserMessage,
+            SystemMessage as BUSystemMessage,
+            AssistantMessage as BUAssistantMessage,
+        )
+
         # Convert messages to the format expected by AnthropicOAuthClient
+        system_content = None
         if isinstance(messages, str):
             api_messages = [{"role": "user", "content": messages}]
         elif isinstance(messages, list):
@@ -267,10 +276,28 @@ class AnthropicOAuthChatModel(BaseChatModel):
                 if isinstance(msg, str):
                     api_messages.append({"role": "user", "content": msg})
                 elif isinstance(msg, BaseMessage):
+                    # LangChain message types
                     role = "assistant" if msg.type == "ai" else "user"
                     api_messages.append({"role": role, "content": msg.content})
+                elif isinstance(msg, BUSystemMessage):
+                    # browser_use SystemMessage - extract as system prompt
+                    system_content = msg.text if hasattr(msg, "text") else str(msg.content)
+                elif isinstance(msg, BUAssistantMessage):
+                    # browser_use AssistantMessage
+                    api_messages.append({"role": "assistant", "content": msg.text if hasattr(msg, "text") else str(msg.content)})
+                elif isinstance(msg, BUUserMessage):
+                    # browser_use UserMessage
+                    api_messages.append({"role": "user", "content": msg.text if hasattr(msg, "text") else str(msg.content)})
                 elif isinstance(msg, dict):
                     api_messages.append(msg)
+                elif hasattr(msg, "role") and hasattr(msg, "content"):
+                    # Generic message-like object
+                    role = str(msg.role) if msg.role != "system" else "user"
+                    content = msg.text if hasattr(msg, "text") else str(msg.content)
+                    if msg.role == "system":
+                        system_content = content
+                    else:
+                        api_messages.append({"role": role, "content": content})
                 else:
                     api_messages.append({"role": "user", "content": str(getattr(msg, "content", msg))})
         else:
@@ -283,12 +310,43 @@ class AnthropicOAuthChatModel(BaseChatModel):
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
-            lambda: self._client.message(api_messages, stream=False)
+            lambda: self._client.message(api_messages, system=system_content, stream=False)
         )
 
-        # Return in a format similar to LangChain response
-        from langchain_core.messages import AIMessage
-        return AIMessage(content=response)
+        # Handle structured output if output_format is provided
+        if output_format is not None:
+            # Extract JSON from the response and parse it
+            import re
+            response_text = response
+
+            # Try to extract JSON from markdown code blocks first
+            json_match = re.search(r'```(?:json)?\s*\n?([\s\S]*?)\n?```', response_text)
+            if json_match:
+                json_str = json_match.group(1).strip()
+            else:
+                # Try to find raw JSON object
+                json_match = re.search(r'\{[\s\S]*\}', response_text)
+                if json_match:
+                    json_str = json_match.group(0)
+                else:
+                    json_str = response_text
+
+            try:
+                parsed = output_format.model_validate_json(json_str)
+                return ChatInvokeCompletion(
+                    completion=parsed,
+                    usage=None,
+                    stop_reason=None,
+                )
+            except Exception as e:
+                raise ValueError(f"Failed to parse structured output: {e}\nResponse: {response_text}")
+
+        # Return ChatInvokeCompletion to match browser_use format
+        return ChatInvokeCompletion(
+            completion=response,
+            usage=None,  # OAuth client doesn't expose usage info currently
+            stop_reason=None,
+        )
 
 
 # Lazy-init models
@@ -433,7 +491,7 @@ LLM_MODELS = {
     # "claude-sonnet-4-20250514": claude_4_sonnet,
     "gpt-5": openai_5,
     "gpt-5.1": openai_51,
-    "opus-4.5": anthropic_opus_45,
+    "claude-opus-4-5-20251101": anthropic_opus_45,
 }
 
 # incredibly dumb hack to appease the type checker
