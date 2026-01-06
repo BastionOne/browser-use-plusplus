@@ -132,6 +132,7 @@ class DiscoveryAgent(BrowserUseAgent):
         take_screenshots: bool = True,
         auth_cookies: Optional[List[Dict[str, Any]]] = None,
         clickable_detector_type: ClickableDetectorType | str = ClickableDetectorType.STATIC,
+        on_pages_updated: Optional[Callable[["SiteMap"], Any]] = None,
      ):
         tools = ToolsWithHistory(agent=self)
         override_system_message = importlib.resources.files("bupp.src").joinpath("custom_prompt.md").read_text(encoding="utf-8")
@@ -182,6 +183,7 @@ class DiscoveryAgent(BrowserUseAgent):
         self.is_transition_step = True
         self.initial_plan = initial_plan
         self.task_guidance = task_guidance
+        self.on_pages_updated = on_pages_updated
 
         self.save_snapshots = save_snapshots
         # System prompt and schema for actions
@@ -723,6 +725,11 @@ Make sure to return a valid JSON instance, not the schema itself.
             self.agent_snapshots.add_snapshot(self.curr_step, snapshot)
 
         server_page_skip = await self._update_server()
+
+        # Call on_pages_updated hook if provided
+        if self.on_pages_updated:
+            await self.on_pages_updated(self.pages)
+
         # update state for next step
         self.curr_step += 1
         self.page_step += 1

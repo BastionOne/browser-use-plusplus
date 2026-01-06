@@ -340,6 +340,7 @@ async def start_discovery_agent(
     streaming: bool = False,
     agent_dir: Path | None = None,
     no_console: bool = False,
+    on_pages_updated: Callable[["SiteMap"], Any] | None = None,
 ):
     """
     Initialize and run DiscoveryAgent with automatic browser lifecycle management.
@@ -365,6 +366,7 @@ async def start_discovery_agent(
         streaming: Enable streaming log output.
         agent_dir: Directory for agent output files.
         no_console: Disable console logging output.
+        on_pages_updated: Optional callback invoked after each step with the SiteMap.
 
     Returns:
         The agent's discovered SiteMap (pages).
@@ -414,6 +416,7 @@ async def start_discovery_agent(
                 auth_cookies=auth_cookies,
                 agent_dir=log_dir,
                 save_snapshots=save_snapshots,
+                on_pages_updated=on_pages_updated,
             )
             await agent.run_agent()
             return agent.pages
