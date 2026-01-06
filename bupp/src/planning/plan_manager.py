@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import logging
 
 from bupp.src.dom_diff import get_dom_diff_str
-from bupp.src.llm.llm_models import LLMHub
+from llm_lib.registry import ModelRegistry
 from bupp.src.planning.prompts.plan_group import (
     PlanGroup,
     PlanItem,
@@ -31,27 +31,27 @@ class PlanContext(BaseModel):
 
 class PlanManager:
     """Encapsulates all plan lifecycle operations.
-    
+
     Responsibilities:
     - Plan state (current plan, completed items)
     - Plan creation, update, and completion checking
     - Task prompt generation from plan state
-    
+
     Does NOT handle:
     - DOM serialization (agent's job)
     - Browser interaction (agent's job)
-    - LLM instantiation (injected via LLMHub)
+    - LLM instantiation (injected via ModelRegistry)
     """
 
     def __init__(
         self,
-        llm_hub: LLMHub,
+        model_registry: ModelRegistry,
         plan_group: PlanGroup,
         task_guidance: str = "",
         logger: Optional[logging.Logger] = None,
         prompt_logger: Optional[logging.Logger] = None,
     ):
-        self.llm_hub = llm_hub
+        self.model_registry = model_registry
         self.plan_group = plan_group
         self.task_guidance = task_guidance
         self.logger = logger or logging.getLogger(__name__)
@@ -93,7 +93,7 @@ class PlanManager:
         Returns the updated task prompt.
         """
         new_plan = await self.plan_group.create_plan().ainvoke(
-            model=self.llm_hub.get("create_plan"),
+            model=self.model_registry.get("create_plan"),
             prompt_args={
                 "curr_page_contents": ctx.curr_dom_str,
                 "task_guidance": self.task_guidance,
@@ -119,7 +119,7 @@ class PlanManager:
         dom_diff = get_dom_diff_str(ctx.prev_dom_str, ctx.curr_dom_str)
         
         completed = await self.plan_group.check_plan_completion().ainvoke(
-            model=self.llm_hub.get("check_plan_completion"),
+            model=self.model_registry.get("check_plan_completion"),
             prompt_args={
                 "plan": self.plan,
                 "curr_dom": ctx.curr_dom_str,
@@ -147,7 +147,7 @@ class PlanManager:
             raise ValueError("Plan is not initialized")
 
         completed = await self.plan_group.check_single_plan_completion().ainvoke(
-            model=self.llm_hub.get("check_single_plan_complete"),
+            model=self.model_registry.get("check_single_plan_complete"),
             prompt_args={
                 "plan": self.plan,
                 "curr_goal": curr_goal,
@@ -175,7 +175,7 @@ class PlanManager:
         dom_diff = get_dom_diff_str(ctx.prev_dom_str, ctx.curr_dom_str)
 
         res = await self.plan_group.update_plan().ainvoke(
-            model=self.llm_hub.get("update_plan"),
+            model=self.model_registry.get("update_plan"),
             prompt_args={
                 "agent_history": ctx.agent_history_summary or "",
                 "curr_dom": ctx.curr_dom_str,

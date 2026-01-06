@@ -13,7 +13,7 @@ from bupp.logger import get_or_init_log_factory
 from bupp.base import BrowserContextManager
 from bupp.src.agent import DiscoveryAgent
 from bupp.src.llm.llm_provider import LMP
-from bupp.src.llm.llm_models import LLMHub
+from llm_lib.registry import ModelRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -174,12 +174,12 @@ class NavigationAgent(DiscoveryAgent):
         )
         self._doms: Dict[str, str] = {}
     
-    async def run_find_persistent_nav_elements(self, llm_hub: LLMHub, dom_str: str) -> List[PersistedNavElementLM]:
+    async def run_find_persistent_nav_elements(self, model_registry: ModelRegistry, dom_str: str) -> List[PersistedNavElementLM]:
         """Single iteration of FindPersistentNavElements."""
         from navigation import FindPersistentNavElements
 
         res = await FindPersistentNavElements().ainvoke(
-            model=llm_hub.get("find_persisted_components"),
+            model=model_registry.get("find_persisted_components"),
             prompt_args={"dom_str": dom_str},
             dry_run=False,
             clean_res=lambda s: s.replace("**", "")
@@ -188,7 +188,7 @@ class NavigationAgent(DiscoveryAgent):
 
     async def find_persisted_components(
         self,
-        llm_hub: LLMHub,
+        model_registry: ModelRegistry,
         dom_str: str,
         num_iterations: int = 1,
     ) -> List[PersistedNavElementLM]:
@@ -199,7 +199,7 @@ class NavigationAgent(DiscoveryAgent):
             raise ValueError("num_iterations must be >= 1")
 
         tasks = [
-            asyncio.create_task(self.run_find_persistent_nav_elements(llm_hub=llm_hub, dom_str=dom_str))
+            asyncio.create_task(self.run_find_persistent_nav_elements(model_registry=model_registry, dom_str=dom_str))
             for _ in range(num_iterations)
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -273,7 +273,7 @@ class NavigationAgent(DiscoveryAgent):
         self,
         dom: str,
         selector_map: Optional[DOMSelectorMap],
-        llm_hub: LLMHub,
+        model_registry: ModelRegistry,
         num_iterations: int = 1,
     ) -> List[PersistedNavElement]:
         """Detect persisted navigation elements and map them back to DOMInteractedElement objects."""
@@ -287,7 +287,7 @@ class NavigationAgent(DiscoveryAgent):
 
         try:
             lm_elements = await self.find_persisted_components(
-                llm_hub=llm_hub,
+                model_registry=model_registry,
                 dom_str=dom,
                 num_iterations=num_iterations,
             )
@@ -357,7 +357,7 @@ class NavigationAgent(DiscoveryAgent):
             )
             dom_str = await self._get_llm_representation(browser_state)
             selector_map = browser_state.dom_state.selector_map if browser_state and browser_state.dom_state else None
-            persisted_nodes = await self.find_persisted_nav_elements(dom_str, selector_map, self.llm_hub)
+            persisted_nodes = await self.find_persisted_nav_elements(dom_str, selector_map, self.model_registry)
 
             with open("persisted.json", "w") as f:
                 persisted_json = [p.model_dump() for p in persisted_nodes]

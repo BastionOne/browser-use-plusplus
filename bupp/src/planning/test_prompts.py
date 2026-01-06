@@ -6,7 +6,7 @@ from browser_use.llm.messages import UserMessage
 from browser_use.tokens.service import TokenCost
 
 from bupp.src.utils.constants import BROWSER_USE_MODEL, DISCOVERY_MODEL_CONFIG
-from bupp.src.llm.llm_models import LLMHub
+from llm_lib.registry import ModelRegistry
 
 from pathlib import Path
 
@@ -19,9 +19,9 @@ def get_lmp(path: Path) -> bool:
     func, _ = path.parts[-2:]
     return func
 
-def sync_llm_hub(function: str, num: int = 1):
-    llm_hub = LLMHub(DISCOVERY_MODEL_CONFIG["model_config"])
-    model = llm_hub.get(function)
+def sync_model_registry(function: str, num: int = 1):
+    model_registry = ModelRegistry(DISCOVERY_MODEL_CONFIG["model_config"])
+    model = model_registry.get(function)
 
     prompt = open(PROMPT_PATH, "r").read()
     
@@ -45,9 +45,10 @@ def sync_llm_hub(function: str, num: int = 1):
         print(response.content)
         print("-" * 50)
     
-    # Print total cost for this function
-    total_cost = model.get_cos()
-    print(f"Total cost for {function}: ${total_cost:.4f}")
+    # Print total cost for this function (not supported by ModelAdapter)
+    # total_cost = model.get_cost()
+    # print(f"Total cost for {function}: ${total_cost:.4f}")
+    print(f"Completed {function} with {num} requests")
     
 
 async def async_openai(num: int = 1):
@@ -86,7 +87,7 @@ async def main(num: int = 1):
     if func == "browser_use":
         await async_openai(num)
     else:
-        sync_llm_hub(func, num)
+        sync_model_registry(func, num)
 
 if __name__ == "__main__":
     import sys
