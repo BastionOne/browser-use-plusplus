@@ -1,36 +1,36 @@
- [build-system]
- requires = ["setuptools>=75.0", "wheel"]
- build-backend = "setuptools.build_meta"
- 
- [project]
- name = "browser-use-plusplus"
- version = "0.1.0"
- description = "Browser-use-plusplus core package"
- readme = "README.md"
- requires-python = ">=3.10"
- dependencies = [
-     "fastapi>=0.103.1",
-     "uvicorn>=0.23.2",
-     "sqlmodel>=0.0.8",
-     "sqlalchemy>=2.0.20",
-     "pydantic>=2.3.0",
-     "httpx>=0.24.1",
-     "pytest>=7.4.0",
-     "pytest-asyncio>=0.21.1",
-     "instructor",
-     "mitmproxy==11.0.2",
-     "tiktoken",
-     "playwright",
-     "pytz",
-     "jsbeautifier",
-     "opik",
-     "langchain_core",
-     "langchain_openai",
-     "browser-use @ git+https://github.com/BastionOne/browser-use.git"
- ]
+[build-system]
+requires = ["setuptools>=75.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "browser-use-plusplus"
+version = "0.1.0"
+description = "Browser-use-plusplus core package"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.103.1",
+    "uvicorn>=0.23.2",
+    "sqlmodel>=0.0.8",
+    "sqlalchemy>=2.0.20",
+    "pydantic>=2.3.0",
+    "httpx>=0.24.1",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.1",
+    "mitmproxy==11.0.2",
+    "tiktoken",
+    "playwright",
+    "pytz",
+    "jsbeautifier",
+    "browser-use @ git+https://github.com/BastionOne/browser-use.git",
+    "llm-lib",
+]
 
 [tool.setuptools.packages.find]
 include = ["bupp", "bupp.*"]
 
 [tool.setuptools.package-data]
-bupp = ["model_api_prices.json", "src/custom_prompt.md"]
+bupp = ["src/custom_prompt.md"]
+
+[tool.uv.sources]
+llm-lib = { path = "../llm_lib", editable = true }

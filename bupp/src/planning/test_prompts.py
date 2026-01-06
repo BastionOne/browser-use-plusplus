@@ -6,7 +6,7 @@ from browser_use.llm.messages import UserMessage
 from browser_use.tokens.service import TokenCost
 
 from bupp.src.utils.constants import BROWSER_USE_MODEL, DISCOVERY_MODEL_CONFIG
-from bupp.src.llm.llm_models import LLMHub
+from llm_lib import LLMHub
 
 from pathlib import Path
 

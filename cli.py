@@ -10,7 +10,7 @@ import uvicorn
 from bupp.base import start_discovery_agent
 from bupp.sites.tests.scenario import Scenario, ScenarioRegistry
 from bupp.sites.tests.registry import TEST_REGISTRY
-from bupp.src.llm.llm_models import LLMHarness
+from llm_lib import LLMHarness
 
 from bupp.src.utils.constants import SITES_FOLDER, USER_ROLES_FOLDER
 

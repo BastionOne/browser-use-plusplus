@@ -1,10 +1,11 @@
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 from pathlib import Path
 from enum import Enum
 import json
 import asyncio
 import requests
+import time
 from urllib.parse import urljoin
 import importlib.resources
 
@@ -25,7 +26,22 @@ from bupp.src.planning.prompts import (
     TASK_PROMPT_WITH_PLAN as TASK_PROMPT_WITH_PLAN
 )
 from bupp.src.planning.plan_manager import PlanManager, PlanContext
-from bupp.src.llm.llm_models import LLMHub, ChatModelWithLogging
+
+# New llm_lib imports (replaces LLMHub, ChatModelWithLogging, AnthropicOAuthChatModel)
+from llm_lib.registry import ModelRegistry
+from llm_lib.stream import complete
+from llm_lib.models import get_model_by_id
+from llm_lib.types import (
+    Context as LLMContext,
+    UserMessage as LLMUserMessage,
+    AssistantMessage as LLMAssistantMessage,
+    TextContent as LLMTextContent,
+    ImageContent as LLMImageContent,
+    ThinkingContent as LLMThinkingContent,
+    Tool as LLMTool,
+    Model,
+)
+
 from bupp.src.sitemap import SiteMap
 from bupp.src.proxy.cdpproxy import CDPHTTPProxy
 from bupp.src.state import (
@@ -46,7 +62,15 @@ from bupp.src.transition import (
 from bupp.src.tools import ToolsWithHistory
 from bupp.src.browser_use.run import bu_run
 
-from browser_use.llm.messages import SystemMessage
+from browser_use.llm.messages import (
+    SystemMessage,
+    BaseMessage,
+    UserMessage as BUUserMessage,
+    AssistantMessage as BUAssistantMessage,
+    ContentPartTextParam,
+    ContentPartImageParam,
+)
+from browser_use.llm.views import ChatInvokeCompletion, ChatInvokeUsage
 from browser_use.agent.service import Agent as BrowserUseAgent
 from browser_use import Browser
 from browser_use.agent.views import AgentState
@@ -55,6 +79,7 @@ from browser_use.agent.views import (
     ActionResult,
     AgentHistoryList,
     AgentHistory,
+    AgentOutput,
     AgentStructuredOutput,
     AgentStepInfo,
 )
@@ -111,15 +136,19 @@ class DiscoveryAgent(BrowserUseAgent):
         tools = ToolsWithHistory(agent=self)
         override_system_message = importlib.resources.files("bupp.src").joinpath("custom_prompt.md").read_text(encoding="utf-8")
 
-        # Call parent Agent constructor
+        # Store the system message for use in get_model_output
+        self._system_message = override_system_message
+
+        # Get the browser_use model from config - we'll use it in get_model_output override
+        self._browser_use_model_id = llm_config["browser_use"]
+
+        # Call parent Agent constructor with llm=None
+        # We override get_model_output so don't need the llm parameter
         super().__init__(
             browser=browser,
             system_prompt=override_system_message,
             task=init_task or PLACEHOLDER_TASK,
-            llm=ChatModelWithLogging(
-                model=llm_config["browser_use"], 
-                chat_logdir=agent_dir / "llm" / "browser_use"
-            ),
+            llm=None,  # We override get_model_output directly
             controller=tools,
             use_vision=False,
             save_conversation_path=None,
@@ -133,14 +162,15 @@ class DiscoveryAgent(BrowserUseAgent):
             use_judge=False,
             injected_agent_state=injected_agent_state,
         )
-        # LLM prompt logging
+
+        # Initialize ModelRegistry (replaces LLMHub)
         if agent_dir:
             llm_logdir = agent_dir / "llm"
             if not llm_logdir.exists():
                 llm_logdir.mkdir(parents=True, exist_ok=True)
-            self.llm_hub = LLMHub(llm_config, chat_logdir=llm_logdir)
+            self.model_registry = ModelRegistry(llm_config, log_dir=llm_logdir)
         else:
-            self.llm_hub = LLMHub(llm_config)
+            self.model_registry = ModelRegistry(llm_config)
 
         self.take_screenshot = take_screenshots
         self.llm_config = llm_config
@@ -181,7 +211,7 @@ class DiscoveryAgent(BrowserUseAgent):
 
         # planning state - now managed by PlanManager
         self.plan_manager = PlanManager(
-            llm_hub=self.llm_hub,
+            model_registry=self.model_registry,
             plan_group=SPIDER_PLAN_GROUP,
             task_guidance=task_guidance,
             logger=self.agent_log,
@@ -237,7 +267,7 @@ class DiscoveryAgent(BrowserUseAgent):
         """Check if a single URL returns HTTP 200.
 
         - url: the URL to check
-        
+
         Returns True if URL is accessible (HTTP 200), False otherwise.
         """
         try:
@@ -247,6 +277,139 @@ class DiscoveryAgent(BrowserUseAgent):
             return PageStatus.NORMAL
         except Exception:
             return PageStatus.BAD
+
+    def _convert_bu_messages_to_llm_context(
+        self,
+        input_messages: List[BaseMessage],
+    ) -> LLMContext:
+        """Convert browser-use messages to llm_lib Context."""
+        system_prompt = None
+        messages = []
+
+        for msg in input_messages:
+            if isinstance(msg, SystemMessage):
+                # Extract system prompt from SystemMessage
+                if isinstance(msg.content, str):
+                    system_prompt = msg.content
+                elif isinstance(msg.content, list):
+                    system_prompt = "".join(
+                        p.text for p in msg.content if hasattr(p, "text")
+                    )
+            elif isinstance(msg, BUUserMessage):
+                # Convert user message content
+                if isinstance(msg.content, str):
+                    content = msg.content
+                else:
+                    # Handle multimodal content (text + images)
+                    content = []
+                    for part in msg.content:
+                        if isinstance(part, ContentPartTextParam):
+                            content.append(LLMTextContent(type="text", text=part.text))
+                        elif isinstance(part, ContentPartImageParam):
+                            # Extract base64 data from image URL
+                            url = part.image_url.url
+                            if url.startswith("data:"):
+                                # Parse data URI: data:image/jpeg;base64,<data>
+                                mime_type = part.image_url.media_type
+                                data = url.split(",", 1)[1] if "," in url else url
+                                content.append(LLMImageContent(
+                                    type="image",
+                                    data=data,
+                                    mimeType=mime_type,
+                                ))
+                            else:
+                                # Regular URL - skip for now (could fetch)
+                                content.append(LLMTextContent(
+                                    type="text",
+                                    text=f"[Image: {url}]"
+                                ))
+
+                messages.append(LLMUserMessage(
+                    role="user",
+                    content=content,
+                    timestamp=int(time.time() * 1000),
+                ))
+            elif isinstance(msg, BUAssistantMessage):
+                # Convert assistant message - need to create proper content blocks
+                text = msg.text if hasattr(msg, "text") else str(msg.content)
+                messages.append(LLMAssistantMessage(
+                    role="assistant",
+                    content=[LLMTextContent(type="text", text=text)],
+                    api="anthropic-messages",  # Placeholder
+                    provider="anthropic",
+                    model=self._browser_use_model_id,
+                    usage={"input": 0, "output": 0, "cache_read": 0, "cache_write": 0, "total_tokens": 0},
+                    stopReason="stop",
+                    timestamp=int(time.time() * 1000),
+                ))
+
+        return LLMContext(
+            systemPrompt=system_prompt,
+            messages=messages,
+            tools=None,
+        )
+
+    async def get_model_output(self, input_messages: List[BaseMessage]) -> "AgentOutput":
+        """
+        Override browser-use's get_model_output to use llm_lib directly.
+
+        This bypasses the browser-use LLM handling and uses our unified
+        llm_lib interface with OAuth support and pi-agent model identifiers.
+        """
+        from bupp.src.utils import extract_json
+
+        # Get the model from registry
+        model = self.model_registry.get_model("browser_use")
+
+        # Convert messages to llm_lib context
+        context = self._convert_bu_messages_to_llm_context(input_messages)
+
+        # Add the JSON schema instruction to the system prompt
+        schema_instruction = self._get_output_schema_instruction()
+        if context.systemPrompt:
+            context.systemPrompt = context.systemPrompt + "\n\n" + schema_instruction
+        else:
+            context.systemPrompt = schema_instruction
+
+        # Call llm_lib.complete()
+        response = await complete(model, context)
+
+        # Extract text content from response
+        text_parts = []
+        thinking_parts = []
+        for block in response.content:
+            if block.type == "text":
+                text_parts.append(block.text)
+            elif block.type == "thinking":
+                thinking_parts.append(block.thinking)
+
+        content = "".join(text_parts)
+        thinking = "".join(thinking_parts) if thinking_parts else None
+
+        # Parse JSON into AgentOutput
+        json_str = extract_json(content)
+        parsed: AgentOutput = self.AgentOutput.model_validate_json(json_str)
+
+        # Attach thinking if available
+        if thinking and hasattr(parsed, "thinking"):
+            parsed.thinking = thinking
+
+        # Cut actions to max_actions_per_step
+        if len(parsed.action) > self.settings.max_actions_per_step:
+            parsed.action = parsed.action[: self.settings.max_actions_per_step]
+
+        return parsed
+
+    def _get_output_schema_instruction(self) -> str:
+        """Generate the JSON schema instruction for the output format."""
+        schema = self.AgentOutput.model_json_schema()
+        return f"""
+You must respond with a JSON object that matches this schema:
+
+{json.dumps(schema, indent=2)}
+
+Make sure to return a valid JSON instance, not the schema itself.
+"""
 
     async def pre_run(self):
         pass
@@ -591,8 +754,8 @@ class DiscoveryAgent(BrowserUseAgent):
             self.history.history[-1].model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
             self.history.history[-1].model_output.evaluation_previous_goal = PAGE_TRANSITION_EVALUATION
 
-            # prune the list of URLs collected from this apge                    
-            self.url_queue.prune(model=self.llm_hub.get("prune_urls"))
+            # prune the list of URLs collected from this apge
+            self.url_queue.prune(model=self.model_registry.get("prune_urls"))
             if len(self.url_queue) < 1:
                 self.logger.info(f"No URLs left in queue, exiting")
                 return
