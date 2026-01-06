@@ -341,6 +341,8 @@ async def start_discovery_agent(
     agent_dir: Path | None = None,
     no_console: bool = False,
     on_pages_updated: Callable[["SiteMap"], Any] | None = None,
+    agent_log: Any = None,
+    full_log: Any = None,
 ):
     """
     Initialize and run DiscoveryAgent with automatic browser lifecycle management.
@@ -367,6 +369,8 @@ async def start_discovery_agent(
         agent_dir: Directory for agent output files.
         no_console: Disable console logging output.
         on_pages_updated: Optional callback invoked after each step with the SiteMap.
+        agent_log: Optional logger for agent-level logging.
+        full_log: Optional logger for full/detailed logging.
 
     Returns:
         The agent's discovered SiteMap (pages).
@@ -379,14 +383,21 @@ async def start_discovery_agent(
     # Use default LLM config if not provided
     effective_llm_config = llm_config or DISCOVERY_MODEL_CONFIG_MINI["model_config"]
 
-    server_log_factory = get_or_init_log_factory(
-        base_dir=AGENT_RESULTS_FOLDER,
-        no_console=no_console,
-    )
-    agent_log, full_log = server_log_factory.get_discovery_agent_loggers(
-        streaming=streaming,
-    )
-    log_dir = agent_dir or server_log_factory.get_log_dir()
+    # Use provided loggers or create new ones
+    if agent_log is None or full_log is None:
+        server_log_factory = get_or_init_log_factory(
+            base_dir=AGENT_RESULTS_FOLDER,
+            no_console=no_console,
+        )
+        if agent_log is None or full_log is None:
+            _agent_log, _full_log = server_log_factory.get_discovery_agent_loggers(
+                streaming=streaming,
+            )
+            agent_log = agent_log or _agent_log
+            full_log = full_log or _full_log
+        log_dir = agent_dir or server_log_factory.get_log_dir()
+    else:
+        log_dir = agent_dir
 
     async with BrowserContextManager(
         scopes=effective_scopes,
