@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
-from bupp.src.llm.llm_provider import LMP
+from llm_lib.llm_provider import LMP
 from bupp.logger import get_agent_loggers
 
 from bupp.src.planning.prompts.plan_group import (

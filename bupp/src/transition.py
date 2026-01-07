@@ -15,8 +15,7 @@ from browser_use.tools.registry.views import ActionModel
 from browser_use.tools.views import NavigateAction
 
 # project imports
-from bupp.src.llm.llm_provider import LMP
-from bupp.src.llm.llm_models import BaseChatModel
+from llm_lib.llm_provider import LMP
 
 def get_base_url(url: str) -> str:
     """

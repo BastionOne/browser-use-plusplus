@@ -26,6 +26,7 @@ from bupp.src.planning.prompts import (
 )
 from bupp.src.planning.plan_manager import PlanManager, PlanContext
 from llm_lib.registry import ModelRegistry
+from src.agent.cost_tracking import ActionCost, AgentCostSummary
 # Legacy imports for browser-use LLM compatibility (still uses LangChain wrappers)
 from bupp.src.llm.llm_models import ChatModelWithLogging, AnthropicOAuthChatModel
 from bupp.src.sitemap import SiteMap
@@ -200,6 +201,12 @@ class DiscoveryAgent(BrowserUseAgent):
             prompt_logger=self.full_log,
         )
 
+        # Cost tracking - aggregates costs from plan_manager and browser_use
+        self.cost_summary = AgentCostSummary(
+            agent_type="discovery",
+            agent_id=str(agent_dir) if agent_dir else "",
+        )
+
         # dom state
         self.dom_state = DOMState()
 
@@ -354,6 +361,8 @@ class DiscoveryAgent(BrowserUseAgent):
                 self.is_transition_step = False
 
             self._log(f"[INITIAL_PLAN]:\n{str(self.plan_manager.plan)}")
+            # Aggregate costs after plan creation
+            self.aggregate_plan_manager_costs()
         else:
             self._log(f"[NORMAL_STEP] No page transition")
 
@@ -401,6 +410,9 @@ class DiscoveryAgent(BrowserUseAgent):
         self.curr_dom_str = new_dom_str
         if self.screen_shot_service and new_browser_state.screenshot:
             await self.screen_shot_service.store_screenshot(new_browser_state.screenshot, self.curr_step)
+
+        # Aggregate costs from plan_manager after each step
+        self.aggregate_plan_manager_costs()
 
     @property  # type: ignore
     def logger(self) -> logging.Logger:
@@ -616,6 +628,13 @@ class DiscoveryAgent(BrowserUseAgent):
 
         self._log(f"Completing: [page_step: {self.page_step}, agent_step: {self.curr_step}]")
 
+    def aggregate_plan_manager_costs(self) -> None:
+        """Merge costs from plan_manager into agent's cost_summary."""
+        if self.plan_manager and self.plan_manager.cost_summary.actions:
+            self.cost_summary.merge(self.plan_manager.cost_summary)
+            # Clear plan_manager costs to avoid double-counting
+            self.plan_manager.cost_summary.actions.clear()
+
     async def save_results(self):
         """
         Called in run.py method
@@ -625,10 +644,14 @@ class DiscoveryAgent(BrowserUseAgent):
                 with open(self.agent_dir / "snapshots.json", "w") as f:
                     serialized_snapshots = self.agent_snapshots.model_dump()
                     json.dump(serialized_snapshots, f)
-            
+
             with open(self.agent_dir / "pages.json", "w") as f:
                 serialized_pages = await self.pages.to_json()
                 json.dump(serialized_pages, f)
+
+            # Save cost summary
+            self.aggregate_plan_manager_costs()
+            self.cost_summary.save(self.agent_dir / "usage.json")
 
     async def run_agent(self) -> AgentHistoryList[AgentStructuredOutput]:
         return await bu_run(self, self.agent_step)

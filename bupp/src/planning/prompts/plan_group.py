@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple, Literal, Type, Any
 from pydantic import BaseModel, Field
 
-from bupp.src.llm.llm_provider import LMP
+from llm_lib.llm_provider import LMP
 
 
 TASK_PROMPT_WITH_PLAN = """
