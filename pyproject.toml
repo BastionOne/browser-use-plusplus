@@ -26,7 +26,7 @@
      "opik",
      "langchain_core",
      "langchain_openai",
-     "browser-use @ git+https://github.com/BastionOne/browser-use.git"
+     "browser-use"
  ]
 
 [tool.setuptools.packages.find]

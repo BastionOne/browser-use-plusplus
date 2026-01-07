@@ -252,15 +252,27 @@ Make sure to return an instance of the JSON, not the schema itself
         while current_retry <= max_retries:
             try:
                 res = model.invoke(prompt)
+
+                # Debug logging for LLM response
+                print(f"[LLM DEBUG] Response type: {type(res)}")
+                print(f"[LLM DEBUG] Response attributes: {[attr for attr in dir(res) if not attr.startswith('_')]}")
+                print(f"[LLM DEBUG] Raw response object: {res}")
+
                 content = res.content
+
+                print(f"[LLM DEBUG] Raw content type: {type(content)}")
+                print(f"[LLM DEBUG] Raw content length: {len(content) if content else 'None'}")
+                print(f"[LLM DEBUG] Raw content (first 500 chars): {repr(content[:500]) if content else 'EMPTY/NONE'}")
 
                 if not isinstance(content, str):
                     raise Exception("[LLM] CONTENT IS NOT A STRING")
-                
+
                 if self.response_format:
                     try:
-                        content = extract_json(content)
-                        content = self.response_format.model_validate_json(content)
+                        extracted = extract_json(content)
+                        print(f"[LLM DEBUG] After extract_json length: {len(extracted) if extracted else 'None'}")
+                        print(f"[LLM DEBUG] After extract_json (first 500 chars): {repr(extracted[:500]) if extracted else 'EMPTY/NONE'}")
+                        content = self.response_format.model_validate_json(extracted)
                     except Exception as e:
                         print(f"Error validating response: {e}")
                         print(f"Response:\n -------------\n{content}\n -------------")
@@ -331,7 +343,16 @@ Make sure to return an instance of the JSON, not the schema itself
                 else:
                     res = await asyncio.to_thread(model.invoke, prompt)
 
+                # Debug logging for LLM response
+                print(f"[LLM DEBUG ASYNC] Response type: {type(res)}")
+                print(f"[LLM DEBUG ASYNC] Response attributes: {[attr for attr in dir(res) if not attr.startswith('_')]}")
+                print(f"[LLM DEBUG ASYNC] Raw response object: {res}")
+
                 content = res.completion
+
+                print(f"[LLM DEBUG ASYNC] Raw content type: {type(content)}")
+                print(f"[LLM DEBUG ASYNC] Raw content length: {len(content) if content else 'None'}")
+                print(f"[LLM DEBUG ASYNC] Raw content (first 500 chars): {repr(content[:500]) if content else 'EMPTY/NONE'}")
 
                 if not isinstance(content, str):
                     raise Exception("[LLM] CONTENT IS NOT A STRING")
@@ -340,8 +361,10 @@ Make sure to return an instance of the JSON, not the schema itself
                     try:
                         if clean_res:
                             content = clean_res(content)
-                        content = extract_json(content)
-                        content = self.response_format.model_validate_json(content)
+                        extracted = extract_json(content)
+                        print(f"[LLM DEBUG ASYNC] After extract_json length: {len(extracted) if extracted else 'None'}")
+                        print(f"[LLM DEBUG ASYNC] After extract_json (first 500 chars): {repr(extracted[:500]) if extracted else 'EMPTY/NONE'}")
+                        content = self.response_format.model_validate_json(extracted)
                     except Exception as e:
                         print(f"Error validating response: {e}")
                         print(f"Response:\n -------------\n{content}\n -------------")
