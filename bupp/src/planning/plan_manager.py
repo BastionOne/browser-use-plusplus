@@ -89,16 +89,13 @@ class PlanManager:
 
     async def create_plan(self, ctx: PlanContext) -> str:
         """Create initial plan from DOM state.
-        
+
         Returns the updated task prompt.
         """
-        new_plan = await self.plan_group.create_plan().ainvoke(
+        new_plan = await self.plan_group.create_plan(
             model=self.llm_hub.get("create_plan"),
-            prompt_args={
-                "curr_page_contents": ctx.curr_dom_str,
-                "task_guidance": self.task_guidance,
-            },
-            prompt_logger=self.prompt_logger,
+            curr_page_contents=ctx.curr_dom_str,
+            task_guidance=self.task_guidance,
         )
         self.plan = new_plan
         self.logger.info(f"[PLAN_CREATED]\n{str(self.plan)}")
@@ -106,7 +103,7 @@ class PlanManager:
 
     async def check_completion(self, ctx: PlanContext) -> None:
         """Check which plan items are complete based on DOM diff.
-        
+
         Mutates plan in place, marking completed items.
         """
         if not self.plan:
@@ -117,16 +114,13 @@ class PlanManager:
             raise ValueError("curr_goal required for completion check")
 
         dom_diff = get_dom_diff_str(ctx.prev_dom_str, ctx.curr_dom_str)
-        
-        completed = await self.plan_group.check_plan_completion().ainvoke(
+
+        completed = await self.plan_group.check_plan_completion(
             model=self.llm_hub.get("check_plan_completion"),
-            prompt_args={
-                "plan": self.plan,
-                "curr_dom": ctx.curr_dom_str,
-                "dom_diff": dom_diff,
-                "curr_goal": ctx.curr_goal,
-            },
-            prompt_logger=self.prompt_logger,
+            plan=self.plan,
+            curr_dom=ctx.curr_dom_str,
+            dom_diff=dom_diff,
+            curr_goal=ctx.curr_goal,
         )
 
         for idx in completed.plan_indices:
@@ -140,18 +134,16 @@ class PlanManager:
 
     async def check_single_completion(self, curr_goal: str) -> None:
         """Check off a single plan item by goal matching.
-        
+
         Used during accidental page transitions where full DOM diff isn't available.
         """
         if not self.plan:
             raise ValueError("Plan is not initialized")
 
-        completed = await self.plan_group.check_single_plan_completion().ainvoke(
+        completed = await self.plan_group.check_single_plan_completion(
             model=self.llm_hub.get("check_single_plan_complete"),
-            prompt_args={
-                "plan": self.plan,
-                "curr_goal": curr_goal,
-            },
+            plan=self.plan,
+            curr_goal=curr_goal,
         )
 
         for idx in completed.plan_indices:
@@ -164,7 +156,7 @@ class PlanManager:
 
     async def update_plan(self, ctx: PlanContext) -> str:
         """Update plan based on DOM changes and agent history.
-        
+
         Returns the updated task prompt.
         """
         if not self.plan:
@@ -174,24 +166,22 @@ class PlanManager:
 
         dom_diff = get_dom_diff_str(ctx.prev_dom_str, ctx.curr_dom_str)
 
-        res = await self.plan_group.update_plan().ainvoke(
+        res = await self.plan_group.update_plan(
             model=self.llm_hub.get("update_plan"),
-            prompt_args={
-                "agent_history": ctx.agent_history_summary or "",
-                "curr_dom": ctx.curr_dom_str,
-                "dom_diff": dom_diff,
-                "plan": self.plan,
-                "task_guidance": self.task_guidance,
-            },
+            agent_history=ctx.agent_history_summary or "",
+            curr_dom=ctx.curr_dom_str,
+            dom_diff=dom_diff,
+            plan=self.plan,
+            task_guidance=self.task_guidance,
         )
 
         self.logger.info(f"[PLAN_UPDATE_RAW]: {res}")
-        
+
         if res.plan_items:
             for item in res.plan_items:
                 self.logger.info(f"[PLAN_UPDATE_ADD]: {item}")
         else:
-            self.logger.info(f"[PLAN_UPDATE]: No items to add")
+            self.logger.info("[PLAN_UPDATE]: No items to add")
 
         self.plan = res.apply(self.plan)
         return self.task_prompt

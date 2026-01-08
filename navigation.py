@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import json
-from typing import Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -12,8 +12,8 @@ from browser_use.dom.views import DOMSelectorMap, DOMInteractedElement
 from bupp.logger import get_or_init_log_factory
 from bupp.base import BrowserContextManager
 from bupp.src.agent import DiscoveryAgent
-from bupp.src.llm.llm_provider import LMP
 from bupp.src.llm.llm_models import LLMHub
+from llm_lib import extract_json, get_json_schema_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -66,15 +66,23 @@ class PersistedNavElementLM(BaseModel):
         
 class PersistentNavElementList(BaseModel):
     persistent_el_list: List[PersistedNavElementLM]
-    
+
     def __str__(self) -> str:
         result = f"PersistentNavElementList({len(self.persistent_el_list)} elements):\n"
         for i, element in enumerate(self.persistent_el_list):
             result += f"{i+1}. {element}\n"
         return result.rstrip()
 
-class FindPersistentNavElements(LMP):
-    prompt = """
+
+class UnifiedResponse(BaseModel):
+    response_indices: List[str]
+
+
+# ============================================================================
+# Prompt Templates
+# ============================================================================
+
+FIND_PERSISTENT_NAV_ELEMENTS_PROMPT = """
 Can you identify the elements here that are *persistent navigation* components. These are shared commonly shared across different pages on a website, and are comprised of navigational child elements:
 
 Here are some examples:
@@ -84,7 +92,7 @@ Masthead - The top header section containing branding and primary navigation
 Side Menu - Opened or collapsed
 
 Here is the DOM:
-{{dom_str}}
+{dom_str}
 
 <guidelines>
 <identifying_components>
@@ -131,14 +139,9 @@ INSTEAD SHOULD BE:
 * Note: when returning the response do not include comments in JSON string
 </guidelines>
 """
-    response_format = PersistentNavElementList
 
-class UnifiedResponse(BaseModel):
-    response_indices: List[str]
-
-class ConsolidateElements(LMP):
-    prompt = """
-The following request was asked of {{n}} LLMs:
+CONSOLIDATE_ELEMENTS_PROMPT = """
+The following request was asked of {n} LLMs:
 "Can you identify the elements here that are *persistent navigation* components. These are shared commonly shared across different pages on a website, and are comprised of navigational child elements:
 
 Here are some examples:
@@ -149,17 +152,57 @@ Side thet
 Side Menu - Opened or collapsed"`
 
 This is the original DOM:
-{{dom_str}}
+{dom_str}
 
 Their responses are as follows:
-{{llm_responses}}
+{llm_responses}
 
 <guidelines>
 Can you ponder these and choose a set of indices that provide a complete picture of *all* persistent navigation components in the above dom?
 - Dont repeat indices pointing to the same element
 - Dont include dubious/misidentified components
 """
-    response_format = UnifiedResponse
+
+
+# ============================================================================
+# Invoke Functions
+# ============================================================================
+
+async def find_persistent_nav_elements(
+    model: Any,
+    dom_str: str,
+    clean_res: Optional[Callable[[str], str]] = None,
+) -> PersistentNavElementList:
+    """Find persistent navigation elements in the DOM."""
+    prompt = FIND_PERSISTENT_NAV_ELEMENTS_PROMPT.format(dom_str=dom_str)
+    prompt += get_json_schema_prompt(PersistentNavElementList)
+
+    result = await model.ainvoke(prompt)
+    content = result.completion
+    if clean_res:
+        content = clean_res(content)
+    json_str = extract_json(content)
+    return PersistentNavElementList.model_validate_json(json_str)
+
+
+async def consolidate_elements(
+    model: Any,
+    n: int,
+    dom_str: str,
+    llm_responses: str,
+) -> UnifiedResponse:
+    """Consolidate responses from multiple LLMs."""
+    prompt = CONSOLIDATE_ELEMENTS_PROMPT.format(
+        n=n,
+        dom_str=dom_str,
+        llm_responses=llm_responses,
+    )
+    prompt += get_json_schema_prompt(UnifiedResponse)
+
+    result = await model.ainvoke(prompt)
+    content = result.completion
+    json_str = extract_json(content)
+    return UnifiedResponse.model_validate_json(json_str)
     
 
 URLS_TO_CONSIDER = 3
@@ -175,14 +218,11 @@ class NavigationAgent(DiscoveryAgent):
         self._doms: Dict[str, str] = {}
     
     async def run_find_persistent_nav_elements(self, llm_hub: LLMHub, dom_str: str) -> List[PersistedNavElementLM]:
-        """Single iteration of FindPersistentNavElements."""
-        from navigation import FindPersistentNavElements
-
-        res = await FindPersistentNavElements().ainvoke(
+        """Single iteration of find_persistent_nav_elements."""
+        res = await find_persistent_nav_elements(
             model=llm_hub.get("find_persisted_components"),
-            prompt_args={"dom_str": dom_str},
-            dry_run=False,
-            clean_res=lambda s: s.replace("**", "")
+            dom_str=dom_str,
+            clean_res=lambda s: s.replace("**", ""),
         )
         return res.persistent_el_list
 
@@ -191,10 +231,8 @@ class NavigationAgent(DiscoveryAgent):
         llm_hub: LLMHub,
         dom_str: str,
         num_iterations: int = 1,
-    ) -> List[PersistedNavElementLM]:
+    ) -> List[List[PersistedNavElementLM]]:
         """Run multiple iterations concurrently and consolidate results."""
-        from navigation import ConsolidateElements
-
         if num_iterations < 1:
             raise ValueError("num_iterations must be >= 1")
 
@@ -203,7 +241,9 @@ class NavigationAgent(DiscoveryAgent):
             for _ in range(num_iterations)
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        return results
+        # Filter out exceptions
+        valid_results = [r for r in results if not isinstance(r, BaseException)]
+        return valid_results
 
         # valid_results: List[List[PersistedNavElementLM]] = []
         # for res in results:

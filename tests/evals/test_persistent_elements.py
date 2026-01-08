@@ -1,6 +1,6 @@
 from navigation import (
-    FindPersistentNavElements, 
-    ConsolidateElements, 
+    find_persistent_nav_elements,
+    consolidate_elements,
     PersistedNavElementLM
 )
 
@@ -129,60 +129,48 @@ Activated
 if __name__ == "__main__":
     import asyncio
     from bupp.src.llm.llm_models import openai_41
-        
+
     async def run_find_persistent_nav_elements():
-        """Single iteration of FindPersistentNavElements"""
-        from navigation import FindPersistentNavElements
-        
-        res = await FindPersistentNavElements().ainvoke(
+        """Single iteration of find_persistent_nav_elements"""
+        res = await find_persistent_nav_elements(
             model=openai_41(),
-            prompt_args={
-                "dom_str": DOM_STR
-            },
-            dry_run=False,
-            clean_res=lambda s: s.replace("**","")
+            dom_str=DOM_STR,
+            clean_res=lambda s: s.replace("**", ""),
         )
         return res.persistent_el_list
-    
-    async def find_persisted_components(num_iterations=1) -> PersistedNavElementLM:
+
+    async def find_persisted_components(num_iterations=1) -> list:
         """Run multiple iterations concurrently and consolidate results"""
-        from navigation import ConsolidateElements
-        
         # Run multiple iterations concurrently
         tasks = [asyncio.create_task(run_find_persistent_nav_elements()) for _ in range(num_iterations)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Check if all results are equal
-            # if len(results) > 1 and all(res == results[0] for res in results):
-            #     print("All PersistentNavElement results are equal, skipping consolidation.")
-            #     return results[0]
-            
         # Create dictionary of ele_count: ele
         responses_dict = {}
-        
+
         # Prepare LLM responses string for consolidation
         delimiter = "========================================"
         llm_responses = []
         ele_count = 1
         for i, res in enumerate(results, start=1):
+            if isinstance(res, BaseException):
+                continue
             response_section = f"Response {i}:\n"
             for element in res:
                 responses_dict[ele_count] = element
                 response_section += f"{ele_count}. {element}\n"
                 ele_count += 1
             llm_responses.append(response_section)
-        
+
         llm_str = delimiter.join(llm_responses)
         print(llm_str)
 
         # Consolidate responses using LLM
-        consolidated_res = await ConsolidateElements().ainvoke(
+        consolidated_res = await consolidate_elements(
             model=openai_41(),
-            prompt_args={
-                "n": len(results),
-                "dom_str": DOM_STR,
-                "llm_responses": llm_str
-            },
+            n=len(results),
+            dom_str=DOM_STR,
+            llm_responses=llm_str,
         )
 
         # Extract and return the final list of PersistentNavElement
@@ -192,12 +180,12 @@ if __name__ == "__main__":
             index = int(index_str)
             if index in responses_dict:
                 final_elements.extend(responses_dict[index])
-        
+
         # Print the final consolidated results
         print("Final consolidated PersistentNavElement list:")
         for i, element in enumerate(final_elements, 1):
             print(f"{i}. {element}")
-        
+
         return final_elements
 
     # Run the multi-threaded version for 3 iterations
