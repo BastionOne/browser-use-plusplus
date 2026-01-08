@@ -22,9 +22,9 @@ pip install -e ../llm-lib/  # Install llm_lib dependency
 
 ```python
 from bupp.src.agent import DiscoveryAgent
-from bupp.src.llm.llm_models import LLMHub
+from llm_lib.registry import ModelRegistry
 
-llm_hub = LLMHub(
+llm_registry = ModelRegistry(
     function_map={
         "create_plan": "gpt-4o",
         "update_plan": "gpt-4o",
@@ -32,7 +32,7 @@ llm_hub = LLMHub(
     }
 )
 
-agent = DiscoveryAgent(llm_hub=llm_hub, task="Explore website")
+agent = DiscoveryAgent(llm_config=llm_config, task="Explore website")
 await agent.run()
 ```
 
@@ -59,8 +59,9 @@ bupp/
 ```python
 from bupp.src.planning.plan_manager import PlanManager
 from bupp.src.planning.prompts.spider import SPIDER_PLAN_GROUP
+from llm_lib.registry import ModelRegistry
 
-plan_manager = PlanManager(llm_hub=llm_hub, plan_group=SPIDER_PLAN_GROUP)
+plan_manager = PlanManager(llm_registry=llm_registry, plan_group=SPIDER_PLAN_GROUP)
 
 await plan_manager.create_plan(ctx)
 await plan_manager.check_completion(ctx)
@@ -73,7 +74,7 @@ await plan_manager.update_plan(ctx)
 from navigation import find_persistent_nav_elements
 
 result = await find_persistent_nav_elements(
-    model=llm_hub.get("find_persisted_components"),
+    model=llm_registry.get("find_persisted_components"),
     dom_str=dom_string
 )
 ```
@@ -86,15 +87,17 @@ from bupp.src.transition import URLQueue
 url_queue = URLQueue()
 url_queue.add("https://example.com/post/1")
 url_queue.add("https://example.com/post/2")
-await url_queue.prune(model=llm_hub.get("prune_urls"))
+await url_queue.prune(model=llm_registry.get("prune_urls"))
 ```
 
 ## LLM Configuration
 
-Uses `LLMHub` to configure models per function:
+Uses `ModelRegistry` from `llm-lib` to configure models per function:
 
 ```python
-llm_hub = LLMHub(
+from llm_lib.registry import ModelRegistry
+
+llm_registry = ModelRegistry(
     function_map={
         "create_plan": "claude-sonnet-4-20250514",
         "update_plan": "gpt-4o",
@@ -102,7 +105,7 @@ llm_hub = LLMHub(
         "find_persisted_components": "gpt-4o-mini",
         "prune_urls": "gpt-4o-mini",
     },
-    chat_logdir="./logs/chat"  # Optional logging
+    log_dir="./logs/chat"  # Optional logging
 )
 ```
 

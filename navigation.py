@@ -12,7 +12,7 @@ from browser_use.dom.views import DOMSelectorMap, DOMInteractedElement
 from bupp.logger import get_or_init_log_factory
 from bupp.base import BrowserContextManager
 from bupp.src.agent import DiscoveryAgent
-from bupp.src.llm.llm_models import LLMHub
+from llm_lib.registry import ModelRegistry
 from llm_lib import extract_json, get_json_schema_prompt
 
 logger = logging.getLogger(__name__)
@@ -217,10 +217,10 @@ class NavigationAgent(DiscoveryAgent):
         )
         self._doms: Dict[str, str] = {}
     
-    async def run_find_persistent_nav_elements(self, llm_hub: LLMHub, dom_str: str) -> List[PersistedNavElementLM]:
+    async def run_find_persistent_nav_elements(self, llm_registry: ModelRegistry, dom_str: str) -> List[PersistedNavElementLM]:
         """Single iteration of find_persistent_nav_elements."""
         res = await find_persistent_nav_elements(
-            model=llm_hub.get("find_persisted_components"),
+            model=llm_registry.get("find_persisted_components"),
             dom_str=dom_str,
             clean_res=lambda s: s.replace("**", ""),
         )
@@ -228,7 +228,7 @@ class NavigationAgent(DiscoveryAgent):
 
     async def find_persisted_components(
         self,
-        llm_hub: LLMHub,
+        llm_registry: ModelRegistry,
         dom_str: str,
         num_iterations: int = 1,
     ) -> List[List[PersistedNavElementLM]]:
@@ -237,7 +237,7 @@ class NavigationAgent(DiscoveryAgent):
             raise ValueError("num_iterations must be >= 1")
 
         tasks = [
-            asyncio.create_task(self.run_find_persistent_nav_elements(llm_hub=llm_hub, dom_str=dom_str))
+            asyncio.create_task(self.run_find_persistent_nav_elements(llm_registry=llm_registry, dom_str=dom_str))
             for _ in range(num_iterations)
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -275,7 +275,7 @@ class NavigationAgent(DiscoveryAgent):
         # llm_str = f"\n{delimiter}\n".join(llm_responses)
 
         # consolidated_res = await ConsolidateElements().ainvoke(
-        #     model=llm_hub.get("aggregate_persisted_components"),
+        #     model=llm_registry.get("aggregate_persisted_components"),
         #     prompt_args={
         #         "n": len(valid_results),
         #         "dom_str": dom_str,
@@ -313,7 +313,7 @@ class NavigationAgent(DiscoveryAgent):
         self,
         dom: str,
         selector_map: Optional[DOMSelectorMap],
-        llm_hub: LLMHub,
+        llm_registry: ModelRegistry,
         num_iterations: int = 1,
     ) -> List[PersistedNavElement]:
         """Detect persisted navigation elements and map them back to DOMInteractedElement objects."""
@@ -327,7 +327,7 @@ class NavigationAgent(DiscoveryAgent):
 
         try:
             lm_elements = await self.find_persisted_components(
-                llm_hub=llm_hub,
+                llm_registry=llm_registry,
                 dom_str=dom,
                 num_iterations=num_iterations,
             )
@@ -397,7 +397,7 @@ class NavigationAgent(DiscoveryAgent):
             )
             dom_str = await self._get_llm_representation(browser_state)
             selector_map = browser_state.dom_state.selector_map if browser_state and browser_state.dom_state else None
-            persisted_nodes = await self.find_persisted_nav_elements(dom_str, selector_map, self.llm_hub)
+            persisted_nodes = await self.find_persisted_nav_elements(dom_str, selector_map, self.llm_registry)
 
             with open("persisted.json", "w") as f:
                 persisted_json = [p.model_dump() for p in persisted_nodes]
