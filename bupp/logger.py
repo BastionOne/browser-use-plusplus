@@ -363,9 +363,9 @@ class _ServerLogFactory:
         _parent_logdir = timestamp_dir / str(incr_id)
         _parent_logdir.mkdir(parents=True, exist_ok=True)
         
-        # Ensure subfolders exist
-        (_parent_logdir / "discovery_agents").mkdir(exist_ok=True)
-        (_parent_logdir / "exploit_agents").mkdir(exist_ok=True)
+        # Create unified output directories (logs go alongside agent output)
+        (_parent_logdir / "discovery").mkdir(exist_ok=True)
+        (_parent_logdir / "exploit").mkdir(exist_ok=True)
         
         # Cache the directory
         self._parent_logdir = _parent_logdir
@@ -479,7 +479,7 @@ class _ServerLogFactory:
         effective_no_console = no_console if no_console is not None else self._no_console
 
         e_dir = self._get_parent_logdir()
-        discovery_dir = e_dir / "discovery_agents"
+        discovery_dir = e_dir / "discovery"
 
         name = self._next_numeric_name(discovery_dir)
 
@@ -494,7 +494,7 @@ class _ServerLogFactory:
             streaming=streaming,
         )
         return logging.getLogger(name), logging.getLogger(FULL_REQUESTS_LOGGER_NAME)
-    
+
     def get_exploit_agent_loggers(
         self,
         *,
@@ -509,7 +509,7 @@ class _ServerLogFactory:
         effective_no_console = no_console if no_console is not None else self._no_console
 
         e_dir = self._get_parent_logdir()
-        exploit_dir = e_dir / "exploit_agents"
+        exploit_dir = e_dir / "exploit"
 
         name = self._next_numeric_name(exploit_dir)
 

@@ -35,3 +35,9 @@ include = ["bupp", "bupp.*"]
 
 [tool.setuptools.package-data]
 bupp = ["model_api_prices.json", "src/custom_prompt.md"]
+
+[tool.uv.sources]
+# For local development: these paths work when bupp is part of the parent choopy repo
+# When bupp is installed as a package elsewhere, these are ignored and PyPI versions are used
+browser-use = { path = "../browser-use", editable = true }
+llm-lib = { path = "../llm-lib", editable = true }
