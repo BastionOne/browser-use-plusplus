@@ -1,8 +1,8 @@
-from dataclasses import dataclass
-from typing import List, Optional, Tuple, Literal, Type, Any
-from pydantic import BaseModel, Field
+"""Plan group configuration and PlanItem data structure."""
 
-from llm_lib.llm_provider import LMP
+from dataclasses import dataclass
+from typing import List, Optional, Tuple, Literal, Callable, Any, Awaitable
+from pydantic import BaseModel, Field
 
 
 TASK_PROMPT_WITH_PLAN = """
@@ -29,6 +29,7 @@ If a plan includes nested plan-items, then execute all of these before moving on
 
 {plan}
 """
+
 
 class PlanItem(BaseModel):
     description: str
@@ -82,49 +83,49 @@ class PlanItem(BaseModel):
             raise ValueError(f"Parent path does not exist: {parent_path!r}")
 
         return parent._add_child(description=description, completed=completed)
-    
+
     def __eq__(self, other) -> bool:
         """Compare PlanItems based on their description."""
         if not isinstance(other, PlanItem):
             return False
         return self.description == other.description
-    
+
     def __hash__(self) -> int:
         """Make PlanItem hashable based on description."""
         return hash(self.description)
-    
+
     def diff(self, b: "PlanItem") -> List[Tuple["PlanItem", Literal["+", "-"]]]:
         """
         Find the deleted/added items from b relative to self.
         Returns a list of tuples with PlanItems and their change type ('+' for added, '-' for deleted).
         Only returns top-level changed nodes, not their children.
         """
+
         def _collect_all_items(node: "PlanItem") -> List["PlanItem"]:
             """Recursively collect all items in the tree."""
             items = [node]
             for child in node.children:
                 items.extend(_collect_all_items(child))
             return items
-            
-        
+
         # Get all items from both trees
         self_items = _collect_all_items(self)
         b_items = _collect_all_items(b)
-        
+
         diff_items: List[Tuple["PlanItem", Literal["+", "-"]]] = []
         added_items = set()
         deleted_items = set()
-        
+
         # Find items in b but not in self (added items)
         for b_item in b_items:
             if b_item not in self_items:
                 added_items.add(b_item)
-        
+
         # Find items in self but not in b (deleted items)
         for self_item in self_items:
             if self_item not in b_items:
                 deleted_items.add(self_item)
-        
+
         # Filter out children of already added/deleted items
         def is_descendant_of_changed_item(item: "PlanItem", changed_items: set) -> bool:
             """Check if item is a descendant of any item in changed_items."""
@@ -138,23 +139,23 @@ class PlanItem(BaseModel):
                             if is_in_subtree(child, target):
                                 return True
                         return False
-                    
+
                     if is_in_subtree(changed_item, item):
                         return True
             return False
-        
+
         # Add top-level added items
         for item in added_items:
             if not is_descendant_of_changed_item(item, added_items):
                 diff_items.append((item, "+"))
-        
+
         # Add top-level deleted items
         for item in deleted_items:
             if not is_descendant_of_changed_item(item, deleted_items):
                 diff_items.append((item, "-"))
-        
+
         return diff_items
-    
+
     # -------------------- pretty print ----------------------- #
     def _collect_lines(self, prefix: List[int], out: List[str], level: int = 0) -> None:
         indent = "  " * level
@@ -170,15 +171,23 @@ class PlanItem(BaseModel):
 
     def to_json(self) -> dict:
         return self.model_dump()
-    
+
     class Config:
         arbitrary_types_allowed = True
 
 
+# Type alias for plan operation functions
+PlanCreateFunc = Callable[..., Awaitable[PlanItem]]
+PlanUpdateFunc = Callable[..., Awaitable[Any]]  # Returns AddPlanItemList
+PlanCheckFunc = Callable[..., Awaitable[Any]]  # Returns CompletedNestedPlanItem
+
+
 @dataclass
 class PlanGroup:
-    create_plan: Type[LMP[Any]]
-    update_plan: Type[LMP[Any]]
-    check_plan_completion: Type[LMP[Any]]
-    check_single_plan_completion: Type[LMP[Any]]
+    """Configuration for a set of planning operations."""
+
+    create_plan: PlanCreateFunc
+    update_plan: PlanUpdateFunc
+    check_plan_completion: PlanCheckFunc
+    check_single_plan_completion: PlanCheckFunc
     task_prompt: str

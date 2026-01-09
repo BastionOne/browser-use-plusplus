@@ -1,13 +1,14 @@
-from dataclasses import dataclass, field
 from typing import Dict, Any, List
 from pathlib import Path
 import json
 
-@dataclass
-class UserRole:
+from pydantic import BaseModel, Field
+
+
+class UserRole(BaseModel):
     """Wraps cookies with a role identifier for multi-user session support."""
     role: str
-    cookies: List[Dict[str, Any]] = field(default_factory=list)
+    cookies: List[Dict[str, Any]] = Field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize UserRole to a dictionary."""

@@ -5,17 +5,12 @@ from __future__ import annotations
 import re
 from typing import Any, List, Dict
 from pydantic import BaseModel
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import jsbeautifier
-from pydantic import BaseModel
-
-# browser-use imports
-from browser_use.tools.registry.views import ActionModel
-from browser_use.tools.views import NavigateAction
 
 # project imports
-from llm_lib.llm_provider import LMP
+from llm_lib import extract_json, get_json_schema_prompt
 
 def get_base_url(url: str) -> str:
     """
@@ -204,30 +199,40 @@ class PruneURLList(BaseModel):
     urls_to_purge_indices: List[int]
 
 
-class PruneURLs(LMP):
-    prompt = """
-Here are a list of URLs in the queue of web-spider. 
+PRUNE_URLS_PROMPT = """
+Here are a list of URLs in the queue of web-spider.
 Your goal here is to prune the list of URLs according to the following criteria:
 - the URL matches a format that has already been visited
 ie. /blog/content/123, /blog/content/124, /blog/content/125
 
 Here is the list of visited URLs:
-{{visited_urls}}
+{visited_urls}
 
 Here are the URLs currently in the queue
-{{urls_in_queue}}
+{urls_in_queue}
 
 Now return your response as a list of indices of the URLs to purge from the queue
 """
-    response_format = PruneURLList
 
-    def _verify_or_raise(self, res: PruneURLList, **prompt_args):
-        """Validate that each pruned index exists in the URLs queue."""
-        urls_in_queue = prompt_args.get('urls_in_queue', [])
-        for index in res.urls_to_purge_indices:
-            if index < 0 or index >= len(urls_in_queue):
-                raise ValueError(f"Invalid index: {index}. Index must be between 0 and {len(urls_in_queue) - 1}")
-        return True
+
+async def prune_urls(model: Any, visited_urls: str, urls_in_queue_str: str, urls_in_queue_count: int) -> PruneURLList:
+    """Prune URLs from queue based on visited patterns."""
+    prompt = PRUNE_URLS_PROMPT.format(
+        visited_urls=visited_urls,
+        urls_in_queue=urls_in_queue_str,
+    )
+    prompt += get_json_schema_prompt(PruneURLList)
+
+    result = await model.ainvoke(prompt)
+    content = result.completion
+    json_str = extract_json(content)
+    res = PruneURLList.model_validate_json(json_str)
+
+    # Validate indices
+    for index in res.urls_to_purge_indices:
+        if index < 0 or index >= urls_in_queue_count:
+            raise ValueError(f"Invalid index: {index}. Index must be between 0 and {urls_in_queue_count - 1}")
+    return res
 
 def delete_indices(indices: List[int], dict_obj: Dict[Any, Any]) -> Dict[Any, Any]:
     """
@@ -256,18 +261,18 @@ class URLQueue:
             for item in iterable:
                 self.add(item)
 
-    async def prune(self, model: BaseChatModel):
-        visited_urls = "\n".join(self._visited)
-        urls_in_queue = "\n".join([f"{index}. {url}" for index, url in enumerate[Any](self._curr_urls.keys())])
-        res = await PruneURLs().ainvoke(
+    async def prune(self, model: Any):
+        visited_urls_str = "\n".join(self._visited)
+        urls_list = list(self._curr_urls.keys())
+        urls_in_queue_str = "\n".join([f"{index}. {url}" for index, url in enumerate(urls_list)])
+        res = await prune_urls(
             model=model,
-            prompt_args={
-                "visited_urls": visited_urls,
-                "urls_in_queue": urls_in_queue,
-            },
+            visited_urls=visited_urls_str,
+            urls_in_queue_str=urls_in_queue_str,
+            urls_in_queue_count=len(urls_list),
         )
         for index in res.urls_to_purge_indices:
-            print(f"Purging URL: {self._curr_urls.keys()[index]}")
+            print(f"Purging URL: {urls_list[index]}")
 
         self._curr_urls = delete_indices(res.urls_to_purge_indices, self._curr_urls)
 

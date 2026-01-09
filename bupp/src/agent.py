@@ -25,10 +25,8 @@ from bupp.src.planning.prompts import (
     TASK_PROMPT_WITH_PLAN as TASK_PROMPT_WITH_PLAN
 )
 from bupp.src.planning.plan_manager import PlanManager, PlanContext
-from llm_lib.registry import ModelRegistry
-from src.agent.cost_tracking import ActionCost, AgentCostSummary
-# Legacy imports for browser-use LLM compatibility (still uses LangChain wrappers)
 from bupp.src.llm.llm_models import ChatModelWithLogging, AnthropicOAuthChatModel
+from llm_lib.registry import ModelRegistry
 from bupp.src.sitemap import SiteMap
 from bupp.src.proxy.cdpproxy import CDPHTTPProxy
 from bupp.src.state import (
@@ -150,9 +148,9 @@ class DiscoveryAgent(BrowserUseAgent):
             llm_logdir = agent_dir / "llm"
             if not llm_logdir.exists():
                 llm_logdir.mkdir(parents=True, exist_ok=True)
-            self.model_registry = ModelRegistry(llm_config, log_dir=llm_logdir)
+            self.llm_registry = ModelRegistry(llm_config, log_dir=llm_logdir)
         else:
-            self.model_registry = ModelRegistry(llm_config)
+            self.llm_registry = ModelRegistry(llm_config)
 
         self.take_screenshot = take_screenshots
         self.llm_config = llm_config
@@ -194,7 +192,7 @@ class DiscoveryAgent(BrowserUseAgent):
 
         # planning state - now managed by PlanManager
         self.plan_manager = PlanManager(
-            model_registry=self.model_registry,
+            llm_registry=self.llm_registry,
             plan_group=SPIDER_PLAN_GROUP,
             task_guidance=task_guidance,
             logger=self.agent_log,
@@ -620,8 +618,8 @@ class DiscoveryAgent(BrowserUseAgent):
             self.history.history[-1].model_output.next_goal = PAGE_TRANSITION_NEXT_GOAL
             self.history.history[-1].model_output.evaluation_previous_goal = PAGE_TRANSITION_EVALUATION
 
-            # prune the list of URLs collected from this apge                    
-            self.url_queue.prune(model=self.model_registry.get("prune_urls"))
+            # prune the list of URLs collected from this apge
+            self.url_queue.prune(model=self.llm_registry.get("prune_urls"))
             if len(self.url_queue) < 1:
                 self.logger.info(f"No URLs left in queue, exiting")
                 return

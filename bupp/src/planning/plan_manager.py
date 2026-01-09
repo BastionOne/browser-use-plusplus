@@ -46,13 +46,13 @@ class PlanManager:
 
     def __init__(
         self,
-        model_registry: ModelRegistry,
+        llm_registry: ModelRegistry,
         plan_group: PlanGroup,
         task_guidance: str = "",
         logger: Optional[logging.Logger] = None,
         prompt_logger: Optional[logging.Logger] = None,
     ):
-        self.model_registry = model_registry
+        self.llm_registry = llm_registry
         self.plan_group = plan_group
         self.task_guidance = task_guidance
         self.logger = logger or logging.getLogger(__name__)
@@ -119,14 +119,10 @@ class PlanManager:
 
         Returns the updated task prompt.
         """
-        create_plan_lmp = self.plan_group.create_plan()
-        new_plan = await create_plan_lmp.ainvoke(
-            model=self.model_registry.get("create_plan"),
-            prompt_args={
-                "curr_page_contents": ctx.curr_dom_str,
-                "task_guidance": self.task_guidance,
-            },
-            prompt_logger=self.prompt_logger,
+        new_plan = await self.plan_group.create_plan(
+            model=self.llm_registry.get("create_plan"),
+            curr_page_contents=ctx.curr_dom_str,
+            task_guidance=self.task_guidance,
         )
         self._track_action_cost("create_plan", create_plan_lmp)
         self.plan = new_plan
@@ -147,16 +143,12 @@ class PlanManager:
 
         dom_diff = get_dom_diff_str(ctx.prev_dom_str, ctx.curr_dom_str)
 
-        check_completion_lmp = self.plan_group.check_plan_completion()
-        completed = await check_completion_lmp.ainvoke(
-            model=self.model_registry.get("check_plan_completion"),
-            prompt_args={
-                "plan": self.plan,
-                "curr_dom": ctx.curr_dom_str,
-                "dom_diff": dom_diff,
-                "curr_goal": ctx.curr_goal,
-            },
-            prompt_logger=self.prompt_logger,
+        completed = await self.plan_group.check_plan_completion(
+            model=self.llm_registry.get("check_plan_completion"),
+            plan=self.plan,
+            curr_dom=ctx.curr_dom_str,
+            dom_diff=dom_diff,
+            curr_goal=ctx.curr_goal,
         )
         self._track_action_cost("check_plan_completion", check_completion_lmp)
 
@@ -177,13 +169,10 @@ class PlanManager:
         if not self.plan:
             raise ValueError("Plan is not initialized")
 
-        check_single_lmp = self.plan_group.check_single_plan_completion()
-        completed = await check_single_lmp.ainvoke(
-            model=self.model_registry.get("check_single_plan_complete"),
-            prompt_args={
-                "plan": self.plan,
-                "curr_goal": curr_goal,
-            },
+        completed = await self.plan_group.check_single_plan_completion(
+            model=self.llm_registry.get("check_single_plan_complete"),
+            plan=self.plan,
+            curr_goal=curr_goal,
         )
         self._track_action_cost("check_single_plan_complete", check_single_lmp)
 
@@ -207,26 +196,23 @@ class PlanManager:
 
         dom_diff = get_dom_diff_str(ctx.prev_dom_str, ctx.curr_dom_str)
 
-        update_plan_lmp = self.plan_group.update_plan()
-        res = await update_plan_lmp.ainvoke(
-            model=self.model_registry.get("update_plan"),
-            prompt_args={
-                "agent_history": ctx.agent_history_summary or "",
-                "curr_dom": ctx.curr_dom_str,
-                "dom_diff": dom_diff,
-                "plan": self.plan,
-                "task_guidance": self.task_guidance,
-            },
+        res = await self.plan_group.update_plan(
+            model=self.llm_registry.get("update_plan"),
+            agent_history=ctx.agent_history_summary or "",
+            curr_dom=ctx.curr_dom_str,
+            dom_diff=dom_diff,
+            plan=self.plan,
+            task_guidance=self.task_guidance,
         )
         self._track_action_cost("update_plan", update_plan_lmp)
 
         self.logger.info(f"[PLAN_UPDATE_RAW]: {res}")
-        
+
         if res.plan_items:
             for item in res.plan_items:
                 self.logger.info(f"[PLAN_UPDATE_ADD]: {item}")
         else:
-            self.logger.info(f"[PLAN_UPDATE]: No items to add")
+            self.logger.info("[PLAN_UPDATE]: No items to add")
 
         self.plan = res.apply(self.plan)
         return self.task_prompt
