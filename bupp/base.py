@@ -384,7 +384,7 @@ async def start_discovery_agent(
     effective_scopes = scopes if scopes is not None else start_urls
 
     # Use default LLM config if not provided
-    effective_llm_config = llm_config or DISCOVERY_MODEL_CONFIG_MINI["model_config"]
+    effective_llm_config = llm_config or DISCOVERY_MODEL_CONFIG_MINI
 
     server_log_factory = get_or_init_log_factory(
         base_dir=AGENT_RESULTS_FOLDER,

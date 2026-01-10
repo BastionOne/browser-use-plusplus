@@ -47,9 +47,9 @@ RESULTS_DIR = EVALS_DIR / "results"
 
 # Available LLM configurations (map name -> model_config dict)
 LLM_CONFIGS: Dict[str, Dict[str, str]] = {
-    "default": DISCOVERY_MODEL_CONFIG["model_config"],
-    "mini": DISCOVERY_MODEL_CONFIG_MINI["model_config"],
-    "claude": MODEL_CONFIG_ANTHROPIC["model_config"],
+    "default": DISCOVERY_MODEL_CONFIG,
+    "mini": DISCOVERY_MODEL_CONFIG_MINI,
+    "claude": MODEL_CONFIG_ANTHROPIC,
 }
 
 # -----------------------------------------------------------------------------

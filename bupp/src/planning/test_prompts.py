@@ -20,7 +20,7 @@ def get_lmp(path: Path) -> bool:
     return func
 
 def sync_llm_hub(function: str, num: int = 1):
-    llm_registry = ModelRegistry(DISCOVERY_MODEL_CONFIG["model_config"])
+    llm_registry = ModelRegistry(DISCOVERY_MODEL_CONFIG)
     model = llm_registry.get(function)
 
     prompt = open(PROMPT_PATH, "r").read()

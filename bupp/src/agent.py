@@ -25,8 +25,6 @@ from bupp.src.planning.prompts import (
     TASK_PROMPT_WITH_PLAN as TASK_PROMPT_WITH_PLAN
 )
 from bupp.src.planning.plan_manager import PlanManager, PlanContext
-from bupp.src.llm.llm_models import ChatModelWithLogging, AnthropicOAuthChatModel
-from llm_lib.registry import ModelRegistry
 from bupp.src.sitemap import SiteMap
 from bupp.src.proxy.cdpproxy import CDPHTTPProxy
 from bupp.src.state import (
@@ -46,6 +44,9 @@ from bupp.src.transition import (
 )
 from bupp.src.tools import ToolsWithHistory
 from bupp.src.browser_use.run import bu_run
+
+from llm_lib.registry import ModelRegistry
+from llm_lib.adapters.browser_use import BrowserUseAdapter
 
 from browser_use.llm.messages import SystemMessage
 from browser_use.agent.service import Agent as BrowserUseAgent
@@ -69,6 +70,7 @@ from bupp.src.utils import (
     extract_json,
     num_tokens_from_string,
 )
+from src.agent.cost_tracking import AgentCostSummary
 import logging
 
 class PageStatus(str, Enum):
@@ -113,16 +115,14 @@ class DiscoveryAgent(BrowserUseAgent):
         tools = ToolsWithHistory(agent=self)
         override_system_message = importlib.resources.files("bupp.src").joinpath("custom_prompt.md").read_text(encoding="utf-8")
 
-        # Select LLM based on model name - use Anthropic OAuth for Claude models
-        browser_use_model = llm_config["browser_use"]
-        if "claude" in browser_use_model.lower():
-            browser_use_llm = AnthropicOAuthChatModel(model_name=browser_use_model)
-            browser_use_llm._chat_logdir = agent_dir / "llm" / "browser_use" if agent_dir else None
-        else:
-            browser_use_llm = ChatModelWithLogging(
-                model=browser_use_model,
-                chat_logdir=agent_dir / "llm" / "browser_use"
-            )
+        # Create ModelRegistry early for browser_use LLM
+        llm_logdir = agent_dir / "llm" if agent_dir else None
+        if llm_logdir and not llm_logdir.exists():
+            llm_logdir.mkdir(parents=True, exist_ok=True)
+
+        self.llm_registry = ModelRegistry(llm_config, log_dir=llm_logdir) if llm_logdir else ModelRegistry(llm_config)
+        model_client = self.llm_registry.get("browser_use")
+        browser_use_llm = BrowserUseAdapter(model_client)
 
         # Call parent Agent constructor
         super().__init__(
@@ -143,14 +143,6 @@ class DiscoveryAgent(BrowserUseAgent):
             use_judge=False,
             injected_agent_state=injected_agent_state,
         )
-        # LLM prompt logging
-        if agent_dir:
-            llm_logdir = agent_dir / "llm"
-            if not llm_logdir.exists():
-                llm_logdir.mkdir(parents=True, exist_ok=True)
-            self.llm_registry = ModelRegistry(llm_config, log_dir=llm_logdir)
-        else:
-            self.llm_registry = ModelRegistry(llm_config)
 
         self.take_screenshot = take_screenshots
         self.llm_config = llm_config

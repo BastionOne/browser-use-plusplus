@@ -7,7 +7,7 @@ from bupp.base import (
     start_discovery_agent_from_session,
 )
 
-AGENT_MODEL_CONFIG = DISCOVERY_MODEL_CONFIG["model_config"].copy()
+AGENT_MODEL_CONFIG = DISCOVERY_MODEL_CONFIG.copy()
 SNAPSHOT_PATH = (
     SNAPSHOTS_FOLDER / "aikido_settings_button.json",
     3

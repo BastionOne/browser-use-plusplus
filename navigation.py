@@ -433,7 +433,7 @@ if __name__ == "__main__":
                 agent = NavigationAgent(
                     browser=browser_session,
                     start_urls=start_urls,
-                    llm_config=DISCOVERY_MODEL_CONFIG["model_config"],
+                    llm_config=DISCOVERY_MODEL_CONFIG,
                     max_steps=AGENT_STEPS,
                     max_pages=1,
                     proxy_handler=proxy_handler,

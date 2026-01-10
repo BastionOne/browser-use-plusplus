@@ -124,7 +124,8 @@ class PlanManager:
             curr_page_contents=ctx.curr_dom_str,
             task_guidance=self.task_guidance,
         )
-        self._track_action_cost("create_plan", create_plan_lmp)
+        # TODO: Re-enable cost tracking once ModelClient exposes usage info
+        # self._track_action_cost("create_plan", create_plan_lmp)
         self.plan = new_plan
         self.logger.info(f"[PLAN_CREATED]\n{str(self.plan)}")
         return self.task_prompt
@@ -150,7 +151,8 @@ class PlanManager:
             dom_diff=dom_diff,
             curr_goal=ctx.curr_goal,
         )
-        self._track_action_cost("check_plan_completion", check_completion_lmp)
+        # TODO: Re-enable cost tracking once ModelClient exposes usage info
+        # self._track_action_cost("check_plan_completion", check_completion_lmp)
 
         for idx in completed.plan_indices:
             node = self.plan.get(idx)
@@ -174,7 +176,8 @@ class PlanManager:
             plan=self.plan,
             curr_goal=curr_goal,
         )
-        self._track_action_cost("check_single_plan_complete", check_single_lmp)
+        # TODO: Re-enable cost tracking once ModelClient exposes usage info
+        # self._track_action_cost("check_single_plan_complete", check_single_lmp)
 
         for idx in completed.plan_indices:
             node = self.plan.get(idx)
@@ -204,7 +207,8 @@ class PlanManager:
             plan=self.plan,
             task_guidance=self.task_guidance,
         )
-        self._track_action_cost("update_plan", update_plan_lmp)
+        # TODO: Re-enable cost tracking once ModelClient exposes usage info
+        # self._track_action_cost("update_plan", update_plan_lmp)
 
         self.logger.info(f"[PLAN_UPDATE_RAW]: {res}")
 
