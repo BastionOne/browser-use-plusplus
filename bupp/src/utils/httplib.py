@@ -313,6 +313,16 @@ class HTTPRequest(BaseModel):
 
     @classmethod
     def from_json(cls, data: Dict[str, Any]) -> "HTTPRequest":
+        # Handle post_data parsing if it's a string
+        if "data" in data and "post_data" in data["data"]:
+            post_data = data["data"]["post_data"]
+            if isinstance(post_data, str) and post_data:
+                # Try to parse as JSON
+                try:
+                    data["data"]["post_data"] = json.loads(post_data)
+                except (json.JSONDecodeError, ValueError):
+                    # If parsing fails, leave as None (model expects Dict or None)
+                    data["data"]["post_data"] = None
         return cls(**data)
 
     @classmethod
@@ -434,6 +444,22 @@ class HTTPResponse(BaseModel):
 
     @classmethod
     def from_json(cls, data: Dict[str, Any]) -> "HTTPResponse":
+        # Handle body parsing if it's a string
+        if "data" in data and "body" in data["data"]:
+            body = data["data"]["body"]
+            if isinstance(body, str):
+                # Convert string representation back to bytes
+                # The string is typically "b'...'" format from str(bytes)
+                if body.startswith("b'") or body.startswith('b"'):
+                    # Parse Python bytes literal
+                    try:
+                        data["data"]["body"] = eval(body)
+                    except:
+                        # If eval fails, encode as UTF-8
+                        data["data"]["body"] = body.encode('utf-8')
+                else:
+                    # Plain string, encode as UTF-8
+                    data["data"]["body"] = body.encode('utf-8')
         return cls(**data)
 
     @classmethod

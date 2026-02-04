@@ -1,0 +1,42 @@
+{
+  "crawl_info": {
+    "start_url": "https://www.upwork.com",
+    "include_domains": [
+      "www.upwork.com"
+    ],
+    "max_pages": 50,
+    "role": null,
+    "crawl_started_at": "2026-01-11T00:18:18.292742+00:00",
+    "total_pages_scraped": 1,
+    "total_urls_visited": 1,
+    "urls_in_curr_queue": 0,
+    "urls_under_consideration": 0,
+    "regex_pruning_enabled": true,
+    "prune_interval": 10
+  },
+  "pages": [
+    {
+      "url": "https://www.upwork.com",
+      "normalized_url": "https://www.upwork.com",
+      "final_url": "https://www.upwork.com/",
+      "html_filename": "www.upwork.com_index_6b9a2e73.html",
+      "dom_filename": "www.upwork.com_index_6b9a2e73.dom.txt",
+      "scraped_at": "2026-01-11T00:18:18.205402+00:00",
+      "html_size_bytes": 11953,
+      "dom_size_chars": 387,
+      "links_found": 0,
+      "extracted_urls": []
+    }
+  ],
+  "queue_state": {
+    "visited_urls": [
+      "https://www.upwork.com"
+    ],
+    "curr_urls": [],
+    "urls_under_consideration": []
+  },
+  "all_visited_urls": [
+    "https://www.upwork.com"
+  ],
+  "remaining_queue": []
+}

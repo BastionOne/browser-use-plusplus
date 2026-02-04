@@ -199,11 +199,30 @@ class PruneURLList(BaseModel):
     urls_to_purge_indices: List[int]
 
 
+class PruneRegexList(BaseModel):
+    regexes: List[str]
+
+class PruneURLListWithRegexes(BaseModel):
+    urls_to_purge_indices: List[int]
+    generated_regexes: List[str]
+
 PRUNE_URLS_PROMPT = """
 Here are a list of URLs in the queue of web-spider.
+Our goal is to identify uniques page types rather than unique page content
+
 Your goal here is to prune the list of URLs according to the following criteria:
-- the URL matches a format that has already been visited
-ie. /blog/content/123, /blog/content/124, /blog/content/125
+- The URL represents a page that is likely to be an instance of a type of page already visited
+Here are some examples:
+[Example 1]
+Visited: /blog/content/123
+Queue: /blog/content/122, /blog/content/124, /blog/content/125
+Prune: Yes to all, since these are all blogs
+ 
+[Example 2]
+Visited: /blog/about
+Queue: /blog/home, /blog/profile, /blog/login
+Prune: No, since these represent new page templates that have not yet been seen
+- The URL points to a static asset rather than a webpage
 
 Here is the list of visited URLs:
 {visited_urls}
@@ -213,7 +232,6 @@ Here are the URLs currently in the queue
 
 Now return your response as a list of indices of the URLs to purge from the queue
 """
-
 
 async def prune_urls(model: Any, visited_urls: str, urls_in_queue_str: str, urls_in_queue_count: int) -> PruneURLList:
     """Prune URLs from queue based on visited patterns."""
@@ -234,6 +252,83 @@ async def prune_urls(model: Any, visited_urls: str, urls_in_queue_str: str, urls
             raise ValueError(f"Invalid index: {index}. Index must be between 0 and {urls_in_queue_count - 1}")
     return res
 
+PRUNE_URLS_PROMPT_ACTIONS = """
+Here are a list of URLs in the queue of web-spider.
+Our goal is to identify unique page types rather than unique page content
+You will be given a list of visited URLs and the current queue
+You will then output a list of actions to take on the queue
+
+You have two types of actions:
+1. PruneURLRegexAction: This action specifies a regex of URLs to prune/discard 
+2. PruneURLRegexSaveOneAction: This action is a composite action that will also specify a regex of URLs to prune, but it also specifies a certain URL by index to visit for the future
+
+The reason for the second action is in the case where we see a repeated URL format that we have yet to visit yet. Therefore, we save one representative sample and then prune the rest
+
+Here is the criteria for pruning the URLs:
+- The URL represents a page that is likely to be an instance of a type of page already visited
+Here are some examples:
+[Example 1]
+Visited: /blog/content/123
+Queue: /blog/content/122, /blog/content/124, /blog/content/125
+Prune: Yes to all, since these are all blogs
+ 
+[Example 2]
+Visited: /blog/about
+Queue: /blog/home, /blog/profile, /blog/login
+Prune: No, since these represent new page templates that have not yet been seen
+- The URL points to a static asset rather than a webpage
+
+[Example 3]
+Visited: /blog/about
+Queue: /blog/content/123, /blog/content/124, /blog/content/125
+Prune: /blog/content/124, /blog/content/125
+Save: /blog/content/123
+- Save one from queue to visit for the future and prune the rest
+
+Here is the list of visited URLs:
+{visited_urls}
+
+Here are the URLs currently in the queue
+{urls_in_queue}
+
+Existing regexes:
+{existing_regexes}
+
+Generate a list actions to be taken on the queue
+"""
+
+class PruneURLRegexAction(BaseModel):
+    regex: str
+
+class PruneURLRegexSaveOneAction(BaseModel):
+    regex: str
+    url_index: int 
+
+class PruneAction(BaseModel):
+    actions: List[PruneURLRegexAction | PruneURLRegexSaveOneAction]
+
+async def prune_urls_regex(model: Any, visited_urls: str, urls_in_queue_str: str, urls_in_queue_count: int, existing_regexes: str = "") -> PruneAction:
+    """Generate pruning actions (regexes and saved URLs) based on visited URLs and current queue."""
+    prompt = PRUNE_URLS_PROMPT_ACTIONS.format(
+        visited_urls=visited_urls,
+        urls_in_queue=urls_in_queue_str,
+        existing_regexes=existing_regexes
+    )
+    prompt += get_json_schema_prompt(PruneAction)
+
+    result = await model.ainvoke(prompt)
+    content = result.completion
+    json_str = extract_json(content)
+    prune_action = PruneAction.model_validate_json(json_str)
+
+    # Validate url_index in PruneURLRegexSaveOneAction
+    for action in prune_action.actions:
+        if isinstance(action, PruneURLRegexSaveOneAction):
+            if action.url_index < 0 or action.url_index >= urls_in_queue_count:
+                raise ValueError(f"Invalid url_index: {action.url_index}. Index must be between 0 and {urls_in_queue_count - 1}")
+
+    return prune_action
+
 def delete_indices(indices: List[int], dict_obj: Dict[Any, Any]) -> Dict[Any, Any]:
     """
     Delete the items at the given indices from the dict.
@@ -243,49 +338,127 @@ def delete_indices(indices: List[int], dict_obj: Dict[Any, Any]) -> Dict[Any, An
 
 class URLQueue:
     """
-    A data structure that maintains unique elements in insertion order.
-    Supports deduplication, order preservation, and efficient operations.
+    A data structure that maintains unique URLs for web crawling.
+    Uses a two-queue system:
+    - _curr_urls: URLs ready to be visited (approved after pruning)
+    - _urls_under_consideration: Newly added URLs pending pruning
+
+    Automatically applies saved regex patterns to filter incoming URLs.
     """
-    
+
     def __init__(self, iterable=None):
         """
-        Initialize OrderedSet with optional iterable.
-        
+        Initialize URLQueue with optional iterable.
+
         Args:
-            iterable: Optional iterable to initialize the set with
+            iterable: Optional iterable of start URLs (go directly to curr_urls)
         """
         self._visited = set()
         self._black_listed = set()
-        self._curr_urls = {}  # Use dict to maintain insertion order (Python 3.7+)
+        self._curr_urls = {}  # URLs ready to visit (approved)
+        self._urls_under_consideration = {}  # URLs pending pruning
+        self._saved_regexes = []  # List of compiled regex patterns for auto-pruning
+
         if iterable:
+            # Start URLs go directly to the main queue (no pruning needed)
             for item in iterable:
-                self.add(item)
+                self._curr_urls[item] = None
 
     async def prune(self, model: Any):
+        """
+        Process URLs under consideration using LLM-generated pruning actions.
+
+        - Generates regex patterns to identify URL types to prune
+        - Applies regexes to urls_under_consideration
+        - Moves approved URLs to curr_urls (ready to visit)
+        - Stores regexes for future auto-pruning of newly added URLs
+        - Handles "save-one" actions: keep one representative URL of a type
+        """
+        urls_list = list(self._urls_under_consideration.keys())
+        if not urls_list:
+            print("No URLs under consideration to prune")
+            return
+
         visited_urls_str = "\n".join(self._visited)
-        urls_list = list(self._curr_urls.keys())
         urls_in_queue_str = "\n".join([f"{index}. {url}" for index, url in enumerate(urls_list)])
-        res = await prune_urls(
+        existing_regexes_str = "\n".join([r.pattern for r in self._saved_regexes])
+
+        prune_actions = await prune_urls_regex(
             model=model,
             visited_urls=visited_urls_str,
             urls_in_queue_str=urls_in_queue_str,
             urls_in_queue_count=len(urls_list),
+            existing_regexes=existing_regexes_str
         )
-        for index in res.urls_to_purge_indices:
-            print(f"Purging URL: {urls_list[index]}")
 
-        self._curr_urls = delete_indices(res.urls_to_purge_indices, self._curr_urls)
+        # Track which URLs to keep (start with all, then remove pruned ones)
+        urls_to_keep_indices = set(range(len(urls_list)))
+
+        # Process each pruning action
+        for action in prune_actions.actions:
+            try:
+                compiled_regex = re.compile(action.regex)
+
+                # Save the regex for future auto-pruning (avoid duplicates)
+                if compiled_regex.pattern not in [r.pattern for r in self._saved_regexes]:
+                    self._saved_regexes.append(compiled_regex)
+                    print(f"Saving regex for auto-pruning: {action.regex}")
+
+                # Find all URLs matching this regex
+                matching_indices = set()
+                for i, url in enumerate(urls_list):
+                    if compiled_regex.search(url):
+                        matching_indices.add(i)
+
+                # Handle save-one action: keep the specified URL, prune the rest
+                if isinstance(action, PruneURLRegexSaveOneAction):
+                    if action.url_index in matching_indices:
+                        matching_indices.remove(action.url_index)
+                        print(f"Saving representative URL: {urls_list[action.url_index]}")
+
+                # Remove matching URLs from the keep set (they're being pruned)
+                urls_to_keep_indices -= matching_indices
+                for idx in matching_indices:
+                    print(f"Pruning URL: {urls_list[idx]}")
+
+            except re.error as e:
+                print(f"Warning: Invalid regex pattern '{action.regex}': {e}")
+                continue
+
+        # Move approved URLs from consideration to main queue
+        for i in sorted(urls_to_keep_indices):
+            url = urls_list[i]
+            self._curr_urls[url] = None
+            print(f"Approved URL for visiting: {url}")
+
+        # Clear the consideration queue
+        self._urls_under_consideration.clear()
 
     def add(self, item):
         """
-        Add an item to the set. If item already exists, no change occurs.
-        If item was previously removed, it won't be added again.
-        
+        Add a URL to the consideration queue (pending pruning).
+        Applies saved regexes for immediate auto-pruning.
+
         Args:
-            item: Item to add to the set
+            item: URL to add to the consideration queue
         """
-        if item not in self._black_listed:
-            self._curr_urls[item] = None
+        # Skip if already processed
+        if item in self._black_listed or item in self._visited:
+            return
+
+        # Skip if already in either queue
+        if item in self._curr_urls or item in self._urls_under_consideration:
+            return
+
+        # Apply saved regexes for auto-pruning
+        for regex in self._saved_regexes:
+            if regex.search(item):
+                # Auto-prune this URL (matches a known pattern to exclude)
+                self._black_listed.add(item)
+                return
+
+        # URL passed all checks, add to consideration queue
+        self._urls_under_consideration[item] = None
 
     def peek(self, index: int) -> Any:
         """
@@ -312,33 +485,50 @@ class URLQueue:
     
     def pop(self):
         """
-        Remove and return the first item from the set, adding it to the removed set.
-        
+        Remove and return the first URL from curr_urls (ready to visit).
+        Adds the URL to the visited set.
+
         Returns:
-            The first item in the set
-            
+            The first URL in the queue
+
         Raises:
-            KeyError: If the set is empty
+            KeyError: If the queue is empty
         """
         if not self._curr_urls:
-            raise KeyError("pop from empty OrderedSet")
+            raise KeyError("pop from empty URLQueue")
         item = next(iter(self._curr_urls))
         del self._curr_urls[item]
         self._visited.add(item)
         return item
-    
+
     def __contains__(self, item):
-        """Check if item is in the set."""
+        """Check if item is in curr_urls (ready to visit)."""
         return item in self._curr_urls
-    
+
     def __len__(self):
-        """Return the number of items in the set."""
+        """Return the number of URLs ready to visit."""
         return len(self._curr_urls)
-    
+
     def __iter__(self):
-        """Return an iterator over the items in insertion order."""
+        """Return an iterator over URLs ready to visit."""
         return iter(self._curr_urls)
-    
+
     def __repr__(self):
-        """Return string representation of the OrderedSet."""
-        return f"OrderedSet({list(self._curr_urls.keys())})"
+        """Return string representation showing both queues."""
+        return f"URLQueue(ready={len(self._curr_urls)}, pending={len(self._urls_under_consideration)})"
+
+    def get_visited_urls(self) -> List[str]:
+        """Return list of visited URLs."""
+        return list(self._visited)
+
+    def get_curr_urls(self) -> List[str]:
+        """Return list of URLs ready to visit."""
+        return list(self._curr_urls.keys())
+
+    def get_urls_under_consideration(self) -> List[str]:
+        """Return list of URLs pending pruning approval."""
+        return list(self._urls_under_consideration.keys())
+
+    def get_saved_regexes(self) -> List[str]:
+        """Return list of saved regex patterns as strings."""
+        return [r.pattern for r in self._saved_regexes]

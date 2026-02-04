@@ -1,0 +1,29 @@
+{
+  "crawl_info": {
+    "start_url": "https://www.ca/kayak/com",
+    "include_domains": [
+      "www.ca"
+    ],
+    "max_pages": 50,
+    "role": null,
+    "crawl_started_at": "2026-01-11T00:00:04.751935+00:00",
+    "total_pages_scraped": 0,
+    "total_urls_visited": 1,
+    "urls_in_curr_queue": 0,
+    "urls_under_consideration": 0,
+    "regex_pruning_enabled": true,
+    "prune_interval": 10
+  },
+  "pages": [],
+  "queue_state": {
+    "visited_urls": [
+      "https://www.ca/kayak/com"
+    ],
+    "curr_urls": [],
+    "urls_under_consideration": []
+  },
+  "all_visited_urls": [
+    "https://www.ca/kayak/com"
+  ],
+  "remaining_queue": []
+}

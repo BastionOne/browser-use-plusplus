@@ -12,7 +12,7 @@ from bupp.src.sitemap import SiteMap
 from bupp.src.http_view import HTTPView
 
 
-PENTEST_PROMPT_FILE = "PENTEST_FREE.md"
+PENTEST_PROMPT_FILE = "src/tasks/exploit/prompts/PENTEST_FREE.md"
 PAGEDATA_FILE = "aikido.json"
 
 if __name__ == "__main__":

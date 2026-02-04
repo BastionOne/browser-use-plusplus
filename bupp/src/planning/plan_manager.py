@@ -9,7 +9,7 @@ from bupp.src.planning.prompts.plan_group import (
     PlanItem,
     TASK_PROMPT_WITH_PLAN,
 )
-from src.agent.cost_tracking import ActionCost, AgentCostSummary
+from src.tasks.cost_tracking import ActionCost, AgentCostSummary
 
 if TYPE_CHECKING:
     from browser_use.agent.views import AgentHistoryList

@@ -1,0 +1,42 @@
+{
+  "crawl_info": {
+    "start_url": "https://pitch.com/templates",
+    "include_domains": [
+      "pitch.com"
+    ],
+    "max_pages": 50,
+    "role": null,
+    "crawl_started_at": "2026-01-11T00:00:25.530940+00:00",
+    "total_pages_scraped": 1,
+    "total_urls_visited": 1,
+    "urls_in_curr_queue": 0,
+    "urls_under_consideration": 0,
+    "regex_pruning_enabled": true,
+    "prune_interval": 10
+  },
+  "pages": [
+    {
+      "url": "https://pitch.com/templates",
+      "normalized_url": "https://pitch.com/templates",
+      "final_url": "https://pitch.com/templates",
+      "html_filename": "pitch.com_templates_feef0802.html",
+      "dom_filename": "pitch.com_templates_feef0802.dom.txt",
+      "scraped_at": "2026-01-11T00:00:25.406952+00:00",
+      "html_size_bytes": 2133,
+      "dom_size_chars": 51,
+      "links_found": 0,
+      "extracted_urls": []
+    }
+  ],
+  "queue_state": {
+    "visited_urls": [
+      "https://pitch.com/templates"
+    ],
+    "curr_urls": [],
+    "urls_under_consideration": []
+  },
+  "all_visited_urls": [
+    "https://pitch.com/templates"
+  ],
+  "remaining_queue": []
+}

@@ -1,0 +1,37 @@
+{
+  "crawl_info": {
+    "start_url": "https://example.com",
+    "include_domains": [
+      "example.com"
+    ],
+    "max_pages": 5,
+    "role": null,
+    "crawl_started_at": "2026-01-10T18:37:41.898977+00:00",
+    "total_pages_scraped": 1,
+    "total_urls_visited": 1,
+    "urls_remaining_in_queue": 0,
+    "regex_pruning_enabled": true,
+    "prune_interval": 2,
+    "total_regexes_collected": 0,
+    "total_urls_pruned_by_regex": 0
+  },
+  "pages": [
+    {
+      "url": "https://example.com",
+      "normalized_url": "https://example.com",
+      "final_url": "https://example.com/",
+      "html_filename": "example.com_index_c984d06a.html",
+      "dom_filename": "example.com_index_c984d06a.dom.txt",
+      "scraped_at": "2026-01-10T18:37:41.835659+00:00",
+      "html_size_bytes": 242,
+      "dom_size_chars": 138,
+      "links_found": 0,
+      "extracted_urls": []
+    }
+  ],
+  "all_visited_urls": [
+    "https://example.com"
+  ],
+  "remaining_queue": [],
+  "collected_regexes": []
+}

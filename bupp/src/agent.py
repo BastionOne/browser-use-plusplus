@@ -70,7 +70,7 @@ from bupp.src.utils import (
     extract_json,
     num_tokens_from_string,
 )
-from src.agent.cost_tracking import AgentCostSummary
+from src.tasks.cost_tracking import AgentCostSummary
 import logging
 
 class PageStatus(str, Enum):
@@ -114,6 +114,10 @@ class DiscoveryAgent(BrowserUseAgent):
      ):
         tools = ToolsWithHistory(agent=self)
         override_system_message = importlib.resources.files("bupp.src").joinpath("custom_prompt.md").read_text(encoding="utf-8")
+        
+        if agent_dir:
+            agent_dir = agent_dir / "discovery"
+            agent_dir.mkdir(parents=True, exist_ok=True)
 
         # Create ModelRegistry early for browser_use LLM
         llm_logdir = agent_dir / "llm" if agent_dir else None
@@ -578,7 +582,7 @@ class DiscoveryAgent(BrowserUseAgent):
         # Call on_pages_updated hook if provided
         if self.on_pages_updated:
             self.on_pages_updated(self.pages)
-
+            
         # update state for next step
         self.curr_step += 1
         self.page_step += 1
@@ -589,7 +593,7 @@ class DiscoveryAgent(BrowserUseAgent):
 
         # TODO: there is bug here where if step = max_step - 1, agent will issue a done
         # action which triggers a page change.. suspect there is a desync in steps represented to agent prompt steps
-        # and our agent.curr_step count
+        # and our agent.\curr_step count
         if (
             # server_page_skip == True 
             self.page_step > self.max_page_steps

@@ -1,0 +1,42 @@
+{
+  "crawl_info": {
+    "start_url": "https://codepen.io/pen",
+    "include_domains": [
+      "codepen.io"
+    ],
+    "max_pages": 50,
+    "role": null,
+    "crawl_started_at": "2026-01-10T23:57:59.200867+00:00",
+    "total_pages_scraped": 1,
+    "total_urls_visited": 1,
+    "urls_in_curr_queue": 0,
+    "urls_under_consideration": 0,
+    "regex_pruning_enabled": true,
+    "prune_interval": 10
+  },
+  "pages": [
+    {
+      "url": "https://codepen.io/pen",
+      "normalized_url": "https://codepen.io/pen",
+      "final_url": "https://codepen.io/pen",
+      "html_filename": "codepen.io_pen_353ae5bf.html",
+      "dom_filename": "codepen.io_pen_353ae5bf.dom.txt",
+      "scraped_at": "2026-01-10T23:57:59.126185+00:00",
+      "html_size_bytes": 12192,
+      "dom_size_chars": 584,
+      "links_found": 0,
+      "extracted_urls": []
+    }
+  ],
+  "queue_state": {
+    "visited_urls": [
+      "https://codepen.io/pen"
+    ],
+    "curr_urls": [],
+    "urls_under_consideration": []
+  },
+  "all_visited_urls": [
+    "https://codepen.io/pen"
+  ],
+  "remaining_queue": []
+}

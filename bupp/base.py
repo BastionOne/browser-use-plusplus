@@ -92,9 +92,9 @@ class BrowserContextManager:
         scopes: Optional[List[str]] = None,
         headless: bool = False,
         n: int = 1,
-        config_service: BrowserConfigService | None = None,
-        browser_exe: Optional[str] = None,
-        use_server: bool = False,
+        config_service: BrowserConfigService | None = None, # remove this from code
+        browser_exe: Optional[str] = None, # remove this from code
+        use_server: bool = False, # combine this with server_base_url -> RemoteBrowserConfig
         server_base_url: str = "http://localhost:8080",
         cookies_file: Optional[Path] = None,
     ):
@@ -384,7 +384,7 @@ async def start_discovery_agent(
     effective_scopes = scopes if scopes is not None else start_urls
 
     # Use default LLM config if not provided
-    effective_llm_config = llm_config or DISCOVERY_MODEL_CONFIG_MINI
+    effective_llm_config = llm_config or DISCOVERY_MODEL_CONFIG
 
     server_log_factory = get_or_init_log_factory(
         base_dir=AGENT_RESULTS_FOLDER,

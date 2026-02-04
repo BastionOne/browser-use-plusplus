@@ -216,4 +216,6 @@ browser-use/
 
 tests/experiments
 .claude-worktrees/
+output/
+
 

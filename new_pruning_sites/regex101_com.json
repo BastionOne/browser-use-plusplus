@@ -1,0 +1,92 @@
+{
+  "crawl_info": {
+    "start_url": "https://regex101.com",
+    "include_domains": [
+      "regex101.com"
+    ],
+    "max_pages": 50,
+    "role": null,
+    "crawl_started_at": "2026-01-10T23:58:28.011113+00:00",
+    "total_pages_scraped": 2,
+    "total_urls_visited": 2,
+    "urls_in_curr_queue": 0,
+    "urls_under_consideration": 0,
+    "regex_pruning_enabled": true,
+    "prune_interval": 10
+  },
+  "pages": [
+    {
+      "url": "https://regex101.com",
+      "normalized_url": "https://regex101.com",
+      "final_url": "https://regex101.com/",
+      "html_filename": "regex101.com_index_6546e859.html",
+      "dom_filename": "regex101.com_index_6546e859.dom.txt",
+      "scraped_at": "2026-01-10T23:58:21.569240+00:00",
+      "html_size_bytes": 43499,
+      "dom_size_chars": 8036,
+      "links_found": 6,
+      "extracted_urls": [
+        "https://regex101.com/library",
+        "https://regex101.com/account/mine",
+        "https://regex101.com/quiz",
+        "https://regex101.com/settings/general",
+        "https://regex101.com/codegen?language=php",
+        "https://regex101.com/debugger"
+      ]
+    },
+    {
+      "url": "https://regex101.com/library",
+      "normalized_url": "https://regex101.com/library",
+      "final_url": "https://regex101.com/library",
+      "html_filename": "regex101.com_library_5ec71943.html",
+      "dom_filename": "regex101.com_library_5ec71943.dom.txt",
+      "scraped_at": "2026-01-10T23:58:27.933444+00:00",
+      "html_size_bytes": 58809,
+      "dom_size_chars": 5497,
+      "links_found": 28,
+      "extracted_urls": [
+        "https://regex101.com/library",
+        "https://regex101.com/account/mine",
+        "https://regex101.com/quiz",
+        "https://regex101.com/settings/general",
+        "https://regex101.com/library/OY96XI",
+        "https://regex101.com/library/vY5eL1",
+        "https://regex101.com/library/aL8lD7",
+        "https://regex101.com/library/3HmoM7",
+        "https://regex101.com/library/qK2bT7",
+        "https://regex101.com/library/zWGLMP",
+        "https://regex101.com/library/0bH043",
+        "https://regex101.com/library/sI6yF5",
+        "https://regex101.com/library/vcxVpP",
+        "https://regex101.com/library/qH0sU7",
+        "https://regex101.com/library/lL7hC7",
+        "https://regex101.com/library/tY0dS0",
+        "https://regex101.com/library/SOgUIV",
+        "https://regex101.com/library/qZ1yC3",
+        "https://regex101.com/library/bA0qV5",
+        "https://regex101.com/library/cU7zG2",
+        "https://regex101.com/library/aS3xU5",
+        "https://regex101.com/library/yO7aQ4",
+        "https://regex101.com/library/sE5tS4",
+        "https://regex101.com/library/yP4bY4",
+        "https://regex101.com/library?page=1",
+        "https://regex101.com/library?page=2",
+        "https://regex101.com/library?page=3",
+        "https://regex101.com/library?page=914"
+      ]
+    }
+  ],
+  "queue_state": {
+    "visited_urls": [
+      "https://regex101.com/library",
+      "https://regex101.com"
+    ],
+    "curr_urls": [],
+    "urls_under_consideration": []
+  },
+  "all_visited_urls": [
+    "https://regex101.com/library",
+    "https://regex101.com"
+  ],
+  "remaining_queue": []
+}

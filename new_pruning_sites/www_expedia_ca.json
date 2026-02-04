@@ -1,0 +1,60 @@
+{
+  "crawl_info": {
+    "start_url": "https://www.expedia.ca",
+    "include_domains": [
+      "www.expedia.ca"
+    ],
+    "max_pages": 50,
+    "role": null,
+    "crawl_started_at": "2026-01-10T23:58:13.231493+00:00",
+    "total_pages_scraped": 2,
+    "total_urls_visited": 2,
+    "urls_in_curr_queue": 0,
+    "urls_under_consideration": 0,
+    "regex_pruning_enabled": true,
+    "prune_interval": 10
+  },
+  "pages": [
+    {
+      "url": "https://www.expedia.ca",
+      "normalized_url": "https://www.expedia.ca",
+      "final_url": "https://www.expedia.ca/",
+      "html_filename": "www.expedia.ca_index_6a0d0984.html",
+      "dom_filename": "www.expedia.ca_index_6a0d0984.dom.txt",
+      "scraped_at": "2026-01-10T23:58:07.231683+00:00",
+      "html_size_bytes": 6803,
+      "dom_size_chars": 722,
+      "links_found": 1,
+      "extracted_urls": [
+        "https://www.expedia.ca/cgp/simple/challenge.noscript.styles"
+      ]
+    },
+    {
+      "url": "https://www.expedia.ca/cgp/simple/challenge.noscript.styles",
+      "normalized_url": "https://www.expedia.ca/cgp/simple/challenge.noscript.styles",
+      "final_url": "https://www.expedia.ca/",
+      "html_filename": "www.expedia.ca_cgp_simple_challenge.noscript.styles_f73ee5e1.html",
+      "dom_filename": "www.expedia.ca_cgp_simple_challenge.noscript.styles_f73ee5e1.dom.txt",
+      "scraped_at": "2026-01-10T23:58:13.163565+00:00",
+      "html_size_bytes": 6803,
+      "dom_size_chars": 722,
+      "links_found": 1,
+      "extracted_urls": [
+        "https://www.expedia.ca/cgp/simple/challenge.noscript.styles"
+      ]
+    }
+  ],
+  "queue_state": {
+    "visited_urls": [
+      "https://www.expedia.ca",
+      "https://www.expedia.ca/cgp/simple/challenge.noscript.styles"
+    ],
+    "curr_urls": [],
+    "urls_under_consideration": []
+  },
+  "all_visited_urls": [
+    "https://www.expedia.ca",
+    "https://www.expedia.ca/cgp/simple/challenge.noscript.styles"
+  ],
+  "remaining_queue": []
+}
